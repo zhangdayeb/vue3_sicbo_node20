@@ -2,35 +2,40 @@
 
 // 游戏状态
 export interface GameState {
+  videoUrl: string
   gameNumber: string
   status: GameStatus
-  phase: GamePhase
   countdown: number
   round: number
-  tableId: string
-  dealerId?: string
-  startTime?: Date
-  endTime?: Date
-  lastUpdate: Date
 }
 
 export type GameStatus = 
-  | 'initializing' // 初始化
-  | 'ready' // 准备就绪
-  | 'active' // 游戏进行中
-  | 'paused' // 暂停
-  | 'completed' // 已完成
-  | 'cancelled' // 已取消
-  | 'error' // 错误状态
-
-export type GamePhase = 
   | 'waiting' // 等待开始
   | 'betting' // 投注阶段
-  | 'no_more_bets' // 停止投注
-  | 'rolling' // 摇骰阶段
-  | 'revealing' // 揭晓结果
-  | 'settling' // 结算阶段
-  | 'completed' // 游戏完成
+  | 'dealing' // 开牌阶段
+  | 'result' // 结果阶段
+
+// 用户余额
+export interface UserBalance {
+  total: number
+  currency: string
+}
+
+// 游戏设置
+export interface GameSettings {
+  tableName: string
+  limits: BetLimits
+  language: string
+}
+
+// 投注限额
+export interface BetLimits {
+  min: number
+  max: number
+}
+
+// 游戏阶段
+export type GamePhase = 'waiting' | 'betting' | 'rolling' | 'result' | 'settling'
 
 // 骰子相关
 export interface DiceResult {
@@ -243,376 +248,6 @@ export interface AuditEntry {
   hash?: string
 }
 
-// 游戏配置
-export interface GameConfig {
-  general: GeneralGameConfig
-  timing: TimingConfig
-  visual: VisualConfig
-  audio: AudioConfig
-  features: FeatureConfig
-}
-
-export interface GeneralGameConfig {
-  gameVersion: string
-  locale: string
-  timezone: string
-  currency: string
-  rounding: RoundingConfig
-  limits: GlobalLimits
-}
-
-export interface RoundingConfig {
-  method: 'round' | 'floor' | 'ceil'
-  precision: number
-}
-
-export interface GlobalLimits {
-  maxConcurrentGames: number
-  maxPlayersPerGame: number
-  maxBetAmount: number
-  maxWinAmount: number
-}
-
-export interface TimingConfig {
-  bettingPhase: number // 秒
-  noMoreBetsPhase: number
-  rollingPhase: number
-  revealPhase: number
-  settlingPhase: number
-  breakBetweenGames: number
-  warningTimes: number[] // 倒计时警告时间点
-}
-
-export interface VisualConfig {
-  theme: GameTheme
-  animations: AnimationConfig
-  effects: EffectConfig
-  ui: UIConfig
-}
-
-export type GameTheme = 
-  | 'classic' // 经典
-  | 'modern' // 现代
-  | 'luxury' // 奢华
-  | 'minimal' // 极简
-  | 'neon' // 霓虹
-  | 'traditional' // 传统
-
-export interface AnimationConfig {
-  enabled: boolean
-  speed: number // 0.5 - 2.0
-  quality: 'low' | 'medium' | 'high'
-  reduceMotion: boolean
-}
-
-export interface EffectConfig {
-  particles: boolean
-  lighting: boolean
-  shadows: boolean
-  reflections: boolean
-  postProcessing: boolean
-}
-
-export interface UIConfig {
-  layout: 'compact' | 'standard' | 'expanded'
-  colorScheme: 'light' | 'dark' | 'auto'
-  fontSize: 'small' | 'medium' | 'large'
-  contrast: 'normal' | 'high'
-}
-
-export interface AudioConfig {
-  master: AudioChannelConfig
-  music: AudioChannelConfig
-  effects: AudioChannelConfig
-  voice: AudioChannelConfig
-  ambient: AudioChannelConfig
-}
-
-export interface AudioChannelConfig {
-  enabled: boolean
-  volume: number // 0-1
-  muted: boolean
-}
-
-export interface FeatureConfig {
-  statistics: boolean
-  history: boolean
-  roadmap: boolean
-  chat: boolean
-  tips: boolean
-  tutorials: boolean
-  achievements: boolean
-  leaderboard: boolean
-}
-
-// 玩家相关
-export interface Player {
-  id: string
-  username: string
-  displayName: string
-  avatar?: string
-  level: PlayerLevel
-  experience: number
-  balance: number
-  currency: string
-  status: PlayerStatus
-  preferences: PlayerPreferences
-  statistics: PlayerStatistics
-  achievements: Achievement[]
-  session: PlayerSession
-}
-
-export type PlayerLevel = 
-  | 'newcomer' // 新手 (0-99 exp)
-  | 'amateur' // 业余 (100-499 exp)
-  | 'regular' // 常客 (500-1999 exp)
-  | 'expert' // 专家 (2000-9999 exp)
-  | 'master' // 大师 (10000-49999 exp)
-  | 'legend' // 传奇 (50000+ exp)
-
-export type PlayerStatus = 
-  | 'online' // 在线
-  | 'playing' // 游戏中
-  | 'away' // 离开
-  | 'offline' // 离线
-  | 'banned' // 封禁
-  | 'suspended' // 暂停
-
-export interface PlayerPreferences {
-  language: string
-  timezone: string
-  notifications: NotificationPreferences
-  display: DisplayPreferences
-  gameplay: GameplayPreferences
-}
-
-export interface NotificationPreferences {
-  gameResults: boolean
-  bigWins: boolean
-  achievements: boolean
-  promotions: boolean
-  system: boolean
-  sound: boolean
-  vibration: boolean
-}
-
-export interface DisplayPreferences {
-  theme: string
-  animations: boolean
-  effects: boolean
-  autoHideUI: boolean
-  showStatistics: boolean
-  showRoadmap: boolean
-}
-
-export interface GameplayPreferences {
-  autoConfirmBets: boolean
-  quickBetAmounts: number[]
-  defaultChipValue: number
-  riskWarnings: boolean
-  soundFeedback: boolean
-}
-
-export interface PlayerStatistics {
-  gamesPlayed: number
-  totalBets: number
-  totalWinnings: number
-  biggestWin: number
-  winRate: number
-  averageBet: number
-  playTime: number // 分钟
-  favoriteNumbers: number[]
-  luckiestHour: number
-  streaks: PlayerStreaks
-}
-
-export interface PlayerStreaks {
-  currentWin: number
-  currentLoss: number
-  bestWin: number
-  worstLoss: number
-}
-
-export interface Achievement {
-  id: string
-  name: string
-  description: string
-  category: AchievementCategory
-  tier: AchievementTier
-  progress: number
-  maxProgress: number
-  unlocked: boolean
-  unlockedAt?: Date
-  reward?: AchievementReward
-}
-
-export type AchievementCategory = 
-  | 'betting' // 投注相关
-  | 'winning' // 获胜相关
-  | 'exploration' // 探索相关
-  | 'social' // 社交相关
-  | 'special' // 特殊成就
-
-export type AchievementTier = 
-  | 'bronze' // 铜牌
-  | 'silver' // 银牌
-  | 'gold' // 金牌
-  | 'platinum' // 白金
-  | 'diamond' // 钻石
-
-export interface AchievementReward {
-  type: 'coins' | 'experience' | 'title' | 'avatar' | 'badge'
-  amount?: number
-  item?: string
-}
-
-export interface PlayerSession {
-  id: string
-  startTime: Date
-  lastActivity: Date
-  gamesInSession: number
-  betsInSession: number
-  winningsInSession: number
-  tableId: string
-  deviceInfo: DeviceInfo
-}
-
-export interface DeviceInfo {
-  platform: 'web' | 'mobile' | 'desktop'
-  os: string
-  browser: string
-  screenResolution: string
-  connection: ConnectionInfo
-}
-
-export interface ConnectionInfo {
-  type: 'wifi' | 'cellular' | 'ethernet'
-  speed: 'slow' | 'fast' | 'very_fast'
-  latency: number // ms
-  quality: 'poor' | 'fair' | 'good' | 'excellent'
-}
-
-// 游戏历史
-export interface GameHistory {
-  games: HistoricalGame[]
-  pagination: PaginationInfo
-  filters: HistoryFilter
-  summary: HistorySummary
-}
-
-export interface HistoricalGame {
-  gameNumber: string
-  timestamp: Date
-  result: DiceResult
-  specialResults: SpecialGameResult[]
-  playerCount: number
-  totalBets: number
-  totalPayouts: number
-  duration: number
-}
-
-export interface PaginationInfo {
-  currentPage: number
-  totalPages: number
-  itemsPerPage: number
-  totalItems: number
-}
-
-export interface HistoryFilter {
-  dateRange?: DateRange
-  resultRange?: NumberRange
-  specialResults?: SpecialResultType[]
-  minPlayerCount?: number
-  maxPlayerCount?: number
-}
-
-export interface DateRange {
-  start: Date
-  end: Date
-}
-
-export interface NumberRange {
-  min: number
-  max: number
-}
-
-export interface HistorySummary {
-  totalGames: number
-  averageResult: number
-  mostCommonNumber: number
-  leastCommonNumber: number
-  bigSmallRatio: number
-  oddEvenRatio: number
-  specialResultFrequency: Record<SpecialResultType, number>
-}
-
-// 实时数据
-export interface RealTimeData {
-  currentGame: GameState
-  nextGame?: GameState
-  liveStats: LiveStatistics
-  activePlayers: number
-  recentResults: DiceResult[]
-  trends: GameTrend[]
-  alerts: GameAlert[]
-}
-
-export interface LiveStatistics {
-  hotNumbers: NumberFrequency[]
-  coldNumbers: NumberFrequency[]
-  recentPatterns: Pattern[]
-  streakInfo: StreakInfo
-}
-
-export interface NumberFrequency {
-  number: number
-  frequency: number
-  percentage: number
-  trend: 'up' | 'down' | 'stable'
-}
-
-export interface Pattern {
-  description: string
-  frequency: number
-  lastOccurrence: Date
-  probability: number
-}
-
-export interface StreakInfo {
-  type: 'big' | 'small' | 'odd' | 'even'
-  count: number
-  probability: number
-}
-
-export interface GameTrend {
-  metric: string
-  direction: 'increasing' | 'decreasing' | 'stable'
-  strength: number // 0-1
-  duration: number // games
-}
-
-export interface GameAlert {
-  id: string
-  type: AlertType
-  message: string
-  severity: AlertSeverity
-  timestamp: Date
-  dismissed: boolean
-}
-
-export type AlertType = 
-  | 'system' // 系统alert
-  | 'game' // 游戏alert
-  | 'streak' // 连续alert
-  | 'rare_event' // 稀有事件
-  | 'technical' // 技术alert
-
-export type AlertSeverity = 
-  | 'info' // 信息
-  | 'warning' // 警告
-  | 'error' // 错误
-  | 'critical' // 严重
-
 // 导出所有类型的联合类型
 export type AllGameTypes = 
   | GameStatus
@@ -628,10 +263,3 @@ export type AllGameTypes =
   | EnvironmentEffect
   | VideoQuality
   | CameraAngle
-  | GameTheme
-  | PlayerLevel
-  | PlayerStatus
-  | AchievementCategory
-  | AchievementTier
-  | AlertType
-  | AlertSeverity

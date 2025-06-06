@@ -212,7 +212,7 @@ export const useBettingStore = defineStore('betting', () => {
       return false
     }
     selectedChip.value = chipValue
-    addTransaction('place', undefined, chipValue, 'Chip selected')
+    addTransaction('place', undefined, chipValue)
     return true
   }
   
@@ -302,7 +302,7 @@ export const useBettingStore = defineStore('betting', () => {
     currentBets.value = {}
     
     // 记录交易
-    addTransaction('cancel', undefined, -totalBetAmount.value, 'All bets cleared')
+    addTransaction('cancel', undefined, -totalBetAmount.value)
     
     // 触发事件
     notifyUpdate('allBetsCleared', { clearedBets })
@@ -325,7 +325,7 @@ export const useBettingStore = defineStore('betting', () => {
     currentBets.value = { ...lastBets.value }
     
     // 记录交易
-    addTransaction('place', undefined, totalLastBetAmount, 'Rebet executed')
+    addTransaction('place', undefined, totalLastBetAmount)
     
     // 更新统计
     Object.entries(lastBets.value).forEach(([betType, amount]) => {
@@ -365,7 +365,7 @@ export const useBettingStore = defineStore('betting', () => {
     currentBets.value = {}
     
     // 记录交易
-    addTransaction('confirm', undefined, betAmount, 'Bets confirmed')
+    addTransaction('confirm', undefined, betAmount)
     
     // 更新会话统计
     statistics.sessionStats.currentBalance = balance.value
@@ -489,8 +489,7 @@ export const useBettingStore = defineStore('betting', () => {
   const addTransaction = (
     type: BetTransaction['type'], 
     betType?: string, 
-    amount: number = 0, 
-    note?: string
+    amount: number = 0
   ): void => {
     const transaction: BetTransaction = {
       id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

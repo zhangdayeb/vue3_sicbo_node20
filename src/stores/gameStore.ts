@@ -92,9 +92,11 @@ export const useGameStore = defineStore('game', {
 
     // 与Cocos通信
     notifyCocos(event: string, data: any) {
-      window.dispatchEvent(new CustomEvent(`vue-to-cocos-${event}`, {
-        detail: data
-      }))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(`vue-to-cocos-${event}`, {
+          detail: data
+        }))
+      }
     }
   }
 })
