@@ -72,22 +72,24 @@ const statusClass = computed(() => {
 })
 
 const statusText = computed(() => {
-  const statusMap = {
+  const status = gameStore.gameState.status
+  const statusMap: Record<string, string> = {
     waiting: '等待开始',
     betting: '投注中',
     dealing: '开牌中',
     result: '结果公布'
   }
-  return statusMap[gameStore.gameState.status] || '未知状态'
+  return statusMap[status] || '未知状态'
 })
 
 const countdownLabel = computed(() => {
-  const labelMap = {
+  const status = gameStore.gameState.status
+  const labelMap: Record<string, string> = {
     betting: '投注倒计时',
     dealing: '开牌倒计时',
     result: '下局开始'
   }
-  return labelMap[gameStore.gameState.status] || '倒计时'
+  return labelMap[status] || '倒计时'
 })
 </script>
 

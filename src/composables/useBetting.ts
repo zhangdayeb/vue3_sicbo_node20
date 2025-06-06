@@ -107,18 +107,21 @@ export const useBetting = (options: BettingOptions = {}) => {
     }
     
     // 检查投注限额
-    const betLimits = bettingStore.getBetLimits(betType)
-    if (amount < betLimits.min) {
+    const limits = getBetLimits(betType)
+    const currentAmount = currentBets.value[betType] || 0
+    const newTotal = currentAmount + amount
+    
+    if (newTotal < limits.min) {
       return {
         isValid: false,
-        error: `最小投注金额为 ${betLimits.min}`
+        error: `最小投注金额为 ${limits.min}`
       }
     }
     
-    if (amount > betLimits.max) {
+    if (newTotal > limits.max) {
       return {
         isValid: false,
-        error: `最大投注金额为 ${betLimits.max}`
+        error: `最大投注金额为 ${limits.max}`
       }
     }
     
@@ -127,16 +130,6 @@ export const useBetting = (options: BettingOptions = {}) => {
       return {
         isValid: false,
         error: `单次投注不能超过 ${maxBetAmount}`
-      }
-    }
-    
-    // 检查重复投注
-    const currentAmount = currentBets.value[betType] || 0
-    const totalAmount = currentAmount + amount
-    if (totalAmount > betLimits.max) {
-      return {
-        isValid: false,
-        error: `该投注项总金额不能超过 ${betLimits.max}`
       }
     }
     
@@ -306,10 +299,13 @@ export const useBetting = (options: BettingOptions = {}) => {
           id: `bet_${Date.now()}`,
           bets: { ...currentBets.value },
           totalAmount: totalBetAmount.value,
+          totalWinAmount: 0,
+          netProfit: 0,
           timestamp: new Date(),
+          gameNumber: `game_${Date.now()}`,
+          gameResult: [0, 0, 0],
           status: 'confirmed',
-          gameResult: null,
-          winAmount: 0
+          details: []
         }
         betHistory.value.push(betResult)
         
@@ -339,8 +335,9 @@ export const useBetting = (options: BettingOptions = {}) => {
     if (lastBet && lastBet.status === 'confirmed') {
       const winAmount = calculateWinnings(lastBet.bets, gameResult)
       
-      lastBet.gameResult = gameResult
-      lastBet.winAmount = winAmount
+      lastBet.gameResult = gameResult.diceResults
+      lastBet.totalWinAmount = winAmount
+      lastBet.netProfit = winAmount - lastBet.totalAmount
       lastBet.status = winAmount > 0 ? 'won' : 'lost'
       
       // 更新余额
@@ -451,13 +448,18 @@ export const useBetting = (options: BettingOptions = {}) => {
     return oddsMap[betType] || 1
   }
 
+  // 获取投注限额
+  const getBetLimits = (betType: BetType) => {
+    return bettingStore.getBetLimits(betType)
+  }
+
   // 更新统计信息
   const updateStatistics = (betResult: BetResult): void => {
     statistics.totalBets++
     statistics.totalAmount += betResult.totalAmount
     
-    if (betResult.status === 'won' && betResult.winAmount > 0) {
-      statistics.biggestWin = Math.max(statistics.biggestWin, betResult.winAmount)
+    if (betResult.status === 'won' && betResult.totalWinAmount > 0) {
+      statistics.biggestWin = Math.max(statistics.biggestWin, betResult.totalWinAmount)
     } else if (betResult.status === 'lost') {
       statistics.biggestLoss = Math.max(statistics.biggestLoss, betResult.totalAmount)
     }
@@ -527,11 +529,11 @@ export const useBetting = (options: BettingOptions = {}) => {
 
   return {
     // 状态
-    isProcessing: readonly(isProcessing),
-    lastError: readonly(lastError),
-    betHistory: readonly(betHistory),
-    statistics: readonly(statistics),
-    currentGameResult: readonly(currentGameResult),
+    isProcessing,
+    lastError,
+    betHistory,
+    statistics,
+    currentGameResult,
     
     // 计算属性
     currentBets,
