@@ -97,10 +97,8 @@ const placeBet = (betType: string) => {
 
 <style scoped>
 .main-bets-section {
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #2d5a42;
+  /* 移除background和border */
+  padding: 8px;
 }
 
 /* 1x4网格布局 */
@@ -212,6 +210,10 @@ const placeBet = (betType: string) => {
   .main-bets-grid {
     gap: 6px;
   }
+  
+  .main-bets-section {
+    padding: 6px;
+  }
 }
 
 @media (max-width: 320px) {
@@ -234,6 +236,10 @@ const placeBet = (betType: string) => {
   
   .bet-odds {
     font-size: 8px;
+  }
+  
+  .main-bets-section {
+    padding: 4px;
   }
 }
 
@@ -258,6 +264,10 @@ const placeBet = (betType: string) => {
   
   .main-bets-grid {
     gap: 6px;
+  }
+  
+  .main-bets-section {
+    padding: 6px;
   }
 }
 

@@ -160,10 +160,8 @@ const placeBet = (betType: string) => {
 
 <style scoped>
 .combo-bets-section {
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #2d5a42;
+  /* 移除background和border */
+  padding: 8px;
 }
 
 /* 组合网格 - 5行3列布局 */
@@ -321,6 +319,10 @@ const placeBet = (betType: string) => {
   .combo-label {
     font-size: 9px;
   }
+  
+  .combo-bets-section {
+    padding: 6px;
+  }
 }
 
 @media (max-width: 320px) {
@@ -342,6 +344,10 @@ const placeBet = (betType: string) => {
   .combo-label {
     font-size: 8px;
   }
+  
+  .combo-bets-section {
+    padding: 4px;
+  }
 }
 
 /* 横屏适配 */
@@ -354,6 +360,10 @@ const placeBet = (betType: string) => {
   .dice-face {
     width: 10px;
     height: 10px;
+  }
+  
+  .combo-bets-section {
+    padding: 6px;
   }
 }
 

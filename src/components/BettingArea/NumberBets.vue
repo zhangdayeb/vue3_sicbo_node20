@@ -131,15 +131,13 @@ const placeBet = (betType: string) => {
 
 <style scoped>
 .number-bets-section {
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #2d5a42;
+  /* 移除background和border */
+  padding: 8px;
 }
 
 /* 数字行布局 */
 .number-row {
-  margin-bottom: 12px;
+  margin-bottom: 8px; /* 减少行间距 */
 }
 
 .number-row:last-of-type {
@@ -271,6 +269,14 @@ const placeBet = (betType: string) => {
   .number-probability {
     font-size: 6px;
   }
+  
+  .number-bets-section {
+    padding: 6px;
+  }
+  
+  .number-row {
+    margin-bottom: 6px;
+  }
 }
 
 @media (max-width: 320px) {
@@ -294,6 +300,10 @@ const placeBet = (betType: string) => {
   .number-probability {
     display: none; /* 超小屏幕隐藏概率显示 */
   }
+  
+  .number-bets-section {
+    padding: 4px;
+  }
 }
 
 /* 横屏适配 */
@@ -308,7 +318,11 @@ const placeBet = (betType: string) => {
   }
   
   .number-row {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+  }
+  
+  .number-bets-section {
+    padding: 6px;
   }
 }
 

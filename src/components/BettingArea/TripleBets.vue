@@ -165,10 +165,8 @@ const placeBet = (betType: string) => {
 
 <style scoped>
 .triple-bets-section {
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #2d5a42;
+  /* 移除background和border */
+  padding: 8px;
 }
 
 /* 三同号网格 */
@@ -364,6 +362,10 @@ const placeBet = (betType: string) => {
   .icon-subtitle {
     font-size: 7px;
   }
+  
+  .triple-bets-section {
+    padding: 6px;
+  }
 }
 
 @media (max-width: 320px) {
@@ -380,6 +382,10 @@ const placeBet = (betType: string) => {
   .triple-btn {
     min-height: 80px;
   }
+  
+  .triple-bets-section {
+    padding: 4px;
+  }
 }
 
 /* 横屏适配 */
@@ -387,6 +393,10 @@ const placeBet = (betType: string) => {
   .triple-btn {
     min-height: 70px;
     padding: 4px 2px;
+  }
+  
+  .triple-bets-section {
+    padding: 6px;
   }
 }
 

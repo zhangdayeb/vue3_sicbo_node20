@@ -152,10 +152,8 @@ const placeBet = (betType: string) => {
 
 <style scoped>
 .single-dice-section {
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #2d5a42;
+  /* 移除background和border */
+  padding: 8px;
 }
 
 /* 骰子网格 */
@@ -317,6 +315,10 @@ const placeBet = (betType: string) => {
   .dice-odds-info {
     font-size: 7px;
   }
+  
+  .single-dice-section {
+    padding: 6px;
+  }
 }
 
 @media (max-width: 320px) {
@@ -341,6 +343,10 @@ const placeBet = (betType: string) => {
   .dice-odds-info {
     font-size: 6px;
   }
+  
+  .single-dice-section {
+    padding: 4px;
+  }
 }
 
 /* 横屏适配 */
@@ -353,6 +359,10 @@ const placeBet = (betType: string) => {
   .dice-face {
     width: 24px;
     height: 24px;
+  }
+  
+  .single-dice-section {
+    padding: 6px;
   }
 }
 

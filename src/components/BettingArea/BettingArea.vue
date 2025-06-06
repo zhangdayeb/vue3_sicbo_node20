@@ -2,50 +2,53 @@
   <div class="betting-area">
     <!-- 滚动内容区域 -->
     <div class="betting-content">
-      <div class="betting-sections">
-        <!-- 大小单双投注区域 -->
-        <MainBets 
-          :selectedChip="selectedChip"
-          :currentBets="currentBets"
-          @place-bet="handlePlaceBet"
-        />
+      <!-- 统一的投注容器 - 添加边框 -->
+      <div class="betting-container">
+        <div class="betting-sections">
+          <!-- 大小单双投注区域 -->
+          <MainBets 
+            :selectedChip="selectedChip"
+            :currentBets="currentBets"
+            @place-bet="handlePlaceBet"
+          />
 
-        <!-- 点数投注区域 -->
-        <NumberBets 
-          :selectedChip="selectedChip"
-          :currentBets="currentBets"
-          @place-bet="handlePlaceBet"
-        />
+          <!-- 点数投注区域 -->
+          <NumberBets 
+            :selectedChip="selectedChip"
+            :currentBets="currentBets"
+            @place-bet="handlePlaceBet"
+          />
 
-        <!-- 单骰投注区域 -->
-        <SingleDiceBets
-          :selectedChip="selectedChip"
-          :currentBets="currentBets"
-          @place-bet="handlePlaceBet"
-        />
+          <!-- 单骰投注区域 -->
+          <SingleDiceBets
+            :selectedChip="selectedChip"
+            :currentBets="currentBets"
+            @place-bet="handlePlaceBet"
+          />
 
-        <!-- 对子投注区域 -->
-        <PairBets
-          :selectedChip="selectedChip"
-          :currentBets="currentBets"
-          :balance="balance"
-          @place-bet="handlePlaceBet"
-        />
+          <!-- 对子投注区域 -->
+          <PairBets
+            :selectedChip="selectedChip"
+            :currentBets="currentBets"
+            :balance="balance"
+            @place-bet="handlePlaceBet"
+          />
 
-        <!-- 三同号投注区域 -->
-        <TripleBets
-          :selectedChip="selectedChip"
-          :currentBets="currentBets"
-          @place-bet="handlePlaceBet"
-        />
+          <!-- 三同号投注区域 -->
+          <TripleBets
+            :selectedChip="selectedChip"
+            :currentBets="currentBets"
+            @place-bet="handlePlaceBet"
+          />
 
-        <!-- 两两组合投注区域 -->
-        <ComboBets
-          :selectedChip="selectedChip"
-          :currentBets="currentBets"
-          :balance="balance"
-          @place-bet="handlePlaceBet"
-        />
+          <!-- 两两组合投注区域 -->
+          <ComboBets
+            :selectedChip="selectedChip"
+            :currentBets="currentBets"
+            :balance="balance"
+            @place-bet="handlePlaceBet"
+          />
+        </div>
       </div>
     </div>
 
@@ -268,15 +271,25 @@ onMounted(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-bottom: 120px; /* 从160px减少到120px */
+  padding-bottom: 120px;
+  /* 增加顶部padding确保第一个组件不被遮挡 */
+  padding-top: 16px;
+}
+
+/* 统一的投注容器 - 添加边框 */
+.betting-container {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #2d5a42;
+  border-radius: 12px;
+  margin: 0 10px;
+  padding: 12px;
+  backdrop-filter: blur(5px);
 }
 
 .betting-sections {
-  padding: 10px; /* 从12px减少到10px */
   display: flex;
   flex-direction: column;
-  gap: 8px; /* 从16px减少到8px */
-  min-height: calc(100vh - 300px - 120px); /* 调整高度计算：300px视频 + 120px底部 */
+  gap: 4px; /* 减少组件间距 */
 }
 
 /* 底部固定区域 */
@@ -291,28 +304,34 @@ onMounted(() => {
   z-index: 100;
   
   /* iOS Safari安全区域适配 */
-  padding-bottom: max(8px, env(safe-area-inset-bottom)); /* 从12px减少到8px */
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
 /* 响应式适配 */
 @media (max-width: 375px) {
+  .betting-container {
+    margin: 0 8px;
+    padding: 10px;
+  }
+  
   .betting-sections {
-    padding: 8px; /* 从10px减少到8px */
-    gap: 6px; /* 从8px减少到6px */
+    gap: 3px;
   }
   
   .betting-content {
-    padding-bottom: 110px; /* 小屏幕调整 */
+    padding-bottom: 110px;
+    padding-top: 12px;
   }
 }
 
 @media (max-height: 667px) {
   .betting-content {
     padding-bottom: 110px;
+    padding-top: 12px;
   }
   
   .betting-sections {
-    gap: 6px;
+    gap: 3px;
   }
 }
 
@@ -324,11 +343,11 @@ onMounted(() => {
   
   .betting-content {
     padding-bottom: 0;
+    padding-top: 8px;
   }
   
   .betting-sections {
-    min-height: auto;
-    gap: 6px;
+    gap: 3px;
   }
 }
 
