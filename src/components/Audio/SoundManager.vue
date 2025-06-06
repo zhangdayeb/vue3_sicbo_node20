@@ -17,7 +17,7 @@
       <audio 
         v-for="sound in soundEffects"
         :key="sound.id"
-        :ref="(el: any) => setSoundRef(sound.id, el as HTMLAudioElement)"
+        :ref="(el) => setSoundRef(sound.id, el as HTMLAudioElement)"
         preload="auto"
         :volume="settings.sfxVolume"
       >
@@ -29,7 +29,7 @@
       <audio 
         v-for="audio in audioPool"
         :key="audio.id"
-        :ref="(el: any) => setPoolRef(audio.id, el as HTMLAudioElement)"
+        :ref="(el) => setPoolRef(audio.id, el as HTMLAudioElement)"
         preload="auto"
         :volume="settings.sfxVolume"
       >
@@ -135,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 
 // 音效配置接口
 interface SoundEffect {
