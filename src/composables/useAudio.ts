@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, readonly } from 'vue'
 
 export interface AudioConfig {
   masterVolume: number
@@ -33,7 +33,7 @@ export interface AudioInstance {
   loop: boolean
 }
 
-export interface AudioContext {
+export interface AudioContextState {
   isUnlocked: boolean
   isSupported: boolean
   activeInstances: Map<string, AudioInstance>
@@ -233,7 +233,7 @@ export const useAudio = () => {
   ])
 
   // 音频上下文
-  const audioContext = reactive<AudioContext>({
+  const audioContext = reactive<AudioContextState>({
     isUnlocked: false,
     isSupported: true,
     activeInstances: new Map(),
