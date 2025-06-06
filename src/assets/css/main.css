@@ -1,0 +1,64 @@
+/* 基础样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: transparent;
+}
+
+/* 游戏容器固定尺寸 */
+.game-container {
+  position: relative;
+  width: 100%;
+  height: 350px; /* 固定高度 */
+  overflow: hidden;
+}
+
+.video-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 350px; /* 固定高度 */
+  z-index: 1;
+}
+
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 350px; /* 固定高度 */
+  z-index: 10;
+  pointer-events: none;
+}
+
+.ui-overlay > * {
+  pointer-events: auto;
+}
+
+/* 移除响应式高度调整，保持固定350px */
+@media (max-width: 768px) {
+  .game-container,
+  .video-background,
+  .ui-overlay {
+    height: 350px; /* 所有屏幕尺寸都保持350px */
+  }
+}
+
+@media (max-width: 480px) {
+  .game-container,
+  .video-background,
+  .ui-overlay {
+    height: 350px; /* 所有屏幕尺寸都保持350px */
+  }
+}
