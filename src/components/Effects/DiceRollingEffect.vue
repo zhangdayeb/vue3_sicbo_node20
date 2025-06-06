@@ -148,17 +148,6 @@
           <div class="special-text">{{ specialResult.text }}</div>
         </div>
       </div>
-      
-      <!-- 音效控制（隐藏） -->
-      <audio ref="shakeSound" preload="auto">
-        <source src="@/assets/audio/dice-shake.mp3" type="audio/mpeg">
-      </audio>
-      <audio ref="rollSound" preload="auto">
-        <source src="@/assets/audio/dice-roll.mp3" type="audio/mpeg">
-      </audio>
-      <audio ref="revealSound" preload="auto">
-        <source src="@/assets/audio/dice-reveal.mp3" type="audio/mpeg">
-      </audio>
     </div>
   </teleport>
 </template>
@@ -194,11 +183,6 @@ const isRolling = ref(false)
 const isRevealed = ref(false)
 const showResult = ref(false)
 const diceResults = ref<number[]>([1, 1, 1])
-
-// 音频引用
-const shakeSound = ref<HTMLAudioElement>()
-const rollSound = ref<HTMLAudioElement>()
-const revealSound = ref<HTMLAudioElement>()
 
 // 计算属性
 const totalSum = computed(() => {
@@ -324,10 +308,16 @@ const getBottomFaceValue = (frontValue: number): number => {
 }
 
 // 方法
-const playSound = (audio: HTMLAudioElement | undefined) => {
-  if (props.enableSound && audio) {
-    audio.currentTime = 0
-    audio.play().catch(e => console.warn('Audio play failed:', e))
+const playSound = (audioUrl?: string) => {
+  if (props.enableSound && audioUrl) {
+    try {
+      // 创建临时音频对象播放
+      const audio = new Audio(audioUrl)
+      audio.volume = 0.7
+      audio.play().catch(e => console.warn('Audio play failed:', e))
+    } catch (e) {
+      console.warn('Failed to create audio:', e)
+    }
   }
 }
 
@@ -351,7 +341,8 @@ const startAnimation = async () => {
   // 阶段2: 开始摇骰
   setTimeout(() => {
     isShaking.value = true
-    playSound(shakeSound.value)
+    // 播放摇骰音效（如果有可用的音频文件）
+    playSound('./src/assets/audio/dice-shake.mp3')
     emit('phase-change', 'shaking')
   }, 300)
   
@@ -365,14 +356,16 @@ const startAnimation = async () => {
   // 阶段4: 骰子开始滚动
   setTimeout(() => {
     isRolling.value = true
-    playSound(rollSound.value)
+    // 播放滚动音效
+    playSound('./src/assets/audio/dice-roll.mp3')
   }, 2500)
   
   // 阶段5: 骰子停止，显示结果
   setTimeout(() => {
     isRolling.value = false
     isRevealed.value = true
-    playSound(revealSound.value)
+    // 播放结果音效（使用已有的音频文件）
+    playSound('./src/assets/audio/win.mp3')
     emit('phase-change', 'revealing')
   }, 4000)
   
