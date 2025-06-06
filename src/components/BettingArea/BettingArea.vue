@@ -1,21 +1,16 @@
 <template>
-  <div class="betting-layout">
+  <div class="betting-area">
     <!-- 滚动内容区域 -->
     <div class="betting-content">
       <div class="betting-sections">
-        <!-- 投注历史显示 -->
-        <div class="bet-history" v-if="Object.keys(currentBets).length > 0">
-          <div class="bet-history-title">当前投注</div>
-          <div class="bet-list">
-            <div 
-              v-for="(amount, betType) in currentBets"
-              :key="betType"
-              class="bet-item"
-            >
-              {{ getBetDisplayName(betType) }}: {{ amount }}
-            </div>
-          </div>
-        </div>
+        <!-- 投注金额显示 -->
+        <BetAmountDisplay 
+          :totalBetAmount="totalBetAmount"
+          :currentBets="currentBets"
+          :balance="balance"
+          @remove-bet="removeBet"
+          @refresh-amount="refreshBalance"
+        />
 
         <!-- 大小单双投注区域 -->
         <MainBets 
@@ -31,82 +26,117 @@
           @place-bet="handlePlaceBet"
         />
 
-        <!-- 其他投注区域占位 -->
-        <div class="coming-soon">
-          <div class="section-title">更多投注选项</div>
-          <div class="placeholder">单骰、对子、三同号等投注区域即将上线...</div>
-        </div>
+        <!-- 单骰投注区域 -->
+        <SingleDiceBets
+          :selectedChip="selectedChip"
+          :currentBets="currentBets"
+          @place-bet="handlePlaceBet"
+        />
+
+        <!-- 对子投注区域 -->
+        <PairBets
+          :selectedChip="selectedChip"
+          :currentBets="currentBets"
+          :balance="balance"
+          @place-bet="handlePlaceBet"
+        />
+
+        <!-- 三同号投注区域 -->
+        <TripleBets
+          :selectedChip="selectedChip"
+          :currentBets="currentBets"
+          @place-bet="handlePlaceBet"
+        />
+
+        <!-- 两两组合投注区域 -->
+        <ComboBets
+          :selectedChip="selectedChip"
+          :currentBets="currentBets"
+          :balance="balance"
+          @place-bet="handlePlaceBet"
+        />
       </div>
     </div>
 
     <!-- 底部固定区域 -->
     <div class="bottom-fixed-area">
       <!-- 筹码选择器 -->
-      <div class="chip-selector">
-        <div class="chip-list">
-          <button
-            v-for="chip in chips"
-            :key="chip.value"
-            class="chip-btn"
-            :class="[`chip-${chip.value}`, { active: selectedChip === chip.value }]"
-            @click="selectChip(chip.value)"
-          >
-            {{ chip.label }}
-          </button>
-        </div>
-        <div class="bet-summary">
-          <span class="balance">余额: {{ balance.toLocaleString() }}</span>
-          <span class="total-bet">投注: {{ totalBetAmount.toLocaleString() }}</span>
-        </div>
-      </div>
+      <ChipSelector
+        :selectedChip="selectedChip"
+        :balance="balance"
+        :totalBetAmount="totalBetAmount"
+        :currentBets="currentBets"
+        :betLimits="{ min: 1, max: 10000 }"
+        @select-chip="selectChip"
+        @refresh-balance="refreshBalance"
+      />
 
       <!-- 控制按钮 -->
-      <div class="control-buttons">
-        <button 
-          class="control-btn clear-btn" 
-          @click="clearBets"
-          :disabled="totalBetAmount === 0"
-        >
-          清除
-        </button>
-        <button 
-          class="control-btn rebet-btn" 
-          @click="rebet"
-          :disabled="Object.keys(lastBets).length === 0"
-        >
-          重复投注
-        </button>
-        <button 
-          class="control-btn confirm-btn" 
-          @click="confirmBets"
-          :disabled="totalBetAmount === 0"
-        >
-          确认投注
-        </button>
-      </div>
+      <ControlButtons
+        :totalBetAmount="totalBetAmount"
+        :currentBets="currentBets"
+        :lastBets="lastBets"
+        :balance="balance"
+        :gamePhase="gamePhase"
+        :canBet="canBet"
+        @clear-bets="clearBets"
+        @clear-all-bets="clearAllBets"
+        @rebet="rebet"
+        @confirm-bets="confirmBets"
+        @undo-last="undoLast"
+        @quick-bet="quickBet"
+        @max-bet="maxBet"
+        @open-settings="openSettings"
+      />
     </div>
+
+    <!-- 特效组件 -->
+    <ChipAnimation ref="chipAnimationRef" />
+    <WinningEffect ref="winningEffectRef" />
+    <DiceRollingEffect ref="diceRollingEffectRef" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useBettingStore } from '@/stores/bettingStore'
 import { useAudio } from '@/composables/useAudio'
+import { useGameEffects } from '@/composables/useGameEffects'
+
+// 投注区域组件
 import MainBets from './MainBets.vue'
 import NumberBets from './NumberBets.vue'
+import SingleDiceBets from './SingleDiceBets.vue'
+import PairBets from './PairBets.vue'
+import TripleBets from './TripleBets.vue'
+import ComboBets from './ComboBets.vue'
+
+// 控制和显示组件
+import ChipSelector from './ChipSelector.vue'
+import ControlButtons from './ControlButtons.vue'
+import BetAmountDisplay from './BetAmountDisplay.vue'
+
+// 特效组件
+import ChipAnimation from '@/components/Effects/ChipAnimation.vue'
+import WinningEffect from '@/components/Effects/WinningEffect.vue'
+import DiceRollingEffect from '@/components/Effects/DiceRollingEffect.vue'
+
 import type { BetType } from '@/types/betting'
 
 const bettingStore = useBettingStore()
-const { playChipSelectSound, playChipPlaceSound, playBetConfirmSound } = useAudio()
+const { playChipSelectSound, playChipPlaceSound, playBetConfirmSound, playErrorSound } = useAudio()
+const { 
+  playChipEffect, 
+  playBetConfirmEffect,
+  setChipAnimationRef,
+  setWinningEffectRef,
+  setDiceRollingEffectRef 
+} = useGameEffects()
 
-// 筹码配置
-const chips = [
-  { value: 1, label: '1', color: '#8b4513' },
-  { value: 10, label: '10', color: '#dc143c' },
-  { value: 100, label: '100', color: '#ffd700' },
-  { value: 1000, label: '1K', color: '#4169e1' },
-  { value: 10000, label: '10K', color: '#9370db' }
-]
+// 组件引用
+const chipAnimationRef = ref()
+const winningEffectRef = ref()
+const diceRollingEffectRef = ref()
 
 // 计算属性 - 从 bettingStore 获取状态
 const selectedChip = computed(() => bettingStore.selectedChip)
@@ -114,20 +144,51 @@ const currentBets = computed(() => bettingStore.currentBets)
 const lastBets = computed(() => bettingStore.lastBets)
 const balance = computed(() => bettingStore.balance)
 const totalBetAmount = computed(() => bettingStore.totalBetAmount)
+const gamePhase = computed(() => bettingStore.gamePhase)
+const canBet = computed(() => bettingStore.canPlaceBet)
 
 // 方法
 const selectChip = (value: number) => {
-  bettingStore.selectChip(value)
-  playChipSelectSound()
+  const success = bettingStore.selectChip(value)
+  if (success) {
+    playChipSelectSound()
+  } else {
+    playErrorSound()
+  }
 }
 
-const handlePlaceBet = (betType: string) => {
+const handlePlaceBet = async (betType: string) => {
   const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
   if (success) {
     playChipPlaceSound()
+    
+    // 播放筹码飞行特效（如果有目标元素）
+    const targetElement = document.querySelector(`[data-bet-type="${betType}"]`)
+    if (targetElement) {
+      const rect = targetElement.getBoundingClientRect()
+      await playChipEffect({
+        startX: window.innerWidth / 2,
+        startY: window.innerHeight - 100,
+        endX: rect.left + rect.width / 2,
+        endY: rect.top + rect.height / 2,
+        chipValue: selectedChip.value,
+        animationType: 'fly',
+        duration: 800,
+        showTrail: true,
+        bounceOnLand: true
+      })
+    }
   } else {
-    // 余额不足，播放错误音效或显示提示
-    console.log('余额不足')
+    playErrorSound()
+    // 可以添加错误提示
+    console.warn('投注失败：余额不足或其他错误')
+  }
+}
+
+const removeBet = (betType: string) => {
+  const success = bettingStore.cancelBet(betType as BetType)
+  if (success) {
+    playChipSelectSound()
   }
 }
 
@@ -136,58 +197,85 @@ const clearBets = () => {
   playChipSelectSound()
 }
 
+const clearAllBets = () => {
+  bettingStore.clearBets() // 可以扩展为清除历史记录
+  playChipSelectSound()
+}
+
 const rebet = () => {
-  bettingStore.rebet()
+  const success = bettingStore.rebet()
+  if (success) {
+    playChipPlaceSound()
+  } else {
+    playErrorSound()
+  }
+}
+
+const confirmBets = async () => {
+  const success = bettingStore.confirmBets()
+  if (success) {
+    playBetConfirmSound()
+    
+    // 播放确认特效
+    const confirmButton = document.querySelector('.confirm-btn')
+    if (confirmButton) {
+      await playBetConfirmEffect(confirmButton as HTMLElement)
+    }
+  } else {
+    playErrorSound()
+  }
+}
+
+const undoLast = () => {
+  // 撤销最后一次投注的逻辑
+  playChipSelectSound()
+}
+
+const quickBet = () => {
+  // 快速投注逻辑
   playChipPlaceSound()
 }
 
-const confirmBets = () => {
-  bettingStore.confirmBets()
+const maxBet = () => {
+  // 梭哈投注逻辑
   playBetConfirmSound()
 }
 
-const getBetDisplayName = (betType: string): string => {
-  const nameMap: Record<string, string> = {
-    'small': '小',
-    'big': '大',
-    'odd': '单',
-    'even': '双',
-    'total-4': '点数4',
-    'total-5': '点数5',
-    'total-6': '点数6',
-    'total-7': '点数7',
-    'total-8': '点数8',
-    'total-9': '点数9',
-    'total-10': '点数10',
-    'total-11': '点数11',
-    'total-12': '点数12',
-    'total-13': '点数13',
-    'total-14': '点数14',
-    'total-15': '点数15',
-    'total-16': '点数16',
-    'total-17': '点数17'
-  }
-  return nameMap[betType] || betType
+const openSettings = () => {
+  // 打开设置面板
+  console.log('打开设置')
+}
+
+const refreshBalance = () => {
+  // 刷新余额
+  console.log('刷新余额')
 }
 
 onMounted(() => {
   // 初始化 bettingStore
   bettingStore.init()
-  // 初始化音效
-  playChipSelectSound()
+  
+  // 设置特效组件引用
+  if (chipAnimationRef.value) {
+    setChipAnimationRef(chipAnimationRef.value)
+  }
+  if (winningEffectRef.value) {
+    setWinningEffectRef(winningEffectRef.value)
+  }
+  if (diceRollingEffectRef.value) {
+    setDiceRollingEffectRef(diceRollingEffectRef.value)
+  }
 })
 </script>
 
 <style scoped>
-.betting-layout {
+.betting-area {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: #0d2818;
   color: white;
-  
-  /* iOS Safari安全区域适配 */
-  padding-bottom: env(safe-area-inset-bottom);
+  position: relative;
 }
 
 .betting-content {
@@ -195,7 +283,7 @@ onMounted(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-bottom: 160px; /* 为底部固定区域留空间 */
+  padding-bottom: 180px; /* 为底部固定区域留空间 */
 }
 
 .betting-sections {
@@ -203,63 +291,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-/* 投注历史 */
-.bet-history {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid #2d5a42;
-}
-
-.bet-history-title {
-  font-size: 12px;
-  color: #ffd700;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.bet-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.bet-item {
-  background: #4a7c59;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-/* 占位区域 */
-.coming-soon {
-  background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  padding: 20px;
-  text-align: center;
-  border: 1px dashed #4a7c59;
-}
-
-.section-title {
-  font-size: 14px;
-  color: #ffd700;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.placeholder {
-  font-size: 12px;
-  color: #888;
-  font-style: italic;
+  min-height: calc(100vh - 350px - 180px); /* 确保有足够的内容高度 */
 }
 
 /* 底部固定区域 */
 .bottom-fixed-area {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
@@ -272,137 +309,21 @@ onMounted(() => {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
-/* 筹码选择器 */
-.chip-selector {
-  padding: 12px;
-  border-bottom: 1px solid #4a7c59;
-}
-
-.chip-list {
-  display: flex;
-  justify-content: space-around;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.chip-btn {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 2px solid #666;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.chip-btn:active {
-  transform: scale(0.95);
-}
-
-.chip-1 { background: #8b4513; }
-.chip-10 { background: #dc143c; }
-.chip-100 { background: #ffd700; color: #333; }
-.chip-1000 { background: #4169e1; }
-.chip-10000 { background: #9370db; }
-
-.chip-btn.active {
-  border-color: #ffd700;
-  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.5);
-  transform: scale(1.05);
-}
-
-.bet-summary {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.balance {
-  color: #4CAF50;
-}
-
-.total-bet {
-  color: #ff6b6b;
-}
-
-/* 控制按钮 */
-.control-buttons {
-  padding: 12px;
-  display: flex;
-  gap: 10px;
-}
-
-.control-btn {
-  flex: 1;
-  padding: 12px 8px;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.control-btn:active {
-  transform: scale(0.95);
-}
-
-.control-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.clear-btn {
-  background: #dc3545;
-  color: white;
-}
-
-.rebet-btn {
-  background: #ffc107;
-  color: #333;
-}
-
-.confirm-btn {
-  background: #28a745;
-  color: white;
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
-  .chip-btn {
-    width: 45px;
-    height: 45px;
-    font-size: 10px;
-  }
-  
   .betting-sections {
     padding: 10px;
     gap: 12px;
+  }
+  
+  .betting-content {
+    padding-bottom: 160px;
   }
 }
 
 @media (max-height: 667px) {
   .betting-content {
-    padding-bottom: 140px;
-  }
-  
-  .chip-selector {
-    padding: 10px;
-  }
-  
-  .control-buttons {
-    padding: 10px;
+    padding-bottom: 160px;
   }
 }
 
@@ -415,5 +336,28 @@ onMounted(() => {
   .betting-content {
     padding-bottom: 0;
   }
+  
+  .betting-sections {
+    min-height: auto;
+  }
+}
+
+/* 滚动条样式 */
+.betting-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.betting-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.betting-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.3);
+  border-radius: 2px;
+}
+
+.betting-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 215, 0, 0.5);
 }
 </style>

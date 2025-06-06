@@ -1,11 +1,20 @@
 <template>
   <div id="app">
-    <GameTopSection />
+    <!-- 顶部视频区域 - 固定350px -->
+    <div class="top-section">
+      <GameTopSection />
+    </div>
+    
+    <!-- 底部投注区域 - 填充剩余空间 -->
+    <div class="bottom-section">
+      <BettingArea />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
+import BettingArea from '@/components/BettingArea/BettingArea.vue'
 </script>
 
 <style>
@@ -20,6 +29,7 @@ html, body {
   font-family: 'Arial', sans-serif;
   margin: 0;
   padding: 0;
+  overflow: hidden; /* 防止整体页面滚动 */
 }
 
 #app {
@@ -27,22 +37,45 @@ html, body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 350px !important; /* 固定高度350px */
-  z-index: 150;
+  height: 100vh; /* 改为全屏高度 */
+  display: flex;
+  flex-direction: column;
   background: transparent;
-  overflow: hidden; /* 防止内容溢出 */
 }
 
-/* 确保在小屏幕上也保持350px */
+/* 顶部视频区域 */
+.top-section {
+  height: 350px;
+  flex-shrink: 0;
+  background: #000;
+  z-index: 150;
+}
+
+/* 底部投注区域 */
+.bottom-section {
+  flex: 1;
+  overflow: hidden;
+  background: #0d2818;
+  min-height: 0; /* 允许flex收缩 */
+}
+
+/* 确保在小屏幕上也保持比例 */
 @media (max-width: 768px) {
-  #app {
-    height: 350px !important; /* 移动端也保持350px */
+  .top-section {
+    height: 280px; /* 移动端稍微减小视频区域 */
   }
 }
 
 @media (max-width: 480px) {
-  #app {
-    height: 350px !important; /* 小屏幕也保持350px */
+  .top-section {
+    height: 250px; /* 小屏幕进一步减小 */
+  }
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .top-section {
+    height: 200px; /* 横屏时减小视频区域 */
   }
 }
 </style>
