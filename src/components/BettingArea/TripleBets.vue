@@ -1,10 +1,5 @@
 <template>
   <div class="triple-bets-section">
-    <div class="section-header">
-      <h3 class="section-title">三同号投注</h3>
-      <div class="section-subtitle">投注三个相同数字 - 超高赔率</div>
-    </div>
-    
     <div class="triple-grid">
       <!-- 特定三同号 -->
       <button
@@ -49,7 +44,7 @@
         <!-- 三同号标签 -->
         <div class="triple-label">围{{ triple.value }}</div>
         
-        <!-- 赔率显示 */
+        <!-- 赔率显示 -->
         <div class="triple-odds">1:180</div>
         
         <!-- 概率显示 -->
@@ -73,80 +68,18 @@
           {{ getBetAmount('any-triple') }}
         </div>
         
-        <!-- 全围图标 */
+        <!-- 全围图标 -->
         <div class="any-triple-icon">
           <div class="icon-text">全围</div>
           <div class="icon-subtitle">任意三同号</div>
         </div>
         
-        <!-- 赔率显示 */
+        <!-- 赔率显示 -->
         <div class="triple-odds any-odds">1:30</div>
         
         <!-- 概率显示 -->
         <div class="triple-probability">6种</div>
       </button>
-    </div>
-    
-    <!-- 赔率对比 -->
-    <div class="odds-comparison">
-      <div class="comparison-title">赔率对比</div>
-      <div class="comparison-content">
-        <div class="comparison-item specific">
-          <div class="comparison-label">特定三同号</div>
-          <div class="comparison-odds">1:180</div>
-          <div class="comparison-desc">选择具体数字(如：围1)</div>
-        </div>
-        <div class="comparison-divider"></div>
-        <div class="comparison-item any">
-          <div class="comparison-label">全围</div>
-          <div class="comparison-odds">1:30</div>
-          <div class="comparison-desc">任意三个相同数字</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 规则说明 */
-    <div class="rules-explanation">
-      <div class="rules-title">三同号投注规则</div>
-      <div class="rules-content">
-        <div class="rule-item">
-          <span class="rule-icon">🎯</span>
-          <span class="rule-text">特定三同号：三个骰子显示相同的指定数字</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">🌟</span>
-          <span class="rule-text">全围：三个骰子显示任意相同数字即可</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">💎</span>
-          <span class="rule-text">特定三同号赔率最高：1:180（下注10获得1800+本金）</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">📊</span>
-          <span class="rule-text">出现概率极低，但回报丰厚</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 概率统计 -->
-    <div class="probability-stats">
-      <div class="stats-title">概率统计</div>
-      <div class="stats-content">
-        <div class="stat-item">
-          <span class="stat-label">特定三同号:</span>
-          <span class="stat-value">0.46%</span>
-          <div class="stat-bar">
-            <div class="stat-fill specific-fill"></div>
-          </div>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">全围:</span>
-          <span class="stat-value">2.78%</span>
-          <div class="stat-bar">
-            <div class="stat-fill any-fill"></div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -238,30 +171,11 @@ const placeBet = (betType: string) => {
   border: 1px solid #2d5a42;
 }
 
-.section-header {
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.section-title {
-  font-size: 16px;
-  color: #ffd700;
-  margin: 0 0 4px 0;
-  font-weight: 700;
-}
-
-.section-subtitle {
-  font-size: 11px;
-  color: #90ee90;
-  opacity: 0.8;
-}
-
 /* 三同号网格 */
 .triple-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  margin-bottom: 16px;
 }
 
 .triple-btn {
@@ -422,172 +336,6 @@ const placeBet = (betType: string) => {
   opacity: 0.8;
 }
 
-/* 赔率对比 */
-.odds-comparison {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
-}
-
-.comparison-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.comparison-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-}
-
-.comparison-item {
-  text-align: center;
-  flex: 1;
-}
-
-.comparison-divider {
-  width: 1px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.2);
-  margin: 0 12px;
-}
-
-.comparison-label {
-  font-size: 10px;
-  color: #ccc;
-  margin-bottom: 4px;
-}
-
-.comparison-odds {
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.specific .comparison-odds {
-  color: #9b59b6;
-}
-
-.any .comparison-odds {
-  color: #e74c3c;
-}
-
-.comparison-desc {
-  font-size: 8px;
-  color: #999;
-  line-height: 1.2;
-}
-
-/* 规则说明 */
-.rules-explanation {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
-}
-
-.rules-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.rules-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rule-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: #ccc;
-}
-
-.rule-icon {
-  font-size: 12px;
-  min-width: 16px;
-}
-
-.rule-text {
-  flex: 1;
-  line-height: 1.3;
-}
-
-/* 概率统计 */
-.probability-stats {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.stats-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.stats-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-}
-
-.stat-label {
-  color: #ccc;
-  min-width: 60px;
-}
-
-.stat-value {
-  color: #ffd700;
-  font-weight: 600;
-  min-width: 30px;
-}
-
-.stat-bar {
-  flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.stat-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.specific-fill {
-  width: 5%;
-  background: linear-gradient(90deg, #9b59b6, #8e44ad);
-}
-
-.any-fill {
-  width: 28%;
-  background: linear-gradient(90deg, #e74c3c, #c0392b);
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
   .triple-grid {
@@ -616,15 +364,6 @@ const placeBet = (betType: string) => {
   .icon-subtitle {
     font-size: 7px;
   }
-  
-  .comparison-content {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .comparison-divider {
-    display: none;
-  }
 }
 
 @media (max-width: 320px) {
@@ -641,11 +380,6 @@ const placeBet = (betType: string) => {
   .triple-btn {
     min-height: 80px;
   }
-  
-  .rules-explanation,
-  .probability-stats {
-    display: none; /* 超小屏幕隐藏详细信息 */
-  }
 }
 
 /* 横屏适配 */
@@ -653,12 +387,6 @@ const placeBet = (betType: string) => {
   .triple-btn {
     min-height: 70px;
     padding: 4px 2px;
-  }
-  
-  .rules-explanation,
-  .probability-stats,
-  .odds-comparison {
-    display: none; /* 横屏时隐藏说明信息 */
   }
 }
 

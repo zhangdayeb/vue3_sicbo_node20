@@ -1,10 +1,5 @@
 <template>
   <div class="pair-bets-section">
-    <div class="section-header">
-      <h3 class="section-title">对子投注</h3>
-      <div class="section-subtitle">投注特定对子 - 赔率 1:10</div>
-    </div>
-    
     <div class="pairs-grid">
       <button
         v-for="pair in pairOptions"
@@ -54,66 +49,15 @@
           </div>
         </div>
         
-        <!-- 对子标签 */
+        <!-- 对子标签 -->
         <div class="pair-label">{{ pair.value }}{{ pair.value }}</div>
         
-        <!-- 赔率显示 */
+        <!-- 赔率显示 -->
         <div class="pair-odds">1:10</div>
         
         <!-- 概率显示 -->
         <div class="pair-probability">{{ pair.probability }}</div>
       </button>
-    </div>
-    
-    <!-- 规则说明 */
-    <div class="rules-explanation">
-      <div class="rules-title">对子投注规则</div>
-      <div class="rules-content">
-        <div class="rule-item">
-          <span class="rule-icon">🎯</span>
-          <span class="rule-text">投注特定的对子组合（如：1-1, 2-2等）</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">🎲</span>
-          <span class="rule-text">三个骰子中至少有两个显示相同数字即中奖</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">💰</span>
-          <span class="rule-text">中奖赔率：1:10（下注10获得100+本金10）</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">📊</span>
-          <span class="rule-text">每个对子出现概率约为13.9%</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 快速投注 -->
-    <div class="quick-bet-section">
-      <div class="quick-bet-title">快速投注</div>
-      <div class="quick-bet-buttons">
-        <button 
-          class="quick-bet-btn"
-          @click="betAllPairs"
-          :disabled="!canBetAll"
-        >
-          投注所有对子
-        </button>
-        <button 
-          class="quick-bet-btn"
-          @click="betHighPairs"
-          :disabled="!canBetHigh"
-        >
-          投注高位对子(4-6)
-        </button>
-        <button 
-          class="quick-bet-btn"
-          @click="betLowPairs"
-          :disabled="!canBetLow"
-        >
-          投注低位对子(1-3)
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -192,45 +136,9 @@ const getBetAmount = (betType: string) => {
   return props.currentBets[betType] || 0
 }
 
-const canBetAll = computed(() => {
-  return props.balance >= props.selectedChip * 6
-})
-
-const canBetHigh = computed(() => {
-  return props.balance >= props.selectedChip * 3
-})
-
-const canBetLow = computed(() => {
-  return props.balance >= props.selectedChip * 3
-})
-
 // 方法
 const placeBet = (betType: string) => {
   emit('place-bet', betType)
-}
-
-const betAllPairs = () => {
-  if (canBetAll.value) {
-    pairOptions.forEach(pair => {
-      emit('place-bet', `pair-${pair.value}`)
-    })
-  }
-}
-
-const betHighPairs = () => {
-  if (canBetHigh.value) {
-    [4, 5, 6].forEach(value => {
-      emit('place-bet', `pair-${value}`)
-    })
-  }
-}
-
-const betLowPairs = () => {
-  if (canBetLow.value) {
-    [1, 2, 3].forEach(value => {
-      emit('place-bet', `pair-${value}`)
-    })
-  }
 }
 </script>
 
@@ -242,30 +150,11 @@ const betLowPairs = () => {
   border: 1px solid #2d5a42;
 }
 
-.section-header {
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.section-title {
-  font-size: 16px;
-  color: #ffd700;
-  margin: 0 0 4px 0;
-  font-weight: 700;
-}
-
-.section-subtitle {
-  font-size: 11px;
-  color: #90ee90;
-  opacity: 0.8;
-}
-
 /* 对子网格 */
 .pairs-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 8px;
-  margin-bottom: 16px;
 }
 
 .pair-btn {
@@ -391,98 +280,6 @@ const betLowPairs = () => {
   opacity: 0.8;
 }
 
-/* 规则说明 */
-.rules-explanation {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
-}
-
-.rules-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.rules-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rule-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: #ccc;
-}
-
-.rule-icon {
-  font-size: 12px;
-  min-width: 16px;
-}
-
-.rule-text {
-  flex: 1;
-  line-height: 1.3;
-}
-
-/* 快速投注区域 */
-.quick-bet-section {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.quick-bet-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.quick-bet-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.quick-bet-btn {
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  border: none;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.quick-bet-btn:active {
-  transform: scale(0.95);
-}
-
-.quick-bet-btn:disabled {
-  background: #666;
-  cursor: not-allowed;
-  transform: none;
-  opacity: 0.5;
-}
-
-.quick-bet-btn:not(:disabled):hover {
-  background: linear-gradient(135deg, #2980b9, #21618c);
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
   .pairs-grid {
@@ -507,16 +304,6 @@ const betLowPairs = () => {
   .pair-label {
     font-size: 11px;
   }
-  
-  .quick-bet-buttons {
-    flex-direction: row;
-    gap: 4px;
-  }
-  
-  .quick-bet-btn {
-    font-size: 9px;
-    padding: 6px 8px;
-  }
 }
 
 @media (max-width: 320px) {
@@ -537,10 +324,6 @@ const betLowPairs = () => {
   .pair-label {
     font-size: 10px;
   }
-  
-  .rules-explanation {
-    display: none; /* 超小屏幕隐藏规则说明 */
-  }
 }
 
 /* 横屏适配 */
@@ -553,14 +336,6 @@ const betLowPairs = () => {
   .dice-face {
     width: 14px;
     height: 14px;
-  }
-  
-  .rules-explanation {
-    display: none; /* 横屏时隐藏规则说明 */
-  }
-  
-  .quick-bet-section {
-    display: none; /* 横屏时隐藏快速投注 */
   }
 }
 
