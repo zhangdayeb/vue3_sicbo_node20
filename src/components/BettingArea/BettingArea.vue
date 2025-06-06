@@ -89,14 +89,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useBettingStore } from '@/stores/bettingStore'
 import { useAudio } from '@/composables/useAudio'
 import MainBets from './MainBets.vue'
 import NumberBets from './NumberBets.vue'
+import type { BetType } from '@/types/betting'
 
 const bettingStore = useBettingStore()
-const { playSound } = useAudio()
+const { playChipSelectSound, playChipPlaceSound, playBetConfirmSound } = useAudio()
 
 // 筹码配置
 const chips = [
@@ -107,7 +108,7 @@ const chips = [
   { value: 10000, label: '10K', color: '#9370db' }
 ]
 
-// 响应式数据
+// 计算属性 - 从 bettingStore 获取状态
 const selectedChip = computed(() => bettingStore.selectedChip)
 const currentBets = computed(() => bettingStore.currentBets)
 const lastBets = computed(() => bettingStore.lastBets)
@@ -117,13 +118,13 @@ const totalBetAmount = computed(() => bettingStore.totalBetAmount)
 // 方法
 const selectChip = (value: number) => {
   bettingStore.selectChip(value)
-  playSound('chipSelect')
+  playChipSelectSound()
 }
 
 const handlePlaceBet = (betType: string) => {
-  const success = bettingStore.placeBet(betType, selectedChip.value)
+  const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
   if (success) {
-    playSound('chipPlace')
+    playChipPlaceSound()
   } else {
     // 余额不足，播放错误音效或显示提示
     console.log('余额不足')
@@ -132,17 +133,17 @@ const handlePlaceBet = (betType: string) => {
 
 const clearBets = () => {
   bettingStore.clearBets()
-  playSound('chipSelect')
+  playChipSelectSound()
 }
 
 const rebet = () => {
   bettingStore.rebet()
-  playSound('chipPlace')
+  playChipPlaceSound()
 }
 
 const confirmBets = () => {
   bettingStore.confirmBets()
-  playSound('betConfirm')
+  playBetConfirmSound()
 }
 
 const getBetDisplayName = (betType: string): string => {
@@ -170,8 +171,10 @@ const getBetDisplayName = (betType: string): string => {
 }
 
 onMounted(() => {
+  // 初始化 bettingStore
+  bettingStore.init()
   // 初始化音效
-  playSound('chipSelect')
+  playChipSelectSound()
 })
 </script>
 
