@@ -174,14 +174,15 @@ onUnmounted(() => {
   left: 10px;
   right: 10px;
   height: 40px; /* 减少高度到40px */
-  background: rgba(0, 0, 0, 0.8);
-  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
   color: white;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 15;
 }
 
@@ -201,24 +202,26 @@ onUnmounted(() => {
 }
 
 .back-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: white;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
   height: 28px;
   min-width: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .table-info {
@@ -227,21 +230,24 @@ onUnmounted(() => {
 }
 
 .table-name {
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: 700;
+  font-size: 13px;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #ffffff;
 }
 
 .bet-limits {
-  font-size: 9px;
-  opacity: 0.7;
+  font-size: 10px;
+  opacity: 0.75;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #e8e8e8;
+  font-weight: 400;
 }
 
 /* 局号和余额信息区域 */
@@ -259,42 +265,44 @@ onUnmounted(() => {
 }
 
 .info-label {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 9px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 10px;
   min-width: 24px;
+  font-weight: 500;
 }
 
 .game-number {
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
   font-family: 'Courier New', monospace;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
   line-height: 1.1;
 }
 
 .balance-amount {
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
+  color: #4CAF50;
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.1;
 }
 
 .refresh-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: white;
-  padding: 1px 3px;
-  border-radius: 2px;
+  padding: 2px 4px;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1;
-  transition: background 0.2s;
-  margin-left: 2px;
+  transition: all 0.2s ease;
+  margin-left: 3px;
 }
 
 .refresh-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 /* 设置下拉菜单 */
@@ -303,22 +311,23 @@ onUnmounted(() => {
 }
 
 .settings-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: white;
   padding: 0;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
   width: 28px;
   height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .settings-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 /* 三条横线样式 */
