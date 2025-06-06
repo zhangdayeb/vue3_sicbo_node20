@@ -1,4 +1,4 @@
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, readonly } from 'vue'
 
 export interface ChipConfig {
   value: number

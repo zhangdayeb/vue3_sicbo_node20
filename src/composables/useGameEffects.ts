@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { ref, computed, reactive, watch, readonly } from 'vue'
 import { useAudio } from './useAudio'
 import type { ComponentPublicInstance } from 'vue'
 
