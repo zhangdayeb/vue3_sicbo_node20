@@ -77,7 +77,6 @@
         :currentBets="currentBets"
         :lastBets="lastBets"
         :balance="balance"
-        :gamePhase="gamePhase"
         :canBet="canBet"
         @clear-bets="clearBets"
         @clear-all-bets="clearAllBets"
@@ -92,8 +91,17 @@
 
     <!-- 特效组件 -->
     <ChipAnimation ref="chipAnimationRef" />
-    <WinningEffect ref="winningEffectRef" />
-    <DiceRollingEffect ref="diceRollingEffectRef" />
+    <WinningEffect 
+      ref="winningEffectRef" 
+      :show="false"
+      :winAmount="0"
+      :winType="'normal'"
+    />
+    <DiceRollingEffect 
+      ref="diceRollingEffectRef"
+      :show="false"
+      :results="[1, 1, 1]"
+    />
   </div>
 </template>
 
@@ -148,7 +156,7 @@ const gamePhase = computed(() => bettingStore.gamePhase)
 const canBet = computed(() => bettingStore.canPlaceBet)
 
 // 方法
-const selectChip = (value: number) => {
+const selectChip = (value: number): void => {
   const success = bettingStore.selectChip(value)
   if (success) {
     playChipSelectSound()
@@ -157,7 +165,7 @@ const selectChip = (value: number) => {
   }
 }
 
-const handlePlaceBet = async (betType: string) => {
+const handlePlaceBet = async (betType: string): Promise<void> => {
   const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
   if (success) {
     playChipPlaceSound()
@@ -185,24 +193,24 @@ const handlePlaceBet = async (betType: string) => {
   }
 }
 
-const removeBet = (betType: string) => {
+const removeBet = (betType: string): void => {
   const success = bettingStore.cancelBet(betType as BetType)
   if (success) {
     playChipSelectSound()
   }
 }
 
-const clearBets = () => {
+const clearBets = (): void => {
   bettingStore.clearBets()
   playChipSelectSound()
 }
 
-const clearAllBets = () => {
+const clearAllBets = (): void => {
   bettingStore.clearBets() // 可以扩展为清除历史记录
   playChipSelectSound()
 }
 
-const rebet = () => {
+const rebet = (): void => {
   const success = bettingStore.rebet()
   if (success) {
     playChipPlaceSound()
@@ -211,7 +219,7 @@ const rebet = () => {
   }
 }
 
-const confirmBets = async () => {
+const confirmBets = async (): Promise<void> => {
   const success = bettingStore.confirmBets()
   if (success) {
     playBetConfirmSound()
@@ -226,27 +234,27 @@ const confirmBets = async () => {
   }
 }
 
-const undoLast = () => {
+const undoLast = (): void => {
   // 撤销最后一次投注的逻辑
   playChipSelectSound()
 }
 
-const quickBet = () => {
+const quickBet = (): void => {
   // 快速投注逻辑
   playChipPlaceSound()
 }
 
-const maxBet = () => {
+const maxBet = (): void => {
   // 梭哈投注逻辑
   playBetConfirmSound()
 }
 
-const openSettings = () => {
+const openSettings = (): void => {
   // 打开设置面板
   console.log('打开设置')
 }
 
-const refreshBalance = () => {
+const refreshBalance = (): void => {
   // 刷新余额
   console.log('刷新余额')
 }
