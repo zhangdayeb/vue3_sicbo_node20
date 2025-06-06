@@ -1,13 +1,7 @@
 <template>
   <div class="number-bets-section">
-    <div class="section-header">
-      <h3 class="section-title">点数投注</h3>
-      <div class="section-subtitle">三骰总和投注 - 不同赔率</div>
-    </div>
-    
     <!-- 上排：小数区域 4-10 -->
     <div class="number-row">
-      <div class="row-label">小数区域</div>
       <div class="numbers-grid">
         <button
           v-for="number in smallNumbers"
@@ -37,7 +31,6 @@
     
     <!-- 下排：大数区域 11-17 (倒序) -->
     <div class="number-row">
-      <div class="row-label">大数区域</div>
       <div class="numbers-grid">
         <button
           v-for="number in bigNumbers"
@@ -62,25 +55,6 @@
           <div class="number-odds">{{ number.oddsDisplay }}</div>
           <div class="number-probability">{{ number.probability }}</div>
         </button>
-      </div>
-    </div>
-    
-    <!-- 赔率说明 -->
-    <div class="odds-legend">
-      <div class="legend-title">赔率说明</div>
-      <div class="legend-items">
-        <div class="legend-item">
-          <span class="legend-color high-odds-color"></span>
-          <span class="legend-text">高赔率 (1:30以上)</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-color medium-odds-color"></span>
-          <span class="legend-text">中等赔率 (1:6-1:18)</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-color low-odds-color"></span>
-          <span class="legend-text">低赔率 (1:6)</span>
-        </div>
       </div>
     </div>
   </div>
@@ -163,39 +137,13 @@ const placeBet = (betType: string) => {
   border: 1px solid #2d5a42;
 }
 
-.section-header {
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.section-title {
-  font-size: 16px;
-  color: #ffd700;
-  margin: 0 0 4px 0;
-  font-weight: 700;
-}
-
-.section-subtitle {
-  font-size: 11px;
-  color: #90ee90;
-  opacity: 0.8;
-}
-
 /* 数字行布局 */
 .number-row {
-  margin-bottom: 16px;
-}
-
-.number-row:last-of-type {
   margin-bottom: 12px;
 }
 
-.row-label {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
+.number-row:last-of-type {
+  margin-bottom: 0;
 }
 
 .numbers-grid {
@@ -301,57 +249,6 @@ const placeBet = (betType: string) => {
   opacity: 0.8;
 }
 
-/* 赔率说明 */
-.odds-legend {
-  background: rgba(0,0,0,0.4);
-  border-radius: 6px;
-  padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.legend-title {
-  font-size: 11px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 6px;
-  text-align: center;
-}
-
-.legend-items {
-  display: flex;
-  justify-content: space-around;
-  gap: 8px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 9px;
-}
-
-.legend-color {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-}
-
-.high-odds-color {
-  background: #ff6b6b;
-}
-
-.medium-odds-color {
-  background: #ffd700;
-}
-
-.low-odds-color {
-  background: #4a9f6e;
-}
-
-.legend-text {
-  color: #ccc;
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
   .numbers-grid {
@@ -373,11 +270,6 @@ const placeBet = (betType: string) => {
   
   .number-probability {
     font-size: 6px;
-  }
-  
-  .legend-items {
-    flex-direction: column;
-    gap: 4px;
   }
 }
 
@@ -415,12 +307,8 @@ const placeBet = (betType: string) => {
     font-size: 12px;
   }
   
-  .odds-legend {
-    display: none; /* 横屏时隐藏说明以节省空间 */
-  }
-  
   .number-row {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 }
 
