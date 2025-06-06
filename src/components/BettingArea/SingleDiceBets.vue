@@ -1,10 +1,5 @@
 <template>
   <div class="single-dice-section">
-    <div class="section-header">
-      <h3 class="section-title">单骰投注</h3>
-      <div class="section-subtitle">投注单个骰子点数 - 多重赔率</div>
-    </div>
-    
     <div class="dice-grid">
       <button
         v-for="dice in diceOptions"
@@ -58,29 +53,6 @@
           </div>
         </div>
       </button>
-    </div>
-    
-    <!-- 规则说明 -->
-    <div class="rules-explanation">
-      <div class="rules-title">投注规则</div>
-      <div class="rules-content">
-        <div class="rule-item">
-          <span class="rule-icon">🎲</span>
-          <span class="rule-text">选择一个数字，如果三个骰子中出现这个数字</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">1️⃣</span>
-          <span class="rule-text">出现1个：赔率1:1（下注10获得10）</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">2️⃣</span>
-          <span class="rule-text">出现2个：赔率1:2（下注10获得20）</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">3️⃣</span>
-          <span class="rule-text">出现3个：赔率1:3（下注10获得30）</span>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -186,30 +158,11 @@ const placeBet = (betType: string) => {
   border: 1px solid #2d5a42;
 }
 
-.section-header {
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.section-title {
-  font-size: 16px;
-  color: #ffd700;
-  margin: 0 0 4px 0;
-  font-weight: 700;
-}
-
-.section-subtitle {
-  font-size: 11px;
-  color: #90ee90;
-  opacity: 0.8;
-}
-
 /* 骰子网格 */
 .dice-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 8px;
-  margin-bottom: 16px;
 }
 
 .dice-btn {
@@ -336,46 +289,6 @@ const placeBet = (betType: string) => {
   font-weight: 600;
 }
 
-/* 规则说明 */
-.rules-explanation {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.rules-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.rules-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rule-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: #ccc;
-}
-
-.rule-icon {
-  font-size: 12px;
-  min-width: 16px;
-}
-
-.rule-text {
-  flex: 1;
-  line-height: 1.3;
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
   .dice-grid {
@@ -425,8 +338,8 @@ const placeBet = (betType: string) => {
     font-size: 10px;
   }
   
-  .rules-explanation {
-    display: none; /* 超小屏幕隐藏规则说明 */
+  .dice-odds-info {
+    font-size: 6px;
   }
 }
 
@@ -440,10 +353,6 @@ const placeBet = (betType: string) => {
   .dice-face {
     width: 24px;
     height: 24px;
-  }
-  
-  .rules-explanation {
-    display: none; /* 横屏时隐藏规则说明 */
   }
 }
 
