@@ -62,20 +62,20 @@ html, body {
 /* 确保在小屏幕上也保持比例 */
 @media (max-width: 768px) {
   .top-section {
-    height: 250px; /* 移动端稍微减小视频区域 */
+    height: 300px; /* 移动端稍微减小视频区域 */
   }
 }
 
 @media (max-width: 480px) {
   .top-section {
-    height: 220px; /* 小屏幕进一步减小 */
+    height: 300px; /* 小屏幕进一步减小 */
   }
 }
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
   .top-section {
-    height: 180px; /* 横屏时减小视频区域 */
+    height: 300px; /* 横屏时减小视频区域 */
   }
 }
 </style>
