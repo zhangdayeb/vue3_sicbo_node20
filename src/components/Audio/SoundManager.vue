@@ -9,8 +9,8 @@
         preload="auto"
         :volume="settings.bgMusicVolume"
       >
-        <source src="/audio/bg-music.mp3" type="audio/mpeg">
-        <source src="/audio/bg-music.ogg" type="audio/ogg">
+        <source src="@/assets/audio/bg-music.mp3" type="audio/mpeg">
+        <source src="@/assets/audio/bg-music.ogg" type="audio/ogg">
       </audio>
       
       <!-- 音效音频 -->
@@ -193,96 +193,96 @@ const soundEffects: SoundEffect[] = [
   {
     id: 'chip-select',
     name: '选择筹码',
-    mp3: '/audio/chip-select.mp3',
-    ogg: '/audio/chip-select.ogg',
+    mp3: '@/assets/audio/chip-select.mp3',
+    ogg: '@/assets/audio/chip-select.ogg',
     volume: 0.7,
     category: 'ui'
   },
   {
     id: 'chip-place',
     name: '放置筹码',
-    mp3: '/audio/chip-place.mp3',
-    ogg: '/audio/chip-place.ogg',
+    mp3: '@/assets/audio/chip-place.mp3',
+    ogg: '@/assets/audio/chip-place.ogg',
     volume: 0.8,
     category: 'game'
   },
   {
     id: 'bet-confirm',
     name: '确认投注',
-    mp3: '/audio/bet-confirm.mp3',
-    ogg: '/audio/bet-confirm.ogg',
+    mp3: '@/assets/audio/bet-confirm.mp3',
+    ogg: '@/assets/audio/bet-confirm.ogg',
     volume: 0.9,
     category: 'game'
   },
   {
     id: 'dice-shake',
     name: '摇骰音效',
-    mp3: '/audio/dice-shake.mp3',
-    ogg: '/audio/dice-shake.ogg',
+    mp3: '@/assets/audio/dice-shake.mp3',
+    ogg: '@/assets/audio/dice-shake.ogg',
     volume: 0.8,
     category: 'game'
   },
   {
     id: 'dice-roll',
     name: '骰子滚动',
-    mp3: '/audio/dice-roll.mp3',
-    ogg: '/audio/dice-roll.ogg',
+    mp3: '@/assets/audio/dice-roll.mp3',
+    ogg: '@/assets/audio/dice-roll.ogg',
     volume: 0.7,
     category: 'game'
   },
   {
     id: 'dice-reveal',
     name: '揭晓结果',
-    mp3: '/audio/dice-reveal.mp3',
-    ogg: '/audio/dice-reveal.ogg',
+    mp3: '@/assets/audio/dice-reveal.mp3',
+    ogg: '@/assets/audio/dice-reveal.ogg',
     volume: 0.8,
     category: 'game'
   },
   {
     id: 'win-small',
     name: '小奖中奖',
-    mp3: '/audio/win-small.mp3',
-    ogg: '/audio/win-small.ogg',
+    mp3: '@/assets/audio/win-small.mp3',
+    ogg: '@/assets/audio/win-small.ogg',
     volume: 0.9,
     category: 'game'
   },
   {
     id: 'win-big',
     name: '大奖中奖',
-    mp3: '/audio/win-big.mp3',
-    ogg: '/audio/win-big.ogg',
+    mp3: '@/assets/audio/win-big.mp3',
+    ogg: '@/assets/audio/win-big.ogg',
     volume: 1.0,
     category: 'game'
   },
   {
     id: 'win-jackpot',
     name: '头奖中奖',
-    mp3: '/audio/win-jackpot.mp3',
-    ogg: '/audio/win-jackpot.ogg',
+    mp3: '@/assets/audio/win-jackpot.mp3',
+    ogg: '@/assets/audio/win-jackpot.ogg',
     volume: 1.0,
     category: 'game'
   },
   {
     id: 'button-click',
     name: '按钮点击',
-    mp3: '/audio/button-click.mp3',
-    ogg: '/audio/button-click.ogg',
+    mp3: '@/assets/audio/button-click.mp3',
+    ogg: '@/assets/audio/button-click.ogg',
     volume: 0.6,
     category: 'ui'
   },
   {
     id: 'error',
     name: '错误提示',
-    mp3: '/audio/error.mp3',
-    ogg: '/audio/error.ogg',
+    mp3: '@/assets/audio/error.mp3',
+    ogg: '@/assets/audio/error.ogg',
     volume: 0.8,
     category: 'ui'
   },
   {
     id: 'notification',
     name: '通知提示',
-    mp3: '/audio/notification.mp3',
-    ogg: '/audio/notification.ogg',
+    mp3: '@/assets/audio/notification.mp3',
+    ogg: '@/assets/audio/notification.ogg',
     volume: 0.7,
     category: 'ui'
   }

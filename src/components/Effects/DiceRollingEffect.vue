@@ -151,13 +151,13 @@
       
       <!-- 音效控制（隐藏） -->
       <audio ref="shakeSound" preload="auto">
-        <source src="/audio/dice-shake.mp3" type="audio/mpeg">
+        <source src="@/assets/audio/dice-shake.mp3" type="audio/mpeg">
       </audio>
       <audio ref="rollSound" preload="auto">
-        <source src="/audio/dice-roll.mp3" type="audio/mpeg">
+        <source src="@/assets/audio/dice-roll.mp3" type="audio/mpeg">
       </audio>
       <audio ref="revealSound" preload="auto">
-        <source src="/audio/dice-reveal.mp3" type="audio/mpeg">
+        <source src="@/assets/audio/dice-reveal.mp3" type="audio/mpeg">
       </audio>
     </div>
   </teleport>
