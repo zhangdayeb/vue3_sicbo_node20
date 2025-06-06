@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onMounted, onUnmounted, readonly } from 'vue'
+import { ref, computed, reactive, watch, onMounted, onUnmounted, readonly } from 'vue'
 
 export interface AudioConfig {
   masterVolume: number
@@ -54,71 +54,49 @@ export const useAudio = () => {
     maxConcurrentSounds: 10
   })
 
-  // 音效定义
+  // 音效定义 - 修正路径为 src/assets/audio
   const soundDefinitions = ref<SoundDefinition[]>([
     // UI 音效
     {
       id: 'click',
-      url: '/audio/ui/click.mp3',
+      url: new URL('@/assets/audio/chip-select.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.6,
-      preload: true,
-      fallbackUrl: '/audio/ui/click.ogg'
+      preload: true
     },
     {
       id: 'hover',
-      url: '/audio/ui/hover.mp3',
+      url: new URL('@/assets/audio/chip-select.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.4,
       preload: true
     },
     {
       id: 'error',
-      url: '/audio/ui/error.mp3',
+      url: new URL('@/assets/audio/error.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.8,
       preload: true
     },
     {
       id: 'success',
-      url: '/audio/ui/success.mp3',
+      url: new URL('@/assets/audio/bet-confirm.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.7,
-      preload: true
-    },
-    {
-      id: 'notification',
-      url: '/audio/ui/notification.mp3',
-      category: 'sfx',
-      volume: 0.6,
       preload: true
     },
 
     // 筹码音效
     {
       id: 'chip-select',
-      url: '/audio/chips/select.mp3',
+      url: new URL('@/assets/audio/chip-select.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.7,
       preload: true
     },
     {
       id: 'chip-place',
-      url: '/audio/chips/place.mp3',
-      category: 'sfx',
-      volume: 0.8,
-      preload: true
-    },
-    {
-      id: 'chip-stack',
-      url: '/audio/chips/stack.mp3',
-      category: 'sfx',
-      volume: 0.6,
-      preload: true
-    },
-    {
-      id: 'chips-collect',
-      url: '/audio/chips/collect.mp3',
+      url: new URL('@/assets/audio/chip-place.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.8,
       preload: true
@@ -127,108 +105,40 @@ export const useAudio = () => {
     // 游戏音效
     {
       id: 'bet-confirm',
-      url: '/audio/game/bet-confirm.mp3',
+      url: new URL('@/assets/audio/bet-confirm.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.9,
       preload: true
     },
     {
       id: 'dice-shake',
-      url: '/audio/game/dice-shake.mp3',
+      url: new URL('@/assets/audio/dice-shake.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.8,
       preload: true
     },
     {
       id: 'dice-roll',
-      url: '/audio/game/dice-roll.mp3',
+      url: new URL('@/assets/audio/dice-roll.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.7,
-      preload: true
-    },
-    {
-      id: 'dice-stop',
-      url: '/audio/game/dice-stop.mp3',
-      category: 'sfx',
-      volume: 0.8,
-      preload: true
-    },
-    {
-      id: 'cup-lift',
-      url: '/audio/game/cup-lift.mp3',
-      category: 'sfx',
-      volume: 0.7,
-      preload: true
-    },
-    {
-      id: 'result-reveal',
-      url: '/audio/game/result-reveal.mp3',
-      category: 'sfx',
-      volume: 0.8,
       preload: true
     },
 
     // 中奖音效
     {
       id: 'win-small',
-      url: '/audio/wins/small.mp3',
+      url: new URL('@/assets/audio/win-small.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 0.9,
       preload: true
     },
     {
-      id: 'win-medium',
-      url: '/audio/wins/medium.mp3',
+      id: 'win',
+      url: new URL('@/assets/audio/win.mp3', import.meta.url).href,
       category: 'sfx',
       volume: 1.0,
       preload: true
-    },
-    {
-      id: 'win-big',
-      url: '/audio/wins/big.mp3',
-      category: 'sfx',
-      volume: 1.0,
-      preload: true
-    },
-    {
-      id: 'win-jackpot',
-      url: '/audio/wins/jackpot.mp3',
-      category: 'sfx',
-      volume: 1.0,
-      preload: true
-    },
-    {
-      id: 'coins-shower',
-      url: '/audio/wins/coins-shower.mp3',
-      category: 'sfx',
-      volume: 0.8,
-      preload: true
-    },
-
-    // 背景音乐
-    {
-      id: 'bg-ambient',
-      url: '/audio/music/ambient.mp3',
-      category: 'music',
-      volume: 0.3,
-      loop: true,
-      preload: true
-    },
-    {
-      id: 'bg-casino',
-      url: '/audio/music/casino.mp3',
-      category: 'music',
-      volume: 0.4,
-      loop: true,
-      preload: false
-    },
-    {
-      id: 'bg-tension',
-      url: '/audio/music/tension.mp3',
-      category: 'music',
-      volume: 0.5,
-      loop: true,
-      preload: false
     }
   ])
 
@@ -336,7 +246,8 @@ export const useAudio = () => {
           audio.src = sound.url
           
           // 添加错误处理
-          audio.addEventListener('error', () => {
+          audio.addEventListener('error', (e) => {
+            console.warn(`音效预加载失败: ${sound.id}`, e)
             if (sound.fallbackUrl) {
               audio.src = sound.fallbackUrl
             }
@@ -345,7 +256,7 @@ export const useAudio = () => {
           // 等待加载完成
           await new Promise<void>((resolve, reject) => {
             audio.addEventListener('canplaythrough', () => resolve(), { once: true })
-            audio.addEventListener('error', reject, { once: true })
+            audio.addEventListener('error', () => resolve(), { once: true }) // 改为 resolve 而不是 reject
             audio.load()
           })
 
@@ -396,8 +307,9 @@ export const useAudio = () => {
       interrupt?: boolean
     } = {}
   ): Promise<string | null> => {
+    // 如果音频系统未就绪，静默返回
     if (!canPlayAudio.value) {
-      console.warn('音频系统未就绪')
+      console.warn('音频系统未就绪，跳过播放:', soundId)
       return null
     }
 
@@ -541,30 +453,6 @@ export const useAudio = () => {
     }
   }
 
-  // 暂停/恢复音效
-  const pauseSound = (instanceId: string): boolean => {
-    const instance = audioContext.activeInstances.get(instanceId)
-    if (!instance || !instance.isPlaying) return false
-
-    instance.audio.pause()
-    instance.isPlaying = false
-    instance.isPaused = true
-    return true
-  }
-
-  const resumeSound = (instanceId: string): boolean => {
-    const instance = audioContext.activeInstances.get(instanceId)
-    if (!instance || instance.isPlaying || !instance.isPaused) return false
-
-    instance.audio.play().then(() => {
-      instance.isPlaying = true
-      instance.isPaused = false
-    }).catch(error => {
-      console.error(`恢复音效失败 ${instanceId}:`, error)
-    })
-    return true
-  }
-
   // 音频淡入效果
   const fadeInAudio = async (audio: HTMLAudioElement, targetVolume: number, duration: number): Promise<void> => {
     return new Promise((resolve) => {
@@ -607,55 +495,6 @@ export const useAudio = () => {
     })
   }
 
-  // 播放背景音乐
-  const playBackgroundMusic = async (
-    musicId: string,
-    options: {
-      fadeIn?: number
-      crossfade?: number
-    } = {}
-  ): Promise<string | null> => {
-    // 如果已有背景音乐在播放
-    if (currentBackgroundMusic.value) {
-      if (currentBackgroundMusic.value === musicId) {
-        return null // 已经在播放相同音乐
-      }
-      
-      // 交叉淡化或直接停止
-      if (options.crossfade && options.crossfade > 0) {
-        const currentInstances = Array.from(audioContext.activeInstances.values())
-          .filter(instance => instance.soundId === currentBackgroundMusic.value)
-        
-        currentInstances.forEach(instance => {
-          fadeOutAudio(instance.audio, options.crossfade!).then(() => {
-            stopSound(instance.id)
-          })
-        })
-      } else {
-        stopAllSounds('music', 500)
-      }
-    }
-
-    const instanceId = await playSound(musicId, {
-      loop: true,
-      fadeIn: options.fadeIn || 1000
-    })
-
-    if (instanceId) {
-      currentBackgroundMusic.value = musicId
-    }
-
-    return instanceId
-  }
-
-  // 停止背景音乐
-  const stopBackgroundMusic = (fadeOut: number = 1000): void => {
-    if (currentBackgroundMusic.value) {
-      stopAllSounds('music', fadeOut)
-      currentBackgroundMusic.value = null
-    }
-  }
-
   // 获取震动模式
   const getVibrationPattern = (soundId: string): number[] | null => {
     const vibrationPatterns: Record<string, number[]> = {
@@ -663,14 +502,23 @@ export const useAudio = () => {
       'error': [200, 100, 200],
       'success': [100, 50, 100, 50, 100],
       'win-small': [100, 100, 100],
-      'win-medium': [200, 100, 200, 100, 200],
-      'win-big': [300, 100, 300, 100, 300, 100, 300],
-      'win-jackpot': [500, 200, 500, 200, 500],
-      'dice-shake': [50, 50, 50, 50, 50],
       'bet-confirm': [100]
     }
 
     return vibrationPatterns[soundId] || null
+  }
+
+  // 快捷播放方法
+  const playChipSelectSound = () => playSound('chip-select')
+  const playChipPlaceSound = () => playSound('chip-place')
+  const playBetConfirmSound = () => playSound('bet-confirm')
+  const playErrorSound = () => playSound('error')
+  const playWinSound = (type: 'small' | 'medium' | 'big' | 'jackpot' = 'small') => {
+    if (type === 'small') {
+      playSound('win-small')
+    } else {
+      playSound('win')
+    }
   }
 
   // 音量控制
@@ -702,20 +550,6 @@ export const useAudio = () => {
         instance.audio.volume = baseVolume * categoryVolume
       }
     })
-  }
-
-  // 快捷播放方法
-  const playClickSound = () => playSound('click')
-  const playHoverSound = () => playSound('hover')
-  const playErrorSound = () => playSound('error')
-  const playSuccessSound = () => playSound('success')
-  const playChipSelectSound = () => playSound('chip-select')
-  const playChipPlaceSound = () => playSound('chip-place')
-  const playBetConfirmSound = () => playSound('bet-confirm')
-  const playDiceShakeSound = () => playSound('dice-shake')
-  const playDiceRollSound = () => playSound('dice-roll')
-  const playWinSound = (type: 'small' | 'medium' | 'big' | 'jackpot' = 'small') => {
-    playSound(`win-${type}`)
   }
 
   // 配置管理
@@ -758,7 +592,7 @@ export const useAudio = () => {
 
   watch(() => config.enableMusic, (enabled) => {
     if (!enabled) {
-      stopBackgroundMusic()
+      stopAllSounds('music')
     }
   })
 
@@ -803,10 +637,6 @@ export const useAudio = () => {
     playSound,
     stopSound,
     stopAllSounds,
-    pauseSound,
-    resumeSound,
-    playBackgroundMusic,
-    stopBackgroundMusic,
     
     // 音量控制
     setMasterVolume,
@@ -814,15 +644,10 @@ export const useAudio = () => {
     setMusicVolume,
     
     // 快捷方法
-    playClickSound,
-    playHoverSound,
-    playErrorSound,
-    playSuccessSound,
     playChipSelectSound,
     playChipPlaceSound,
     playBetConfirmSound,
-    playDiceShakeSound,
-    playDiceRollSound,
+    playErrorSound,
     playWinSound,
     
     // 配置管理
