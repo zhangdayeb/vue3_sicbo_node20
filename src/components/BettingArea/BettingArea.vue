@@ -3,15 +3,6 @@
     <!-- 滚动内容区域 -->
     <div class="betting-content">
       <div class="betting-sections">
-        <!-- 投注金额显示 -->
-        <BetAmountDisplay 
-          :totalBetAmount="totalBetAmount"
-          :currentBets="currentBets"
-          :balance="balance"
-          @remove-bet="removeBet"
-          @refresh-amount="refreshBalance"
-        />
-
         <!-- 大小单双投注区域 -->
         <MainBets 
           :selectedChip="selectedChip"
@@ -68,7 +59,6 @@
         :currentBets="currentBets"
         :betLimits="{ min: 1, max: 10000 }"
         @select-chip="selectChip"
-        @refresh-balance="refreshBalance"
       />
 
       <!-- 控制按钮 -->
@@ -122,7 +112,6 @@ import ComboBets from './ComboBets.vue'
 // 控制和显示组件
 import ChipSelector from './ChipSelector.vue'
 import ControlButtons from './ControlButtons.vue'
-import BetAmountDisplay from './BetAmountDisplay.vue'
 
 // 特效组件
 import ChipAnimation from '@/components/Effects/ChipAnimation.vue'
@@ -193,13 +182,6 @@ const handlePlaceBet = async (betType: string): Promise<void> => {
   }
 }
 
-const removeBet = (betType: string): void => {
-  const success = bettingStore.cancelBet(betType as BetType)
-  if (success) {
-    playChipSelectSound()
-  }
-}
-
 const clearBets = (): void => {
   bettingStore.clearBets()
   playChipSelectSound()
@@ -254,11 +236,6 @@ const openSettings = (): void => {
   console.log('打开设置')
 }
 
-const refreshBalance = (): void => {
-  // 刷新余额
-  console.log('刷新余额')
-}
-
 onMounted(() => {
   // 初始化 bettingStore
   bettingStore.init()
@@ -291,7 +268,7 @@ onMounted(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-bottom: 180px; /* 为底部固定区域留空间 */
+  padding-bottom: 160px; /* 调整为更小的值，因为删除了 BetAmountDisplay */
 }
 
 .betting-sections {
@@ -299,7 +276,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: calc(100vh - 350px - 180px); /* 确保有足够的内容高度 */
+  min-height: calc(100vh - 350px - 160px); /* 相应调整最小高度 */
 }
 
 /* 底部固定区域 */
@@ -325,13 +302,13 @@ onMounted(() => {
   }
   
   .betting-content {
-    padding-bottom: 160px;
+    padding-bottom: 140px; /* 小屏幕调整 */
   }
 }
 
 @media (max-height: 667px) {
   .betting-content {
-    padding-bottom: 160px;
+    padding-bottom: 140px;
   }
 }
 
