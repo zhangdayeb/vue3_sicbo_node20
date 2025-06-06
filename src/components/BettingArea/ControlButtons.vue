@@ -300,17 +300,17 @@ const vLongPress = longPressDirective
 <style scoped>
 .control-buttons {
   background: rgba(0, 0, 0, 0.95);
-  padding: 12px;
+  padding: 8px; /* 从12px减少到8px */
   border-top: 1px solid #4a7c59;
   
   /* iOS Safari安全区域适配 */
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-bottom: max(8px, env(safe-area-inset-bottom)); /* 从12px减少到8px */
 }
 
 /* 主要控制按钮 */
 .main-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px; /* 从8px减少到6px */
 }
 
 .control-btn {
@@ -318,13 +318,13 @@ const vLongPress = longPressDirective
   background: linear-gradient(135deg, #4a7c59, #2d5a42);
   border: 2px solid #4a7c59;
   color: white;
-  padding: 12px 6px;
-  border-radius: 8px;
+  padding: 8px 6px; /* 从12px减少到8px */
+  border-radius: 6px; /* 从8px减少到6px */
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s ease;
   position: relative;
-  min-height: 70px;
+  min-height: 50px; /* 从70px减少到50px */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -384,10 +384,11 @@ const vLongPress = longPressDirective
   justify-content: center;
   position: relative;
   height: 100%;
+  gap: 2px; /* 减少内部间距 */
 }
 
 .btn-text {
-  font-size: 14px;
+  font-size: 12px; /* 从14px减少到12px */
   font-weight: 700;
   line-height: 1;
 }
@@ -399,12 +400,12 @@ const vLongPress = longPressDirective
   background: #ff4757;
   color: white;
   border-radius: 50%;
-  min-width: 16px;
-  height: 16px;
+  min-width: 14px; /* 从16px减少到14px */
+  height: 14px; /* 从16px减少到14px */
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 8px; /* 从9px减少到8px */
   font-weight: bold;
   padding: 0 3px;
   border: 1px solid white;
@@ -553,19 +554,19 @@ const vLongPress = longPressDirective
   background: #c0392b;
 }
 
-/* 响应式适配 */
+/* 响应式适配 - 优化后的断点 */
 @media (max-width: 375px) {
   .main-controls {
-    gap: 6px;
+    gap: 4px; /* 从6px减少到4px */
   }
   
   .control-btn {
-    padding: 10px 4px;
-    min-height: 65px;
+    padding: 6px 4px; /* 从8px减少到6px */
+    min-height: 45px; /* 从50px减少到45px */
   }
   
   .btn-text {
-    font-size: 13px;
+    font-size: 11px; /* 从12px减少到11px */
   }
   
   .confirm-dialog {
@@ -576,28 +577,59 @@ const vLongPress = longPressDirective
 
 @media (max-width: 320px) {
   .main-controls {
-    gap: 4px;
+    gap: 3px;
   }
   
   .control-btn {
-    padding: 8px 3px;
-    min-height: 60px;
+    padding: 5px 3px;
+    min-height: 42px;
   }
   
   .btn-text {
-    font-size: 12px;
+    font-size: 10px;
+  }
+}
+
+/* 新增：高度限制的设备优化 */
+@media (max-height: 667px) {
+  .control-btn {
+    min-height: 42px;
+    padding: 6px 4px;
+  }
+  
+  .btn-text {
+    font-size: 11px;
+  }
+}
+
+@media (max-height: 600px) {
+  .control-buttons {
+    padding: 6px;
+  }
+  
+  .control-btn {
+    min-height: 38px;
+    padding: 5px 3px;
+  }
+  
+  .btn-text {
+    font-size: 10px;
   }
 }
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
   .control-btn {
-    min-height: 50px;
-    padding: 6px 4px;
+    min-height: 36px;
+    padding: 4px 3px;
   }
   
   .btn-text {
-    font-size: 11px;
+    font-size: 10px;
+  }
+  
+  .control-buttons {
+    padding: 5px;
   }
 }
 
@@ -620,8 +652,8 @@ const vLongPress = longPressDirective
 }
 
 .control-btn:active::before {
-  width: 120px;
-  height: 120px;
+  width: 100px; /* 从120px减少到100px */
+  height: 100px; /* 从120px减少到100px */
 }
 
 /* 按钮悬浮效果（非移动端） */
