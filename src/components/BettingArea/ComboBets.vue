@@ -1,10 +1,5 @@
 <template>
   <div class="combo-bets-section">
-    <div class="section-header">
-      <h3 class="section-title">两两组合</h3>
-      <div class="section-subtitle">投注两个特定数字组合 - 赔率 1:6</div>
-    </div>
-    
     <div class="combo-grid">
       <button
         v-for="combo in comboOptions"
@@ -60,61 +55,7 @@
         
         <!-- 赔率显示 -->
         <div class="combo-odds">1:6</div>
-        
-        <!-- 概率显示 -->
-        <div class="combo-probability">{{ combo.probability }}</div>
       </button>
-    </div>
-    
-    <!-- 规则说明 */
-    <div class="rules-explanation">
-      <div class="rules-title">组合投注规则</div>
-      <div class="rules-content">
-        <div class="rule-item">
-          <span class="rule-icon">🎯</span>
-          <span class="rule-text">投注两个特定数字的组合（如：1-2, 3-4等）</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">🎲</span>
-          <span class="rule-text">三个骰子中包含这两个数字即中奖</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">💰</span>
-          <span class="rule-text">中奖赔率：1:6（下注10获得60+本金10）</span>
-        </div>
-        <div class="rule-item">
-          <span class="rule-icon">📊</span>
-          <span class="rule-text">每个组合出现概率约为13.9%</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 快速投注区域 -->
-    <div class="quick-bet-section">
-      <div class="quick-bet-title">快速投注</div>
-      <div class="quick-bet-buttons">
-        <button 
-          class="quick-bet-btn"
-          @click="betAllCombos"
-          :disabled="!canBetAll"
-        >
-          投注所有组合
-        </button>
-        <button 
-          class="quick-bet-btn"
-          @click="betLowCombos"
-          :disabled="!canBetLow"
-        >
-          投注低位组合
-        </button>
-        <button 
-          class="quick-bet-btn"
-          @click="betHighCombos"
-          :disabled="!canBetHigh"
-        >
-          投注高位组合
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -139,29 +80,29 @@ const emit = defineEmits<{
 // 生成所有可能的两两组合
 const comboOptions = [
   // 第一行：1与其他数字组合
-  { type: 'combo-1-2', first: 1, second: 2, label: '1-2', probability: '30种' },
-  { type: 'combo-1-3', first: 1, second: 3, label: '1-3', probability: '30种' },
-  { type: 'combo-1-4', first: 1, second: 4, label: '1-4', probability: '30种' },
-  { type: 'combo-1-5', first: 1, second: 5, label: '1-5', probability: '30种' },
-  { type: 'combo-1-6', first: 1, second: 6, label: '1-6', probability: '30种' },
+  { type: 'combo-1-2', first: 1, second: 2, label: '1-2' },
+  { type: 'combo-1-3', first: 1, second: 3, label: '1-3' },
+  { type: 'combo-1-4', first: 1, second: 4, label: '1-4' },
+  { type: 'combo-1-5', first: 1, second: 5, label: '1-5' },
+  { type: 'combo-1-6', first: 1, second: 6, label: '1-6' },
   
   // 第二行：2与其他数字组合（排除已有的1-2）
-  { type: 'combo-2-3', first: 2, second: 3, label: '2-3', probability: '30种' },
-  { type: 'combo-2-4', first: 2, second: 4, label: '2-4', probability: '30种' },
-  { type: 'combo-2-5', first: 2, second: 5, label: '2-5', probability: '30种' },
-  { type: 'combo-2-6', first: 2, second: 6, label: '2-6', probability: '30种' },
+  { type: 'combo-2-3', first: 2, second: 3, label: '2-3' },
+  { type: 'combo-2-4', first: 2, second: 4, label: '2-4' },
+  { type: 'combo-2-5', first: 2, second: 5, label: '2-5' },
+  { type: 'combo-2-6', first: 2, second: 6, label: '2-6' },
   
   // 第三行：3与其他数字组合（排除已有的）
-  { type: 'combo-3-4', first: 3, second: 4, label: '3-4', probability: '30种' },
-  { type: 'combo-3-5', first: 3, second: 5, label: '3-5', probability: '30种' },
-  { type: 'combo-3-6', first: 3, second: 6, label: '3-6', probability: '30种' },
+  { type: 'combo-3-4', first: 3, second: 4, label: '3-4' },
+  { type: 'combo-3-5', first: 3, second: 5, label: '3-5' },
+  { type: 'combo-3-6', first: 3, second: 6, label: '3-6' },
   
   // 第四行：4与其他数字组合（排除已有的）
-  { type: 'combo-4-5', first: 4, second: 5, label: '4-5', probability: '30种' },
-  { type: 'combo-4-6', first: 4, second: 6, label: '4-6', probability: '30种' },
+  { type: 'combo-4-5', first: 4, second: 5, label: '4-5' },
+  { type: 'combo-4-6', first: 4, second: 6, label: '4-6' },
   
   // 第五行：5与6的组合
-  { type: 'combo-5-6', first: 5, second: 6, label: '5-6', probability: '30种' }
+  { type: 'combo-5-6', first: 5, second: 6, label: '5-6' }
 ]
 
 // 骰子点数图案配置
@@ -211,55 +152,9 @@ const getBetAmount = (betType: string) => {
   return props.currentBets[betType] || 0
 }
 
-const canBetAll = computed(() => {
-  return props.balance >= props.selectedChip * 15
-})
-
-const canBetLow = computed(() => {
-  // 低位组合（包含1,2,3的组合）
-  return props.balance >= props.selectedChip * 9
-})
-
-const canBetHigh = computed(() => {
-  // 高位组合（包含4,5,6的组合）
-  return props.balance >= props.selectedChip * 6
-})
-
 // 方法
 const placeBet = (betType: string) => {
   emit('place-bet', betType)
-}
-
-const betAllCombos = () => {
-  if (canBetAll.value) {
-    comboOptions.forEach(combo => {
-      emit('place-bet', combo.type)
-    })
-  }
-}
-
-const betLowCombos = () => {
-  if (canBetLow.value) {
-    // 包含1,2,3的组合
-    const lowCombos = comboOptions.filter(combo => 
-      combo.first <= 3 || combo.second <= 3
-    )
-    lowCombos.forEach(combo => {
-      emit('place-bet', combo.type)
-    })
-  }
-}
-
-const betHighCombos = () => {
-  if (canBetHigh.value) {
-    // 包含4,5,6的组合
-    const highCombos = comboOptions.filter(combo => 
-      combo.first >= 4 && combo.second >= 4
-    )
-    highCombos.forEach(combo => {
-      emit('place-bet', combo.type)
-    })
-  }
 }
 </script>
 
@@ -271,30 +166,11 @@ const betHighCombos = () => {
   border: 1px solid #2d5a42;
 }
 
-.section-header {
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.section-title {
-  font-size: 16px;
-  color: #ffd700;
-  margin: 0 0 4px 0;
-  font-weight: 700;
-}
-
-.section-subtitle {
-  font-size: 11px;
-  color: #90ee90;
-  opacity: 0.8;
-}
-
 /* 组合网格 - 5行3列布局 */
 .combo-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
-  margin-bottom: 16px;
 }
 
 .combo-btn {
@@ -421,105 +297,6 @@ const betHighCombos = () => {
   margin: 1px 0;
 }
 
-/* 概率显示 */
-.combo-probability {
-  font-size: 7px;
-  color: #ccc;
-  opacity: 0.8;
-}
-
-/* 规则说明 */
-.rules-explanation {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
-}
-
-.rules-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.rules-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rule-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: #ccc;
-}
-
-.rule-icon {
-  font-size: 12px;
-  min-width: 16px;
-}
-
-.rule-text {
-  flex: 1;
-  line-height: 1.3;
-}
-
-/* 快速投注区域 */
-.quick-bet-section {
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.quick-bet-title {
-  font-size: 12px;
-  color: #ffd700;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.quick-bet-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.quick-bet-btn {
-  flex: 1;
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  border: none;
-  color: white;
-  padding: 8px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.quick-bet-btn:active {
-  transform: scale(0.95);
-}
-
-.quick-bet-btn:disabled {
-  background: #666;
-  cursor: not-allowed;
-  transform: none;
-  opacity: 0.5;
-}
-
-.quick-bet-btn:not(:disabled):hover {
-  background: linear-gradient(135deg, #2980b9, #21618c);
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
   .combo-grid {
@@ -544,11 +321,6 @@ const betHighCombos = () => {
   .combo-label {
     font-size: 9px;
   }
-  
-  .quick-bet-btn {
-    font-size: 9px;
-    padding: 6px 4px;
-  }
 }
 
 @media (max-width: 320px) {
@@ -570,10 +342,6 @@ const betHighCombos = () => {
   .combo-label {
     font-size: 8px;
   }
-  
-  .rules-explanation {
-    display: none; /* 超小屏幕隐藏规则说明 */
-  }
 }
 
 /* 横屏适配 */
@@ -586,11 +354,6 @@ const betHighCombos = () => {
   .dice-face {
     width: 10px;
     height: 10px;
-  }
-  
-  .rules-explanation,
-  .quick-bet-section {
-    display: none; /* 横屏时隐藏说明和快速投注 */
   }
 }
 
