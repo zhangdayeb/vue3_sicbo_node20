@@ -409,6 +409,7 @@ const unlockAudioContext = async () => {
 }
 
 // 播放音效
+// 播放音效
 const playSound = async (
   soundId: string, 
   options: {
@@ -430,11 +431,15 @@ const playSound = async (
     }
 
     // 获取音频元素
-    let audio = soundRefs.value[soundId]
+    let audio: HTMLAudioElement | null = soundRefs.value[soundId] || null
     
     // 如果音频正在播放且需要重叠播放，使用音频池
     if (audio && !audio.paused && !audio.ended) {
-      audio = getPooledAudio(soundConfig.mp3)
+      const pooledAudio = getPooledAudio(soundConfig.mp3)
+      if (pooledAudio) {
+        audio = pooledAudio
+      }
+      // 如果无法获取池化音频，继续使用原音频（会重新开始播放）
     }
     
     if (!audio) {

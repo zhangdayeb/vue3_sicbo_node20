@@ -130,6 +130,11 @@
   </div>
 </template>
 
+
+
+
+
+
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 
@@ -164,7 +169,7 @@ const isPulsing = ref(false)
 const isRefreshing = ref(false)
 const showChangeAnimation = ref(false)
 const changeAmount = ref(0)
-const amountNumberRef = ref<HTMLElement>()
+const amountNumberRef = ref<HTMLElement | null>(null)
 const recentBets = ref<Set<string>>(new Set())
 
 // 预测类型配置
@@ -172,7 +177,7 @@ const predictionTypes = [
   { key: 'best' as const, label: '最佳' },
   { key: 'average' as const, label: '期望' },
   { key: 'risk' as const, label: '风险' }
-]
+] as const
 
 // 投注类型名称映射
 const betTypeNames: Record<string, string> = {
@@ -262,9 +267,13 @@ const formattedAmount = computed(() => {
 })
 
 const activeBets = computed(() => {
-  return Object.fromEntries(
-    Object.entries(props.currentBets).filter(([_, amount]) => amount > 0)
-  )
+  const result: Record<string, number> = {}
+  Object.entries(props.currentBets).forEach(([key, value]) => {
+    if (value > 0) {
+      result[key] = value
+    }
+  })
+  return result
 })
 
 const betCount = computed(() => {
@@ -308,13 +317,13 @@ const riskLevel = computed(() => {
 const riskLevelClass = computed(() => `risk-${riskLevel.value}`)
 
 const riskLevelText = computed(() => {
-  const riskMap = {
+  const riskMap: Record<string, string> = {
     'low': '低风险',
     'medium': '中风险',
     'high': '高风险',
     'extreme': '极高风险'
   }
-  return riskMap[riskLevel.value]
+  return riskMap[riskLevel.value] || '未知风险'
 })
 
 const bestCaseWin = computed(() => {
@@ -342,70 +351,75 @@ const expectedWin = computed(() => {
   return Math.round(totalExpected)
 })
 
-// 方法
-const getBetDisplayName = (betType: string): string => {
-  return betTypeNames[betType] || betType
+// 方法 - 修复为接受 string | number 类型参数
+const getBetDisplayName = (betType: string | number): string => {
+  const key = String(betType)
+  return betTypeNames[key] || key
 }
 
-const getBetOdds = (betType: string): string => {
-  return betOddsMap[betType] || '1:1'
+const getBetOdds = (betType: string | number): string => {
+  const key = String(betType)
+  return betOddsMap[key] || '1:1'
 }
 
-const getBetMultiplier = (betType: string): number => {
-  const oddsStr = getBetOdds(betType)
+const getBetMultiplier = (betType: string | number): number => {
+  const key = String(betType)
+  const oddsStr = getBetOdds(key)
   if (oddsStr.includes('~')) {
     // 对于单骰投注，使用平均赔率
     return 2
   }
   const parts = oddsStr.split(':')
   if (parts.length === 2) {
-    return parseInt(parts[1]) || 1
+    const multiplier = parseInt(parts[1])
+    return isNaN(multiplier) ? 1 : multiplier
   }
   return 1
 }
 
-const getBetProbability = (betType: string): number => {
+const getBetProbability = (betType: string | number): number => {
+  const key = String(betType)
   // 简化的概率计算
-  if (betType.includes('small') || betType.includes('big')) return 0.486
-  if (betType.includes('odd') || betType.includes('even')) return 0.486
-  if (betType.includes('total-10') || betType.includes('total-11')) return 0.125
-  if (betType.includes('triple') && !betType.includes('any')) return 0.0046
-  if (betType.includes('any-triple')) return 0.0278
-  if (betType.includes('pair')) return 0.139
-  if (betType.includes('single')) return 0.421
+  if (key.includes('small') || key.includes('big')) return 0.486
+  if (key.includes('odd') || key.includes('even')) return 0.486
+  if (key.includes('total-10') || key.includes('total-11')) return 0.125
+  if (key.includes('triple') && !key.includes('any')) return 0.0046
+  if (key.includes('any-triple')) return 0.0278
+  if (key.includes('pair')) return 0.139
+  if (key.includes('single')) return 0.421
   return 0.1 // 默认概率
 }
 
-const isRecentBet = (betType: string): boolean => {
-  return recentBets.value.has(betType)
+const isRecentBet = (betType: string | number): boolean => {
+  return recentBets.value.has(String(betType))
 }
 
-const toggleDetails = () => {
+const toggleDetails = (): void => {
   showDetailsList.value = !showDetailsList.value
 }
 
-const removeBet = (betType: string) => {
-  emit('remove-bet', betType)
+const removeBet = (betType: string | number): void => {
+  emit('remove-bet', String(betType))
 }
 
-const refreshAmount = async () => {
+const refreshAmount = async (): Promise<void> => {
   isRefreshing.value = true
   try {
     emit('refresh-amount')
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise<void>(resolve => setTimeout(resolve, 1000))
   } finally {
     isRefreshing.value = false
   }
 }
 
-const triggerPulse = () => {
+const triggerPulse = (): void => {
   isPulsing.value = true
   setTimeout(() => {
     isPulsing.value = false
   }, 1000)
 }
 
-const showAmountChange = (oldAmount: number, newAmount: number) => {
+const showAmountChange = (oldAmount: number, newAmount: number): void => {
   changeAmount.value = newAmount - oldAmount
   showChangeAnimation.value = true
   
@@ -415,7 +429,7 @@ const showAmountChange = (oldAmount: number, newAmount: number) => {
 }
 
 // 监听投注金额变化
-watch(() => props.totalBetAmount, (newAmount, oldAmount) => {
+watch(() => props.totalBetAmount, (newAmount: number, oldAmount: number | undefined) => {
   if (oldAmount !== undefined && newAmount !== oldAmount) {
     showAmountChange(oldAmount, newAmount)
     triggerPulse()
@@ -435,9 +449,9 @@ watch(() => props.totalBetAmount, (newAmount, oldAmount) => {
 })
 
 // 监听投注变化，标记最近的投注
-watch(() => props.currentBets, (newBets, oldBets) => {
+watch(() => props.currentBets, (newBets: Record<string, number>, oldBets: Record<string, number> | undefined) => {
   if (oldBets) {
-    Object.keys(newBets).forEach(betType => {
+    Object.keys(newBets).forEach((betType: string) => {
       if (newBets[betType] > (oldBets[betType] || 0)) {
         recentBets.value.add(betType)
         setTimeout(() => {
@@ -448,6 +462,16 @@ watch(() => props.currentBets, (newBets, oldBets) => {
   }
 }, { deep: true })
 </script>
+
+
+
+
+
+
+
+
+
+
 
 <style scoped>
 .bet-amount-display {
