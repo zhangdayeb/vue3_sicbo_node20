@@ -331,9 +331,7 @@ onMounted(() => {
   transform: rotate(15deg);
 }
 
-/* 移除文字标签 - 删除 .chip-label 相关样式 */
-
-/* 设置弹窗 - 调整为垂直居中 */
+/* 设置弹窗 - 优化移动端显示 */
 .settings-overlay {
   position: fixed;
   top: 0;
@@ -342,10 +340,11 @@ onMounted(() => {
   bottom: 0;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
-  align-items: center; /* 垂直居中 */
+  align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 .settings-dialog {
@@ -354,11 +353,12 @@ onMounted(() => {
   border: 1px solid #34495e;
   max-width: 600px;
   width: 100%;
-  max-height: 80vh;
+  max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   animation: dialogAppear 0.3s ease;
+  overflow: hidden;
 }
 
 @keyframes dialogAppear {
@@ -378,6 +378,7 @@ onMounted(() => {
   align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid #34495e;
+  flex-shrink: 0;
 }
 
 .settings-title {
@@ -412,6 +413,7 @@ onMounted(() => {
   flex: 1;
   padding: 20px 24px;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .settings-section {
@@ -465,7 +467,8 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 12px;
-  max-height: 400px;
+  max-height: calc(65vh - 220px);
+  min-height: 200px;
   overflow-y: auto;
   padding: 8px;
   background: rgba(0, 0, 0, 0.1);
@@ -540,6 +543,7 @@ onMounted(() => {
   border-top: 1px solid #34495e;
   display: flex;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .action-btn {
@@ -580,14 +584,21 @@ onMounted(() => {
 
 /* 响应式适配 */
 @media (max-width: 768px) {
+  .settings-overlay {
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  
   .settings-dialog {
-    max-width: 90vw;
-    max-height: 90vh;
+    max-width: 100%;
+    max-height: calc(100vh - 24px);
+    border-radius: 12px;
   }
   
   .all-chips-grid {
     grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
     gap: 8px;
+    max-height: calc(60vh - 200px);
   }
   
   .all-chip-image {
@@ -606,6 +617,16 @@ onMounted(() => {
     height: 38px; /* 从42px减少到38px */
   }
   
+  .settings-overlay {
+    padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  
+  .settings-dialog {
+    border-radius: 8px;
+    max-height: calc(100vh - 16px);
+  }
+  
   .settings-header,
   .settings-content,
   .settings-actions {
@@ -613,21 +634,135 @@ onMounted(() => {
     padding-right: 16px;
   }
   
+  .settings-header {
+    padding-top: 16px;
+    padding-bottom: 12px;
+  }
+  
+  .settings-content {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  
+  .settings-actions {
+    padding-top: 12px;
+    padding-bottom: 16px;
+  }
+  
   .all-chips-grid {
     grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     gap: 6px;
+    max-height: calc(55vh - 160px);
+    padding: 6px;
+  }
+  
+  .all-chip-image {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .all-chip-label {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 320px) {
+  .settings-overlay {
+    padding: 4px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+  
+  .settings-dialog {
+    border-radius: 6px;
+    max-height: calc(100vh - 8px);
+  }
+  
+  .settings-header {
+    padding: 12px 12px 8px 12px;
+  }
+  
+  .settings-content {
+    padding: 12px;
+  }
+  
+  .settings-actions {
+    padding: 8px 12px 12px 12px;
+  }
+  
+  .settings-title {
+    font-size: 14px;
+  }
+  
+  .all-chips-grid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 4px;
+    max-height: calc(50vh - 120px);
+    min-height: 150px;
+    padding: 4px;
+  }
+  
+  .all-chip-image {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .all-chip-label {
+    font-size: 8px;
+  }
+  
+  .current-selection {
+    padding: 8px 12px;
+  }
+  
+  .selection-info {
+    font-size: 11px;
+  }
+  
+  .reset-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .action-btn {
+    padding: 8px 16px;
+    font-size: 13px;
   }
 }
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
-  .chip-image {
-    width: 36px;
-    height: 36px;
+  .settings-overlay {
+    padding: 8px;
+    align-items: flex-start;
+    padding-top: 20px;
   }
   
   .settings-dialog {
-    max-height: 95vh;
+    max-height: calc(100vh - 40px);
+    max-width: 90vw;
+  }
+  
+  .all-chips-grid {
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    max-height: calc(100vh - 200px);
+    min-height: 120px;
+  }
+  
+  .all-chip-image {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .settings-header {
+    padding: 12px 20px 8px 20px;
+  }
+  
+  .settings-content {
+    padding: 12px 20px;
+  }
+  
+  .settings-actions {
+    padding: 8px 20px 12px 20px;
   }
 }
 
@@ -647,6 +782,24 @@ onMounted(() => {
 }
 
 .all-chips-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 215, 0, 0.5);
+}
+
+.settings-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.3);
+  border-radius: 3px;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 215, 0, 0.5);
 }
 </style>
