@@ -20,7 +20,7 @@ export const useGameStore = defineStore('game', {
       currency: 'CNY'
     },
     settings: {
-      tableName: 'SicBo Table 1',
+      tableName: '骰宝001',
       limits: { min: 10, max: 10000 },
       language: 'zh'
     },
@@ -33,6 +33,19 @@ export const useGameStore = defineStore('game', {
     },
     isGameActive: (state) => {
       return ['betting', 'dealing'].includes(state.gameState.status)
+    },
+    // 生成完整的局号
+    fullGameNumber: (state) => {
+      if (state.gameState.gameNumber) {
+        return state.gameState.gameNumber
+      }
+      const tableId = 'T001' // 桌台ID
+      const now = new Date()
+      const dateStr = now.getFullYear().toString().slice(-2) + 
+                      String(now.getMonth() + 1).padStart(2, '0') + 
+                      String(now.getDate()).padStart(2, '0')
+      const sequence = String(state.gameState.round).padStart(4, '0')
+      return `${tableId}${dateStr}${sequence}`
     }
   },
 
@@ -54,6 +67,27 @@ export const useGameStore = defineStore('game', {
     updateGameNumber(gameNumber: string) {
       this.gameState.gameNumber = gameNumber
       this.gameState.round++
+    },
+
+    // 生成新的局号
+    generateNewGameNumber() {
+      const tableId = 'T001' // 桌台ID，可以从配置获取
+      const now = new Date()
+      const dateStr = now.getFullYear().toString().slice(-2) + 
+                      String(now.getMonth() + 1).padStart(2, '0') + 
+                      String(now.getDate()).padStart(2, '0')
+      const sequence = String(this.gameState.round).padStart(4, '0')
+      const newGameNumber = `${tableId}${dateStr}${sequence}`
+      this.gameState.gameNumber = newGameNumber
+      return newGameNumber
+    },
+
+    // 开始新的一局
+    startNewRound() {
+      this.gameState.round++
+      this.generateNewGameNumber()
+      this.updateGameStatus('betting')
+      this.updateCountdown(30) // 默认30秒投注时间
     },
 
     // 与Cocos通信

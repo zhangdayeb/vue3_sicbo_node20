@@ -1,29 +1,54 @@
-<template>
+.user-info {
+  position: absolute;
+  top: 10px;
+  right: 70px; /* 给设置按钮留出空间 */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 15;
+}
+
+.info-row {
+  display: flex;
+  gap: 8px;<template>
   <div class="user-info">
-    <div class="balance-display">
-      <div class="balance-label">余额</div>
-      <div class="balance-amount">{{ gameStore.formattedBalance }}</div>
-      <button class="refresh-btn" @click="refreshBalance">
-        🔄
-      </button>
-    </div>
-    
-    <div class="total-bet" v-if="totalBet > 0">
-      <div class="bet-label">本局投注</div>
-      <div class="bet-amount">{{ formatCurrency(totalBet) }}</div>
+    <!-- 局号和余额并排显示 -->
+    <div class="info-row">
+      <div class="game-number-display">
+        <div class="game-number-label">局号</div>
+        <div class="game-number">{{ gameStore.gameState.gameNumber || generateGameNumber() }}</div>
+      </div>
+      
+      <div class="balance-display">
+        <div class="balance-label">余额</div>
+        <div class="balance-amount">{{ gameStore.formattedBalance }}</div>
+        <button class="refresh-btn" @click="refreshBalance">
+          🔄
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 
 const gameStore = useGameStore()
-const totalBet = ref(0)
 
 const formatCurrency = (amount: number) => {
   return `${gameStore.userBalance.currency} ${amount.toLocaleString()}`
+}
+
+// 生成局号：tableId + 年月日 + 序号
+const generateGameNumber = () => {
+  const tableId = 'T001' // 桌台ID
+  const now = new Date()
+  const dateStr = now.getFullYear().toString().slice(-2) + 
+                  String(now.getMonth() + 1).padStart(2, '0') + 
+                  String(now.getDate()).padStart(2, '0')
+  const sequence = String(gameStore.gameState.round).padStart(4, '0')
+  return `${tableId}${dateStr}${sequence}`
 }
 
 const refreshBalance = () => {
@@ -31,16 +56,6 @@ const refreshBalance = () => {
   console.log('刷新余额')
   // 这里可以调用API获取最新余额
 }
-
-// 监听来自Cocos的投注更新
-const listenToBetUpdates = () => {
-  window.addEventListener('cocos-to-vue-betUpdate', (event: any) => {
-    totalBet.value = event.detail.totalBet || 0
-  })
-}
-
-// 初始化监听
-listenToBetUpdates()
 </script>
 
 <style scoped>
@@ -52,6 +67,30 @@ listenToBetUpdates()
   flex-direction: column;
   gap: 6px;
   z-index: 15;
+}
+
+.game-number-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(52, 152, 219, 0.8);
+  padding: 6px 10px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.game-number-label {
+  color: white;
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.game-number {
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
 }
 
 .balance-display {

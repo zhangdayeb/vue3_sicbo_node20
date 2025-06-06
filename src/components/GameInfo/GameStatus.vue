@@ -6,8 +6,40 @@
     </div>
     
     <div class="countdown" v-if="gameStore.gameState.countdown > 0">
-      <div class="countdown-circle">
-        <span class="countdown-number">{{ gameStore.gameState.countdown }}</span>
+      <div class="countdown-container">
+        <svg class="countdown-ring" width="60" height="60">
+          <circle
+            class="countdown-ring-background"
+            cx="30"
+            cy="30"
+            r="25"
+            fill="transparent"
+            stroke="rgba(255, 255, 255, 0.2)"
+            stroke-width="3"
+          />
+          <circle
+            class="countdown-ring-progress"
+            :class="{ 'countdown-urgent': gameStore.gameState.countdown <= 5 }"
+            cx="30"
+            cy="30"
+            r="25"
+            fill="transparent"
+            stroke="#3498db"
+            stroke-width="3"
+            stroke-linecap="round"
+            :stroke-dasharray="circumference"
+            :stroke-dashoffset="strokeDashoffset"
+            transform="rotate(-90 30 30)"
+          />
+        </svg>
+        <div class="countdown-content">
+          <span 
+            class="countdown-number"
+            :class="{ 'countdown-urgent': gameStore.gameState.countdown <= 5 }"
+          >
+            {{ gameStore.gameState.countdown }}
+          </span>
+        </div>
       </div>
       <span class="countdown-label">{{ countdownLabel }}</span>
     </div>
@@ -19,6 +51,15 @@ import { computed } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 
 const gameStore = useGameStore()
+
+// 倒计时环形进度条计算
+const circumference = 2 * Math.PI * 25 // 半径25的圆周长
+const totalSeconds = 30 // 假设总倒计时时长为30秒
+
+const strokeDashoffset = computed(() => {
+  const progress = gameStore.gameState.countdown / totalSeconds
+  return circumference * (1 - progress)
+})
 
 const statusClass = computed(() => {
   const status = gameStore.gameState.status
@@ -54,11 +95,10 @@ const countdownLabel = computed(() => {
 .game-status {
   position: absolute;
   top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 15px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   z-index: 15;
 }
@@ -109,23 +149,50 @@ const countdownLabel = computed(() => {
   gap: 4px;
 }
 
-.countdown-circle {
-  width: 50px;
-  height: 50px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid #e74c3c;
-  border-radius: 50%;
+.countdown-container {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.countdown-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotate(0deg);
+}
+
+.countdown-ring-progress {
+  transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+}
+
+.countdown-ring-progress.countdown-urgent {
+  stroke: #e74c3c;
+}
+
+.countdown-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: spin 1s linear infinite;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.8);
+  border-radius: 50%;
 }
 
 .countdown-number {
   color: white;
   font-size: 18px;
   font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+.countdown-number.countdown-urgent {
+  color: #e74c3c;
 }
 
 .countdown-label {
@@ -140,15 +207,6 @@ const countdownLabel = computed(() => {
   }
   50% {
     opacity: 0.5;
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
   }
 }
 </style>
