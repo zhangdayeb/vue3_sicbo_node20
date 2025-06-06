@@ -162,7 +162,7 @@ const placeBet = (betType: string) => {
   text-align: center;
   transition: all 0.2s ease;
   position: relative;
-  min-height: 65px;
+  min-height: 55px;
   display: flex;
   flex-direction: column;
   justify-content: center;

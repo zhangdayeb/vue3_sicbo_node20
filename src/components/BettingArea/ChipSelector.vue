@@ -16,7 +16,6 @@
             :alt="chip.label"
             class="chip-image"
           />
-          <div class="chip-label">{{ chip.label }}</div>
         </button>
         
         <!-- 设置按钮 -->
@@ -29,7 +28,6 @@
             alt="设置"
             class="chip-image settings-icon"
           />
-          <div class="chip-label">设置</div>
         </button>
       </div>
     </div>
@@ -268,9 +266,9 @@ onMounted(() => {
 
 <style scoped>
 .chip-selector {
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.95); /* 统一背景色 */
   border-top: 1px solid #2d5a42;
-  padding: 12px;
+  padding: 8px; /* 从12px减少到8px */
 }
 
 /* 筹码容器 */
@@ -283,7 +281,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  gap: 8px;
+  gap: 6px; /* 从8px减少到6px */
   max-width: 400px;
   width: 100%;
 }
@@ -296,12 +294,12 @@ onMounted(() => {
   transition: all 0.3s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  padding: 4px;
+  padding: 3px; /* 从4px减少到3px */
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
 }
 
 .chip-btn:active {
@@ -313,8 +311,8 @@ onMounted(() => {
 }
 
 .chip-image {
-  width: 48px;
-  height: 48px;
+  width: 42px; /* 从48px减少到42px */
+  height: 42px; /* 从48px减少到42px */
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   transition: all 0.3s ease;
@@ -333,18 +331,9 @@ onMounted(() => {
   transform: rotate(15deg);
 }
 
-.chip-label {
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
+/* 移除文字标签 - 删除 .chip-label 相关样式 */
 
-.settings-btn .chip-label {
-  color: #ffd700;
-}
-
-/* 设置弹窗 */
+/* 设置弹窗 - 调整为垂直居中 */
 .settings-overlay {
   position: fixed;
   top: 0;
@@ -353,7 +342,7 @@ onMounted(() => {
   bottom: 0;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
-  align-items: center;
+  align-items: center; /* 垂直居中 */
   justify-content: center;
   z-index: 1000;
   padding: 20px;
@@ -609,16 +598,12 @@ onMounted(() => {
 
 @media (max-width: 375px) {
   .chip-list {
-    gap: 6px;
+    gap: 4px; /* 从6px减少到4px */
   }
   
   .chip-image {
-    width: 44px;
-    height: 44px;
-  }
-  
-  .chip-label {
-    font-size: 9px;
+    width: 38px; /* 从42px减少到38px */
+    height: 38px; /* 从42px减少到38px */
   }
   
   .settings-header,
@@ -637,8 +622,8 @@ onMounted(() => {
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
   .chip-image {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
   
   .settings-dialog {

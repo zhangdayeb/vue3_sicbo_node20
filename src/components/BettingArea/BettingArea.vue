@@ -268,15 +268,15 @@ onMounted(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-bottom: 160px; /* 调整为更小的值，因为删除了 BetAmountDisplay */
+  padding-bottom: 120px; /* 从160px减少到120px */
 }
 
 .betting-sections {
-  padding: 12px;
+  padding: 10px; /* 从12px减少到10px */
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: calc(100vh - 350px - 160px); /* 相应调整最小高度 */
+  gap: 8px; /* 从16px减少到8px */
+  min-height: calc(100vh - 300px - 120px); /* 调整高度计算：300px视频 + 120px底部 */
 }
 
 /* 底部固定区域 */
@@ -291,24 +291,28 @@ onMounted(() => {
   z-index: 100;
   
   /* iOS Safari安全区域适配 */
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-bottom: max(8px, env(safe-area-inset-bottom)); /* 从12px减少到8px */
 }
 
 /* 响应式适配 */
 @media (max-width: 375px) {
   .betting-sections {
-    padding: 10px;
-    gap: 12px;
+    padding: 8px; /* 从10px减少到8px */
+    gap: 6px; /* 从8px减少到6px */
   }
   
   .betting-content {
-    padding-bottom: 140px; /* 小屏幕调整 */
+    padding-bottom: 110px; /* 小屏幕调整 */
   }
 }
 
 @media (max-height: 667px) {
   .betting-content {
-    padding-bottom: 140px;
+    padding-bottom: 110px;
+  }
+  
+  .betting-sections {
+    gap: 6px;
   }
 }
 
@@ -324,6 +328,7 @@ onMounted(() => {
   
   .betting-sections {
     min-height: auto;
+    gap: 6px;
   }
 }
 

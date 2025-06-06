@@ -1,14 +1,4 @@
-@media (max-width: 280px) {
-  .main-bets-grid {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    gap: 3px;
-  }
-  
-  .main-bet-btn {
-    min-height: 55px;
-  }
-}<template>
+<template>
   <div class="main-bets-section">
     <div class="main-bets-grid">
       <button
@@ -130,7 +120,7 @@ const placeBet = (betType: string) => {
   text-align: center;
   transition: all 0.2s ease;
   position: relative;
-  min-height: 80px;
+  min-height: 70px;
   display: flex;
   flex-direction: column;
   justify-content: center;

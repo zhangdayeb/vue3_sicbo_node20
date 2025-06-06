@@ -87,7 +87,7 @@ onMounted(() => {
 .game-top-section {
   position: relative;
   width: 100%;
-  height: 350px;
+  height: 300px;
   overflow: hidden;
   background: #000;
 }
@@ -97,7 +97,7 @@ onMounted(() => {
   top: 0;
   left: 0;
   width: 100%;
-  height: 350px;
+  height: 300px;
   z-index: 1;
 }
 
@@ -106,7 +106,7 @@ onMounted(() => {
   top: 0;
   left: 0;
   width: 100%;
-  height: 350px;
+  height: 300px;
   z-index: 10;
   pointer-events: none;
 }

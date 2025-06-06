@@ -299,18 +299,18 @@ const vLongPress = longPressDirective
 
 <style scoped>
 .control-buttons {
-  background: rgba(0, 0, 0, 0.95);
-  padding: 8px; /* 从12px减少到8px */
-  border-top: 1px solid #4a7c59;
+  background: rgba(0, 0, 0, 0.95); /* 统一背景色 */
+  padding: 6px; /* 从8px减少到6px */
+  border-top: 1px solid #2d5a42; /* 统一边框颜色 */
   
   /* iOS Safari安全区域适配 */
-  padding-bottom: max(8px, env(safe-area-inset-bottom)); /* 从12px减少到8px */
+  padding-bottom: max(6px, env(safe-area-inset-bottom)); /* 从8px减少到6px */
 }
 
 /* 主要控制按钮 */
 .main-controls {
   display: flex;
-  gap: 6px; /* 从8px减少到6px */
+  gap: 5px; /* 从6px减少到5px */
 }
 
 .control-btn {
@@ -318,13 +318,13 @@ const vLongPress = longPressDirective
   background: linear-gradient(135deg, #4a7c59, #2d5a42);
   border: 2px solid #4a7c59;
   color: white;
-  padding: 8px 6px; /* 从12px减少到8px */
-  border-radius: 6px; /* 从8px减少到6px */
+  padding: 6px 4px; /* 从8px减少到6px */
+  border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s ease;
   position: relative;
-  min-height: 50px; /* 从70px减少到50px */
+  min-height: 42px; /* 从50px减少到42px */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -384,30 +384,30 @@ const vLongPress = longPressDirective
   justify-content: center;
   position: relative;
   height: 100%;
-  gap: 2px; /* 减少内部间距 */
+  gap: 1px; /* 从2px减少到1px */
 }
 
 .btn-text {
-  font-size: 12px; /* 从14px减少到12px */
+  font-size: 11px; /* 从12px减少到11px */
   font-weight: 700;
   line-height: 1;
 }
 
 .btn-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -5px; /* 从-6px调整到-5px */
+  right: -5px; /* 从-6px调整到-5px */
   background: #ff4757;
   color: white;
   border-radius: 50%;
-  min-width: 14px; /* 从16px减少到14px */
-  height: 14px; /* 从16px减少到14px */
+  min-width: 12px; /* 从14px减少到12px */
+  height: 12px; /* 从14px减少到12px */
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px; /* 从9px减少到8px */
+  font-size: 7px; /* 从8px减少到7px */
   font-weight: bold;
-  padding: 0 3px;
+  padding: 0 2px; /* 从3px减少到2px */
   border: 1px solid white;
   animation: badgeAppear 0.3s ease;
 }
@@ -554,19 +554,19 @@ const vLongPress = longPressDirective
   background: #c0392b;
 }
 
-/* 响应式适配 - 优化后的断点 */
+/* 响应式适配 - 进一步优化 */
 @media (max-width: 375px) {
   .main-controls {
-    gap: 4px; /* 从6px减少到4px */
+    gap: 3px; /* 从4px减少到3px */
   }
   
   .control-btn {
-    padding: 6px 4px; /* 从8px减少到6px */
-    min-height: 45px; /* 从50px减少到45px */
+    padding: 5px 3px; /* 进一步压缩 */
+    min-height: 38px; /* 从42px减少到38px */
   }
   
   .btn-text {
-    font-size: 11px; /* 从12px减少到11px */
+    font-size: 10px; /* 从11px减少到10px */
   }
   
   .confirm-dialog {
@@ -577,36 +577,21 @@ const vLongPress = longPressDirective
 
 @media (max-width: 320px) {
   .main-controls {
-    gap: 3px;
+    gap: 2px;
   }
   
   .control-btn {
-    padding: 5px 3px;
-    min-height: 42px;
+    padding: 4px 2px;
+    min-height: 36px;
   }
   
   .btn-text {
-    font-size: 10px;
+    font-size: 9px;
   }
 }
 
-/* 新增：高度限制的设备优化 */
+/* 高度限制的设备优化 */
 @media (max-height: 667px) {
-  .control-btn {
-    min-height: 42px;
-    padding: 6px 4px;
-  }
-  
-  .btn-text {
-    font-size: 11px;
-  }
-}
-
-@media (max-height: 600px) {
-  .control-buttons {
-    padding: 6px;
-  }
-  
   .control-btn {
     min-height: 38px;
     padding: 5px 3px;
@@ -617,19 +602,34 @@ const vLongPress = longPressDirective
   }
 }
 
-/* 横屏适配 */
-@media (orientation: landscape) and (max-height: 500px) {
+@media (max-height: 600px) {
+  .control-buttons {
+    padding: 4px;
+  }
+  
   .control-btn {
-    min-height: 36px;
-    padding: 4px 3px;
+    min-height: 34px;
+    padding: 4px 2px;
   }
   
   .btn-text {
-    font-size: 10px;
+    font-size: 9px;
+  }
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .control-btn {
+    min-height: 32px;
+    padding: 3px 2px;
+  }
+  
+  .btn-text {
+    font-size: 9px;
   }
   
   .control-buttons {
-    padding: 5px;
+    padding: 4px;
   }
 }
 
@@ -652,8 +652,8 @@ const vLongPress = longPressDirective
 }
 
 .control-btn:active::before {
-  width: 100px; /* 从120px减少到100px */
-  height: 100px; /* 从120px减少到100px */
+  width: 80px; /* 从100px减少到80px */
+  height: 80px; /* 从100px减少到80px */
 }
 
 /* 按钮悬浮效果（非移动端） */
