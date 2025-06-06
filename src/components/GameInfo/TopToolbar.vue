@@ -2,7 +2,7 @@
   <div class="top-toolbar">
     <div class="left-section">
       <button class="back-btn" @click="goBack">
-        <
+        ←
       </button>
       <div class="table-info">
         <span class="table-name">{{ gameStore.settings.tableName }}</span>
@@ -12,11 +12,26 @@
       </div>
     </div>
     
-    <div class="center-section">
-      <!-- 移除第x局显示，节省空间 -->
-    </div>
-    
     <div class="right-section">
+      <!-- 局号和余额两行布局 -->
+      <div class="info-section">
+        <!-- 局号行 -->
+        <div class="info-row">
+          <span class="info-label">局号</span>
+          <span class="game-number">{{ gameStore.gameState.gameNumber || generateGameNumber() }}</span>
+        </div>
+        
+        <!-- 余额行 -->
+        <div class="info-row">
+          <span class="info-label">余额</span>
+          <span class="balance-amount">{{ gameStore.formattedBalance }}</span>
+          <button class="refresh-btn" @click="refreshBalance">
+            🔄
+          </button>
+        </div>
+      </div>
+      
+      <!-- 设置按钮 -->
       <div class="settings-dropdown" ref="settingsDropdown">
         <button class="settings-btn" @click="toggleSettings">
           <div class="hamburger-menu">
@@ -90,8 +105,18 @@ const settings = reactive({
   soundEffects: true
 })
 
+// 生成局号
+const generateGameNumber = () => {
+  const tableId = 'T001'
+  const now = new Date()
+  const dateStr = now.getFullYear().toString().slice(-2) + 
+                  String(now.getMonth() + 1).padStart(2, '0') + 
+                  String(now.getDate()).padStart(2, '0')
+  const sequence = String(gameStore.gameState.round).padStart(4, '0')
+  return `${tableId}${dateStr}${sequence}`
+}
+
 const goBack = () => {
-  // 返回逻辑
   console.log('返回上级页面')
 }
 
@@ -103,27 +128,27 @@ const toggleSettings = () => {
 const goToRecharge = () => {
   console.log('跳转到充值页面')
   showSettings.value = false
-  // 这里可以跳转到充值页面
-  // window.open('/recharge', '_blank')
 }
 
 const goToVip = () => {
   console.log('跳转到会员中心')
   showSettings.value = false
-  // window.open('/vip', '_blank')
 }
 
 const contactService = () => {
   console.log('联系客服')
   showSettings.value = false
-  // 可以打开客服聊天窗口或跳转到客服页面
-  // window.open('/service', '_blank')
 }
 
 const goToHelp = () => {
   console.log('跳转到帮助页面')
   showSettings.value = false
-  // window.open('/help', '_blank')
+}
+
+const refreshBalance = () => {
+  console.log('刷新余额')
+  // 这里可以调用API获取最新余额
+  gameStore.updateBalance(gameStore.userBalance.total) // 模拟刷新
 }
 
 // 点击外部关闭下拉菜单
@@ -148,48 +173,47 @@ onUnmounted(() => {
   top: 10px;
   left: 10px;
   right: 10px;
-  height: 50px;
+  height: 40px; /* 减少高度到40px */
   background: rgba(0, 0, 0, 0.8);
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
   color: white;
   backdrop-filter: blur(4px);
+  z-index: 15;
 }
 
 .left-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex: 1;
-  max-width: 60%; /* 限制左侧区域宽度 */
-}
-
-.center-section {
-  display: flex;
-  justify-content: center;
-  flex: 0; /* 中间区域不占空间 */
+  overflow: hidden;
 }
 
 .right-section {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  flex: 0;
-  position: relative; /* 确保设置按钮定位正确 */
-  width: 80px; /* 给设置按钮固定宽度 */
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .back-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  line-height: 1;
+  height: 28px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.2s;
 }
 
@@ -198,43 +222,82 @@ onUnmounted(() => {
 }
 
 .table-info {
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .table-name {
-  font-weight: bold;
-  font-size: 14px;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bet-limits {
-  font-size: 10px;
-  opacity: 0.8;
+  font-size: 9px;
+  opacity: 0.7;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.round-info {
+/* 局号和余额信息区域 */
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 8px;
+}
+
+.info-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(52, 152, 219, 0.3);
-  padding: 8px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(52, 152, 219, 0.5);
 }
 
-.round-label {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
-}
-
-.round-number {
-  color: #3498db;
-  font-size: 16px;
-  font-weight: bold;
+.info-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 9px;
   min-width: 24px;
-  text-align: center;
 }
 
+.game-number {
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.3px;
+  line-height: 1.1;
+}
+
+.balance-amount {
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 1px 3px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 8px;
+  line-height: 1;
+  transition: background 0.2s;
+  margin-left: 2px;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 设置下拉菜单 */
 .settings-dropdown {
   position: relative;
 }
@@ -243,11 +306,11 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  padding: 8px;
-  border-radius: 50%;
+  padding: 0;
+  border-radius: 4px;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -263,12 +326,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 14px;
+  width: 12px;
 }
 
 .hamburger-menu span {
   width: 100%;
-  height: 2px;
+  height: 1.5px;
   background: white;
   border-radius: 1px;
   transition: all 0.3s ease;
@@ -279,11 +342,11 @@ onUnmounted(() => {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 8px;
+  margin-top: 6px;
   background: rgba(0, 0, 0, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  min-width: 200px;
+  border-radius: 6px;
+  min-width: 180px;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-10px);
@@ -299,26 +362,26 @@ onUnmounted(() => {
 }
 
 .menu-section {
-  padding: 12px 0;
+  padding: 10px 0;
 }
 
 .section-title {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 0 16px;
-  margin-bottom: 8px;
+  padding: 0 12px;
+  margin-bottom: 6px;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 6px 12px;
   color: white;
-  font-size: 14px;
+  font-size: 12px;
   transition: background 0.2s;
 }
 
@@ -333,26 +396,26 @@ onUnmounted(() => {
 .item-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .arrow {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .menu-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.1);
-  margin: 0 12px;
+  margin: 0 10px;
 }
 
 /* 开关按钮样式 */
 .switch {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 20px;
+  width: 32px;
+  height: 16px;
 }
 
 .switch input {
@@ -370,14 +433,14 @@ onUnmounted(() => {
   bottom: 0;
   background-color: rgba(255, 255, 255, 0.3);
   transition: 0.3s;
-  border-radius: 20px;
+  border-radius: 16px;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
+  height: 12px;
+  width: 12px;
   left: 2px;
   bottom: 2px;
   background-color: white;
@@ -390,6 +453,6 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-  transform: translateX(20px);
+  transform: translateX(16px);
 }
 </style>

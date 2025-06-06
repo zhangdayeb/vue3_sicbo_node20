@@ -14,14 +14,14 @@
       <!-- 左侧区域：游戏状态和倒计时 -->
       <GameStatus />
       
-      <!-- 右侧区域：局号、余额、投注信息 -->
-      <UserInfo />
+      <!-- 右侧区域：投注金额显示 -->
+      <UserInfo ref="userInfoRef" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import VideoPlayer from '@/components/VideoPlayer/VideoPlayer.vue'
 import TopToolbar from '@/components/GameInfo/TopToolbar.vue'
@@ -29,16 +29,31 @@ import GameStatus from '@/components/GameInfo/GameStatus.vue'
 import UserInfo from '@/components/GameInfo/UserInfo.vue'
 
 const gameStore = useGameStore()
+const userInfoRef = ref()
 
 onMounted(() => {
   // 初始化游戏状态
   gameStore.updateGameStatus('waiting')
+  
+  // 模拟投注金额变化
+  setTimeout(() => {
+    userInfoRef.value?.updateTotalBet(150)
+  }, 1000)
   
   // 模拟游戏状态变化和局号生成
   setTimeout(() => {
     gameStore.updateGameNumber('T00124060610001') // 模拟局号格式
     gameStore.updateGameStatus('betting')
     gameStore.updateCountdown(30)
+    
+    // 模拟投注过程中金额变化
+    setTimeout(() => {
+      userInfoRef.value?.updateTotalBet(350)
+    }, 5000)
+    
+    setTimeout(() => {
+      userInfoRef.value?.updateTotalBet(580)
+    }, 10000)
     
     // 倒计时
     const countdown = setInterval(() => {
@@ -50,6 +65,8 @@ onMounted(() => {
         // 模拟开牌过程
         setTimeout(() => {
           gameStore.updateGameStatus('result')
+          // 结算后清零投注金额
+          userInfoRef.value?.updateTotalBet(0)
           setTimeout(() => {
             // 开始新的一局
             gameStore.updateGameStatus('waiting')

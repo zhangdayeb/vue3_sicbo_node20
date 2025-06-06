@@ -14,7 +14,7 @@
             cy="30"
             r="25"
             fill="transparent"
-            stroke="rgba(255, 255, 255, 0.2)"
+            stroke="rgba(255, 255, 255, 0.15)"
             stroke-width="3"
           />
           <circle
@@ -24,7 +24,7 @@
             cy="30"
             r="25"
             fill="transparent"
-            stroke="#3498db"
+            stroke="#00BCD4"
             stroke-width="3"
             stroke-linecap="round"
             :stroke-dasharray="circumference"
@@ -107,10 +107,12 @@ const countdownLabel = computed(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 8px 16px;
-  border-radius: 20px;
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.85);
+  padding: 10px 16px;
+  border-radius: 25px;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .status-dot {
@@ -121,32 +123,33 @@ const countdownLabel = computed(() => {
 }
 
 .status-waiting .status-dot {
-  background: #95a5a6;
+  background: #9E9E9E;
 }
 
 .status-betting .status-dot {
-  background: #e74c3c;
+  background: #FF5722;
 }
 
 .status-dealing .status-dot {
-  background: #f39c12;
+  background: #FF9800;
 }
 
 .status-result .status-dot {
-  background: #27ae60;
+  background: #4CAF50;
 }
 
 .status-text {
   color: white;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .countdown {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .countdown-container {
@@ -167,7 +170,7 @@ const countdownLabel = computed(() => {
 }
 
 .countdown-ring-progress.countdown-urgent {
-  stroke: #e74c3c;
+  stroke: #FF5722;
 }
 
 .countdown-content {
@@ -180,25 +183,29 @@ const countdownLabel = computed(() => {
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .countdown-number {
   color: white;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 700;
   transition: color 0.3s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .countdown-number.countdown-urgent {
-  color: #e74c3c;
+  color: #FF5722;
 }
 
 .countdown-label {
   color: white;
   font-size: 12px;
-  opacity: 0.8;
+  opacity: 0.85;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes pulse {
