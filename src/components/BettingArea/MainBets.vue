@@ -1,10 +1,15 @@
-<template>
+@media (max-width: 280px) {
+  .main-bets-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 3px;
+  }
+  
+  .main-bet-btn {
+    min-height: 55px;
+  }
+}<template>
   <div class="main-bets-section">
-    <div class="section-header">
-      <h3 class="section-title">大小单双</h3>
-      <div class="section-subtitle">主要投注区域 - 赔率 1:1</div>
-    </div>
-    
     <div class="main-bets-grid">
       <button
         v-for="bet in mainBets"
@@ -33,22 +38,6 @@
         <!-- 赔率显示 -->
         <div class="bet-odds">{{ bet.odds }}</div>
       </button>
-    </div>
-    
-    <!-- 说明文字 -->
-    <div class="bet-description">
-      <div class="desc-item">
-        <span class="desc-label">小:</span>
-        <span class="desc-text">三骰总和 4-10</span>
-      </div>
-      <div class="desc-item">
-        <span class="desc-label">大:</span>
-        <span class="desc-text">三骰总和 11-17</span>
-      </div>
-      <div class="desc-item">
-        <span class="desc-label">单双:</span>
-        <span class="desc-text">三骰总和为单数或双数</span>
-      </div>
     </div>
   </div>
 </template>
@@ -124,31 +113,11 @@ const placeBet = (betType: string) => {
   border: 1px solid #2d5a42;
 }
 
-.section-header {
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.section-title {
-  font-size: 16px;
-  color: #ffd700;
-  margin: 0 0 4px 0;
-  font-weight: 700;
-}
-
-.section-subtitle {
-  font-size: 11px;
-  color: #90ee90;
-  opacity: 0.8;
-}
-
-/* 2x2网格布局 */
+/* 1x4网格布局 */
 .main-bets-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
 .main-bet-btn {
@@ -239,57 +208,8 @@ const placeBet = (betType: string) => {
   font-weight: 600;
 }
 
-/* 说明文字 */
-.bet-description {
-  background: rgba(0,0,0,0.4);
-  border-radius: 6px;
-  padding: 10px;
-  font-size: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.desc-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.desc-item:last-child {
-  margin-bottom: 0;
-}
-
-.desc-label {
-  color: #ffd700;
-  font-weight: 600;
-  min-width: 30px;
-}
-
-.desc-text {
-  color: #ccc;
-  margin-left: 8px;
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
-  .main-bet-btn {
-    padding: 12px 6px;
-    min-height: 70px;
-  }
-  
-  .bet-label {
-    font-size: 18px;
-  }
-  
-  .section-header {
-    margin-bottom: 10px;
-  }
-}
-
-@media (max-width: 320px) {
-  .main-bets-grid {
-    gap: 8px;
-  }
-  
   .main-bet-btn {
     padding: 10px 4px;
     min-height: 65px;
@@ -298,25 +218,56 @@ const placeBet = (betType: string) => {
   .bet-label {
     font-size: 16px;
   }
+  
+  .main-bets-grid {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 320px) {
+  .main-bets-grid {
+    gap: 4px;
+  }
+  
+  .main-bet-btn {
+    padding: 8px 2px;
+    min-height: 60px;
+  }
+  
+  .bet-label {
+    font-size: 14px;
+  }
+  
+  .bet-range {
+    font-size: 9px;
+  }
+  
+  .bet-odds {
+    font-size: 8px;
+  }
 }
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
   .main-bet-btn {
-    min-height: 60px;
-    padding: 8px 6px;
+    min-height: 50px;
+    padding: 6px 3px;
   }
   
   .bet-label {
-    font-size: 16px;
+    font-size: 14px;
   }
   
-  .section-header {
-    margin-bottom: 8px;
+  .bet-range {
+    font-size: 9px;
   }
   
-  .bet-description {
-    display: none; /* 横屏时隐藏说明文字以节省空间 */
+  .bet-odds {
+    font-size: 8px;
+  }
+  
+  .main-bets-grid {
+    gap: 6px;
   }
 }
 
