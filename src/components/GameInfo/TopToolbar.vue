@@ -1,197 +1,109 @@
 <template>
   <div class="top-toolbar">
-    <!-- Naive UI 配置提供者 - 最小化配置 -->
-    <n-config-provider :theme-overrides="gameTheme">
-      <div class="left-section">
-        <!-- 返回按钮 - 使用 Naive UI 按钮 -->
-        <n-button 
-          class="back-btn" 
-          @click="goBack"
-          size="small"
-          tertiary
-        >
-          ←
-        </n-button>
+    <div class="left-section">
+      <button class="back-btn" @click="goBack">
+        ←
+      </button>
+      <div class="table-info">
+        <span class="table-name">{{ gameStore.settings.tableName }}</span>
+        <div class="bet-limits">
+          限额: {{ gameStore.settings.limits.min }} - {{ gameStore.settings.limits.max }}
+        </div>
+      </div>
+    </div>
+    
+    <div class="right-section">
+      <!-- 局号和余额两行布局 -->
+      <div class="info-section">
+        <!-- 局号行 -->
+        <div class="info-row">
+          <span class="info-label">局号</span>
+          <span class="game-number">{{ gameStore.gameState.gameNumber || generateGameNumber() }}</span>
+        </div>
         
-        <div class="table-info">
-          <span class="table-name">{{ gameStore.settings.tableName }}</span>
-          <div class="bet-limits">
-            限额: {{ gameStore.settings.limits.min }} - {{ gameStore.settings.limits.max }}
-          </div>
+        <!-- 余额行 -->
+        <div class="info-row">
+          <span class="info-label">余额</span>
+          <span class="balance-amount">{{ gameStore.formattedBalance }}</span>
+          <button class="refresh-btn" @click="refreshBalance">
+            🔄
+          </button>
         </div>
       </div>
       
-      <div class="right-section">
-        <!-- 局号和余额两行布局 - 保持原有设计 -->
-        <div class="info-section">
-          <!-- 局号行 -->
-          <div class="info-row">
-            <span class="info-label">局号</span>
-            <span class="game-number">{{ gameStore.gameState.gameNumber || generateGameNumber() }}</span>
+      <!-- 设置按钮 -->
+      <div class="settings-dropdown" ref="settingsDropdown">
+        <button class="settings-btn" @click="toggleSettings">
+          <div class="hamburger-menu">
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
-          
-          <!-- 余额行 -->
-          <div class="info-row">
-            <span class="info-label">余额</span>
-            <span class="balance-amount">{{ gameStore.formattedBalance }}</span>
-            <!-- 刷新按钮 - 使用 Naive UI 按钮 -->
-            <n-button 
-              class="refresh-btn" 
-              @click="refreshBalance"
-              size="tiny"
-              tertiary
-            >
-              🔄
-            </n-button>
-          </div>
-        </div>
+        </button>
         
-        <!-- 设置按钮 - 使用 Naive UI 下拉菜单 -->
-        <div class="settings-dropdown" ref="settingsDropdown">
-          <n-dropdown 
-            :options="dropdownOptions" 
-            @select="handleDropdownSelect"
-            trigger="click"
-            placement="bottom-end"
-          >
-            <n-button 
-              class="settings-btn"
-              size="small"
-              tertiary
-            >
-              <div class="hamburger-menu">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </n-button>
-          </n-dropdown>
-        </div>
-      </div>
-      
-      <!-- 设置弹窗 - 使用 Naive UI Modal -->
-      <n-modal 
-        v-model:show="showSettings"
-        preset="card"
-        title="游戏设置"
-        :style="{ width: 'min(90vw, 320px)' }"
-        size="small"
-        :bordered="false"
-        class="settings-modal"
-      >
-        <div class="settings-content">
+        <!-- 下拉菜单 -->
+        <div class="dropdown-menu" :class="{ 'show': showSettings }">
           <!-- 音效设置 -->
           <div class="menu-section">
             <div class="section-title">音效设置</div>
             <div class="menu-item">
               <span class="item-label">背景音乐</span>
-              <n-switch v-model:value="settings.backgroundMusic" size="small" />
+              <label class="switch">
+                <input type="checkbox" v-model="settings.backgroundMusic">
+                <span class="slider"></span>
+              </label>
             </div>
             <div class="menu-item">
               <span class="item-label">音效</span>
-              <n-switch v-model:value="settings.soundEffects" size="small" />
+              <label class="switch">
+                <input type="checkbox" v-model="settings.soundEffects">
+                <span class="slider"></span>
+              </label>
             </div>
           </div>
           
           <!-- 分割线 -->
-          <n-divider />
+          <div class="menu-divider"></div>
           
           <!-- 功能链接 -->
           <div class="menu-section">
             <div class="section-title">功能</div>
-            <n-space vertical>
-              <n-button block @click="goToRecharge" size="small" type="primary">
-                💰 充值
-              </n-button>
-              <n-button block @click="goToVip" size="small" type="info">
-                👑 会员中心
-              </n-button>
-              <n-button block @click="contactService" size="small" type="warning">
-                🎧 客服
-              </n-button>
-              <n-button block @click="goToHelp" size="small" type="default">
-                ❓ 帮助
-              </n-button>
-            </n-space>
+            <div class="menu-item clickable" @click="goToRecharge">
+              <span class="item-label">💰 充值</span>
+              <span class="arrow">›</span>
+            </div>
+            <div class="menu-item clickable" @click="goToVip">
+              <span class="item-label">👑 会员中心</span>
+              <span class="arrow">›</span>
+            </div>
+            <div class="menu-item clickable" @click="contactService">
+              <span class="item-label">🎧 客服</span>
+              <span class="arrow">›</span>
+            </div>
+            <div class="menu-item clickable" @click="goToHelp">
+              <span class="item-label">❓ 帮助</span>
+              <span class="arrow">›</span>
+            </div>
           </div>
         </div>
-      </n-modal>
-    </n-config-provider>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, h } from 'vue'
-import { 
-  NConfigProvider,
-  NButton,
-  NDropdown,
-  NModal,
-  NSwitch,
-  NDivider,
-  NSpace,
-  type DropdownOption
-} from 'naive-ui'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
-
-// 最小化主题配置，保持原有样式
-const gameTheme = {
-  common: {
-    textColorBase: '#ffffff',
-    primaryColor: '#27ae60',
-  },
-  Button: {
-    textColor: '#ffffff',
-    colorTertiary: 'rgba(255, 255, 255, 0.15)',
-    colorTertiaryHover: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: '5px',
-  },
-  Modal: {
-    color: 'rgba(0, 0, 0, 0.9)',
-    textColor: 'rgba(255, 255, 255, 0.95)',
-  },
-  Dropdown: {
-    color: 'rgba(0, 0, 0, 0.95)',
-    textColor: 'rgba(255, 255, 255, 0.95)',
-  }
-}
 
 const gameStore = useGameStore()
 const showSettings = ref(false)
+const settingsDropdown = ref<HTMLElement>()
 
 // 设置选项
 const settings = reactive({
   backgroundMusic: true,
   soundEffects: true
 })
-
-// 下拉菜单选项
-const dropdownOptions = computed<DropdownOption[]>(() => [
-  {
-    label: '设置',
-    key: 'settings'
-  },
-  {
-    type: 'divider',
-    key: 'd1'
-  },
-  {
-    label: '💰 充值',
-    key: 'recharge'
-  },
-  {
-    label: '👑 会员中心',
-    key: 'vip'
-  },
-  {
-    label: '🎧 客服',
-    key: 'service'
-  },
-  {
-    label: '❓ 帮助',
-    key: 'help'
-  }
-])
 
 // 生成局号
 const generateGameNumber = () => {
@@ -208,29 +120,13 @@ const goBack = () => {
   console.log('返回上级页面')
 }
 
+const toggleSettings = () => {
+  showSettings.value = !showSettings.value
+}
+
 const refreshBalance = () => {
   console.log('刷新余额')
   gameStore.updateBalance(gameStore.userBalance.total)
-}
-
-const handleDropdownSelect = (key: string) => {
-  switch (key) {
-    case 'settings':
-      showSettings.value = true
-      break
-    case 'recharge':
-      goToRecharge()
-      break
-    case 'vip':
-      goToVip()
-      break
-    case 'service':
-      contactService()
-      break
-    case 'help':
-      goToHelp()
-      break
-  }
 }
 
 // 功能跳转
@@ -253,16 +149,30 @@ const goToHelp = () => {
   console.log('跳转到帮助页面')
   showSettings.value = false
 }
+
+// 点击外部关闭下拉菜单
+const handleClickOutside = (event: Event) => {
+  if (settingsDropdown.value && !settingsDropdown.value.contains(event.target as Node)) {
+    showSettings.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
-/* 保持原有的样式设计 */
 .top-toolbar {
   position: absolute;
   top: 10px;
   left: 10px;
   right: 10px;
-  height: 40px;
+  height: 40px; /* 减少高度到40px */
   background: rgba(0, 0, 0, 0.85);
   border-radius: 8px;
   display: flex;
@@ -291,16 +201,26 @@ const goToHelp = () => {
 }
 
 .back-btn {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  color: white !important;
-  padding: 4px 8px !important;
-  border-radius: 5px !important;
-  font-size: 13px !important;
-  line-height: 1 !important;
-  height: 28px !important;
-  min-width: 32px !important;
-  font-weight: 500 !important;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  height: 28px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .table-info {
@@ -329,7 +249,7 @@ const goToHelp = () => {
   font-weight: 400;
 }
 
-/* 局号和余额信息区域 - 保持原有设计 */
+/* 局号和余额信息区域 */
 .info-section {
   display: flex;
   flex-direction: column;
@@ -367,31 +287,49 @@ const goToHelp = () => {
 }
 
 .refresh-btn {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  color: white !important;
-  padding: 2px 4px !important;
-  border-radius: 3px !important;
-  font-size: 9px !important;
-  line-height: 1 !important;
-  margin-left: 3px !important;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 9px;
+  line-height: 1;
+  transition: all 0.2s ease;
+  margin-left: 3px;
 }
 
-/* 设置按钮 - 保持原有的汉堡菜单样式 */
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* 设置下拉菜单 */
+.settings-dropdown {
+  position: relative;
+}
+
 .settings-btn {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  color: white !important;
-  padding: 0 !important;
-  border-radius: 5px !important;
-  width: 28px !important;
-  height: 28px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
-/* 三条横线样式 - 保持原有设计 */
+.settings-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* 三条横线样式 */
 .hamburger-menu {
   display: flex;
   flex-direction: column;
@@ -407,9 +345,28 @@ const goToHelp = () => {
   transition: all 0.3s ease;
 }
 
-/* 设置内容 */
-.settings-content {
-  padding: 8px 0;
+/* 下拉菜单 */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  min-width: 180px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.dropdown-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .menu-section {
@@ -422,6 +379,7 @@ const goToHelp = () => {
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  padding: 0 12px;
   margin-bottom: 6px;
 }
 
@@ -429,9 +387,18 @@ const goToHelp = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
+  padding: 6px 12px;
   color: white;
   font-size: 12px;
+  transition: background 0.2s;
+}
+
+.menu-item.clickable {
+  cursor: pointer;
+}
+
+.menu-item.clickable:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .item-label {
@@ -440,25 +407,60 @@ const goToHelp = () => {
   gap: 6px;
 }
 
-/* 深度样式覆盖 */
-:deep(.n-button) {
-  transition: all 0.2s ease !important;
+.arrow {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
 }
 
-:deep(.n-button:hover) {
-  background: rgba(255, 255, 255, 0.25) !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
+.menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 10px;
 }
 
-:deep(.n-modal .n-card) {
-  background: rgba(0, 0, 0, 0.95) !important;
-  border: 1px solid #2d5a42 !important;
-  backdrop-filter: blur(12px) !important;
+/* 开关按钮样式 */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 16px;
 }
 
-:deep(.n-dropdown-menu) {
-  background: rgba(0, 0, 0, 0.95) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px) !important;
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.3);
+  transition: 0.3s;
+  border-radius: 16px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #3498db;
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
 }
 </style>

@@ -8,19 +8,35 @@
         <span class="status-text">{{ statusText }}</span>
       </div>
       
-      <!-- 倒计时 - 使用 Naive UI 圆形进度条替代 SVG -->
+      <!-- 倒计时 - 精确匹配原有SVG的尺寸和位置 -->
       <div class="countdown" v-if="gameStore.gameState.countdown > 0">
         <div class="countdown-container">
-          <n-progress 
-            type="circle" 
-            :percentage="countdownPercentage"
-            :color="progressColor"
-            :rail-color="'rgba(255, 255, 255, 0.15)'"
-            :stroke-width="3"
-            :show-indicator="false"
-            :size="60"
-            class="countdown-ring"
-          />
+          <!-- 使用原有的 SVG 结构确保完全匹配 -->
+          <svg class="countdown-ring" width="60" height="60">
+            <circle
+              class="countdown-ring-background"
+              cx="30"
+              cy="30"
+              r="25"
+              fill="transparent"
+              stroke="rgba(255, 255, 255, 0.15)"
+              stroke-width="3"
+            />
+            <circle
+              class="countdown-ring-progress"
+              :class="{ 'countdown-urgent': gameStore.gameState.countdown <= 5 }"
+              cx="30"
+              cy="30"
+              r="25"
+              fill="transparent"
+              :stroke="progressColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              :stroke-dasharray="circumference"
+              :stroke-dashoffset="strokeDashoffset"
+              transform="rotate(-90 30 30)"
+            />
+          </svg>
           <div class="countdown-content">
             <span 
               class="countdown-number"
@@ -37,28 +53,25 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NConfigProvider, NProgress } from 'naive-ui'
+import { NConfigProvider } from 'naive-ui'
 import { useGameStore } from '@/stores/gameStore'
 
 // 游戏主题配置 - 最小化配置，保持原有样式
 const gameTheme = {
   common: {
     textColorBase: '#ffffff',
-  },
-  Progress: {
-    fillColor: '#00BCD4',
-    railColor: 'rgba(255, 255, 255, 0.15)',
   }
 }
 
 const gameStore = useGameStore()
 
-// 倒计时环形进度条计算
+// 倒计时环形进度条计算 - 恢复原有的 SVG 计算方式
+const circumference = 2 * Math.PI * 25 // 半径25的圆周长
 const totalSeconds = 30 // 假设总倒计时时长为30秒
 
-const countdownPercentage = computed(() => {
+const strokeDashoffset = computed(() => {
   const progress = gameStore.gameState.countdown / totalSeconds
-  return Math.max(0, Math.min(100, progress * 100))
+  return circumference * (1 - progress)
 })
 
 const progressColor = computed(() => {
@@ -200,14 +213,18 @@ const statusText = computed(() => {
   }
 }
 
-/* 深度样式覆盖 - 确保 Naive UI 进度条样式正确 */
-:deep(.n-progress.n-progress--circle) {
+.countdown-ring {
   position: absolute;
   top: 0;
   left: 0;
+  transform: rotate(0deg);
 }
 
-:deep(.n-progress .n-progress-graph-circle-fill) {
-  transition: stroke-dashoffset 1s linear;
+.countdown-ring-progress {
+  transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+}
+
+.countdown-ring-progress.countdown-urgent {
+  stroke: #FF5722;
 }
 </style>
