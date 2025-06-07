@@ -1,64 +1,70 @@
 <template>
   <div class="game-status">
-    <div class="status-indicator" :class="statusClass">
-      <div class="status-dot"></div>
-      <span class="status-text">{{ statusText }}</span>
-    </div>
-    
-    <div class="countdown" v-if="gameStore.gameState.countdown > 0">
-      <div class="countdown-container">
-        <svg class="countdown-ring" width="60" height="60">
-          <circle
-            class="countdown-ring-background"
-            cx="30"
-            cy="30"
-            r="25"
-            fill="transparent"
-            stroke="rgba(255, 255, 255, 0.15)"
-            stroke-width="3"
+    <!-- Naive UI 配置提供者 - 应用游戏主题 -->
+    <n-config-provider :theme-overrides="gameTheme">
+      <!-- 状态指示器 - 保持原有设计 -->
+      <div class="status-indicator" :class="statusClass">
+        <div class="status-dot"></div>
+        <span class="status-text">{{ statusText }}</span>
+      </div>
+      
+      <!-- 倒计时 - 使用 Naive UI 圆形进度条替代 SVG -->
+      <div class="countdown" v-if="gameStore.gameState.countdown > 0">
+        <div class="countdown-container">
+          <n-progress 
+            type="circle" 
+            :percentage="countdownPercentage"
+            :color="progressColor"
+            :rail-color="'rgba(255, 255, 255, 0.15)'"
+            :stroke-width="3"
+            :show-indicator="false"
+            :size="60"
+            class="countdown-ring"
           />
-          <circle
-            class="countdown-ring-progress"
-            :class="{ 'countdown-urgent': gameStore.gameState.countdown <= 5 }"
-            cx="30"
-            cy="30"
-            r="25"
-            fill="transparent"
-            stroke="#00BCD4"
-            stroke-width="3"
-            stroke-linecap="round"
-            :stroke-dasharray="circumference"
-            :stroke-dashoffset="strokeDashoffset"
-            transform="rotate(-90 30 30)"
-          />
-        </svg>
-        <div class="countdown-content">
-          <span 
-            class="countdown-number"
-            :class="{ 'countdown-urgent': gameStore.gameState.countdown <= 5 }"
-          >
-            {{ gameStore.gameState.countdown }}
-          </span>
+          <div class="countdown-content">
+            <span 
+              class="countdown-number"
+              :class="{ 'countdown-urgent': gameStore.gameState.countdown <= 5 }"
+            >
+              {{ gameStore.gameState.countdown }}
+            </span>
+          </div>
         </div>
       </div>
-      <span class="countdown-label">{{ countdownLabel }}</span>
-    </div>
+    </n-config-provider>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { NConfigProvider, NProgress } from 'naive-ui'
 import { useGameStore } from '@/stores/gameStore'
+
+// 游戏主题配置 - 最小化配置，保持原有样式
+const gameTheme = {
+  common: {
+    textColorBase: '#ffffff',
+  },
+  Progress: {
+    fillColor: '#00BCD4',
+    railColor: 'rgba(255, 255, 255, 0.15)',
+  }
+}
 
 const gameStore = useGameStore()
 
 // 倒计时环形进度条计算
-const circumference = 2 * Math.PI * 25 // 半径25的圆周长
 const totalSeconds = 30 // 假设总倒计时时长为30秒
 
-const strokeDashoffset = computed(() => {
+const countdownPercentage = computed(() => {
   const progress = gameStore.gameState.countdown / totalSeconds
-  return circumference * (1 - progress)
+  return Math.max(0, Math.min(100, progress * 100))
+})
+
+const progressColor = computed(() => {
+  const countdown = gameStore.gameState.countdown
+  if (countdown <= 5) return '#FF5722'
+  return '#00BCD4'
 })
 
 const statusClass = computed(() => {
@@ -81,16 +87,6 @@ const statusText = computed(() => {
   }
   return statusMap[status] || '未知状态'
 })
-
-const countdownLabel = computed(() => {
-  const status = gameStore.gameState.status
-  const labelMap: Record<string, string> = {
-    betting: '投注倒计时',
-    dealing: '开牌倒计时',
-    result: '下局开始'
-  }
-  return labelMap[status] || '倒计时'
-})
 </script>
 
 <style scoped>
@@ -105,6 +101,7 @@ const countdownLabel = computed(() => {
   z-index: 15;
 }
 
+/* 状态指示器 - 保持原有样式 */
 .status-indicator {
   display: flex;
   align-items: center;
@@ -147,6 +144,7 @@ const countdownLabel = computed(() => {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+/* 倒计时 - 保持原有布局，只替换圆形进度条 */
 .countdown {
   display: flex;
   flex-direction: column;
@@ -164,15 +162,6 @@ const countdownLabel = computed(() => {
   position: absolute;
   top: 0;
   left: 0;
-  transform: rotate(0deg);
-}
-
-.countdown-ring-progress {
-  transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
-}
-
-.countdown-ring-progress.countdown-urgent {
-  stroke: #FF5722;
 }
 
 .countdown-content {
@@ -202,14 +191,6 @@ const countdownLabel = computed(() => {
   color: #FF5722;
 }
 
-.countdown-label {
-  color: white;
-  font-size: 12px;
-  opacity: 0.85;
-  font-weight: 500;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -217,5 +198,16 @@ const countdownLabel = computed(() => {
   50% {
     opacity: 0.5;
   }
+}
+
+/* 深度样式覆盖 - 确保 Naive UI 进度条样式正确 */
+:deep(.n-progress.n-progress--circle) {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+:deep(.n-progress .n-progress-graph-circle-fill) {
+  transition: stroke-dashoffset 1s linear;
 }
 </style>
