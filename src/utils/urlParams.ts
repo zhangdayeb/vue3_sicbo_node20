@@ -50,11 +50,24 @@ export const validateGameParams = (params: GameParams): {
     errors.push('token 格式无效')
   }
   
+  // 验证游戏类型是否有效
+  if (params.game_type && !isValidGameType(params.game_type)) {
+    errors.push(`无效的游戏类型: ${params.game_type}`)
+  }
+  
   return {
     isValid: missingParams.length === 0 && errors.length === 0,
     missingParams,
     errors
   }
+}
+
+/**
+ * 检查游戏类型是否有效
+ */
+export const isValidGameType = (gameType: string): boolean => {
+  const validGameTypes = ['1', '2', '3', '6', '8', '9'] // 根据您提供的表格
+  return validGameTypes.includes(gameType)
 }
 
 /**
@@ -70,7 +83,7 @@ export const getCurrentURL = (): string => {
 export const generateTestURL = (params: Partial<GameParams>): string => {
   const defaultParams: GameParams = {
     table_id: '3',
-    game_type: '3',
+    game_type: '3', // 默认骰宝
     user_id: '8',
     token: 'test_token_123456789'
   }
@@ -93,18 +106,71 @@ export const hasTestParams = (): boolean => {
 }
 
 /**
- * 获取游戏类型描述
+ * 获取游戏类型描述（根据您提供的表格更新）
  */
 export const getGameTypeDescription = (gameType: string): string => {
   const gameTypes: Record<string, string> = {
-    '1': '百家乐',
-    '2': '龙虎',
-    '3': '骰宝',
-    '4': '轮盘',
-    '5': '牛牛'
+    '1': '现场台',     // ID 1
+    '2': '龙虎',       // ID 2  
+    '3': '百家乐',     // ID 3
+    '6': '牛牛',       // ID 6
+    '8': '三公',       // ID 8
+    '9': '骰宝'        // ID 9
   }
   
   return gameTypes[gameType] || '未知游戏'
+}
+
+/**
+ * 检查当前游戏类型是否为骰宝
+ */
+export const isSicBoGame = (gameType: string): boolean => {
+  return gameType === '9'
+}
+
+/**
+ * 获取游戏类型对应的英文标识
+ */
+export const getGameTypeKey = (gameType: string): string => {
+  const gameTypeKeys: Record<string, string> = {
+    '1': 'live_table',     // 现场台
+    '2': 'dragon_tiger',   // 龙虎
+    '3': 'baccarat',       // 百家乐
+    '6': 'bull_bull',      // 牛牛
+    '8': 'three_cards',    // 三公
+    '9': 'sicbo'           // 骰宝
+  }
+  
+  return gameTypeKeys[gameType] || 'unknown'
+}
+
+/**
+ * 验证当前访问的游戏类型是否正确
+ */
+export const validateCurrentGameType = (): {
+  isValid: boolean
+  currentType: string
+  expectedType: string
+  error?: string
+} => {
+  const params = parseGameParams()
+  const currentType = params.game_type
+  
+  // 当前是骰宝应用，检查游戏类型是否为骰宝(9)
+  if (!isSicBoGame(currentType)) {
+    return {
+      isValid: false,
+      currentType,
+      expectedType: '9',
+      error: `当前游戏类型(${getGameTypeDescription(currentType)})与应用不匹配，期望骰宝游戏`
+    }
+  }
+  
+  return {
+    isValid: true,
+    currentType,
+    expectedType: '9'
+  }
 }
 
 /**
@@ -114,10 +180,13 @@ export const logGameParams = (): void => {
   if (import.meta.env.DEV) {
     const params = parseGameParams()
     const validation = validateGameParams(params)
+    const gameTypeValidation = validateCurrentGameType()
     
     console.group('🎮 游戏参数信息')
     console.log('📋 解析结果:', params)
-    console.log('✅ 验证状态:', validation.isValid ? '通过' : '失败')
+    console.log('✅ 参数验证:', validation.isValid ? '通过' : '失败')
+    console.log('🎯 游戏类型:', getGameTypeDescription(params.game_type))
+    console.log('🎲 骰宝匹配:', gameTypeValidation.isValid ? '正确' : '错误')
     
     if (!validation.isValid) {
       if (validation.missingParams.length > 0) {
@@ -128,8 +197,32 @@ export const logGameParams = (): void => {
       }
     }
     
-    console.log('🎯 游戏类型:', getGameTypeDescription(params.game_type))
+    if (!gameTypeValidation.isValid) {
+      console.warn('⚠️ 游戏类型警告:', gameTypeValidation.error)
+    }
+    
     console.log('🔗 完整URL:', getCurrentURL())
     console.groupEnd()
   }
+}
+
+/**
+ * 生成不同游戏类型的测试URL
+ */
+export const generateGameTestURLs = (): Record<string, string> => {
+  const baseParams = {
+    table_id: '3',
+    user_id: '8', 
+    token: 'test_token_123456789'
+  }
+  
+  const gameTypes = ['1', '2', '3', '6', '8', '9']
+  const urls: Record<string, string> = {}
+  
+  gameTypes.forEach(gameType => {
+    const gameName = getGameTypeDescription(gameType)
+    urls[gameName] = generateTestURL({ ...baseParams, game_type: gameType })
+  })
+  
+  return urls
 }

@@ -86,17 +86,156 @@ export const logEnvInfo = (): void => {
   }
 }
 
-// 环境配置对象
+// 环境配置对象 - 使用您提供的正确API地址
 export const ENV_CONFIG = {
-  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'http://localhost:3001/api'),
-  WS_URL: getEnvVar('VITE_WS_URL', 'ws://localhost:3001/ws'),
-  ENABLE_MOCK: getEnvBoolean('VITE_ENABLE_MOCK', true),
-  ENABLE_TEST_CONSOLE: getEnvBoolean('VITE_ENABLE_TEST_CONSOLE', false),
+  // 生产环境API地址
+  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com/api'),
+  WS_URL: getEnvVar('VITE_WS_URL', 'wss://wsssicbo.wuming888.com'),
+  
+  // 开发配置
+  ENABLE_MOCK: getEnvBoolean('VITE_ENABLE_MOCK', isDev()), // 开发环境默认启用Mock
+  ENABLE_TEST_CONSOLE: getEnvBoolean('VITE_ENABLE_TEST_CONSOLE', isDev()),
   DEBUG_MODE: getEnvBoolean('VITE_DEBUG_MODE', isDev()),
+  
+  // 其他配置
   MODE: getMode(),
   IS_DEV: isDev(),
-  IS_PROD: isProd()
+  IS_PROD: isProd(),
+  
+  // API配置
+  API_TIMEOUT: getEnvNumber('VITE_API_TIMEOUT', 10000),
+  WS_HEARTBEAT_INTERVAL: getEnvNumber('VITE_WS_HEARTBEAT_INTERVAL', 30000),
+  WS_RECONNECT_ATTEMPTS: getEnvNumber('VITE_WS_RECONNECT_ATTEMPTS', 5)
 } as const
 
 // 类型导出
 export type EnvConfig = typeof ENV_CONFIG
+
+/**
+ * 获取完整的API URL
+ */
+export const getApiUrl = (path: string): string => {
+  const baseUrl = ENV_CONFIG.API_BASE_URL.replace('/api', '') // 移除末尾的/api
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  return `${baseUrl}/api${cleanPath}`
+}
+
+/**
+ * 获取WebSocket URL（带参数）
+ */
+export const getWsUrl = (params?: Record<string, string>): string => {
+  let url = ENV_CONFIG.WS_URL
+  
+  if (params && Object.keys(params).length > 0) {
+    const searchParams = new URLSearchParams(params)
+    url += `?${searchParams.toString()}`
+  }
+  
+  return url
+}
+
+/**
+ * 验证API连接
+ */
+export const validateApiConnection = async (): Promise<{
+  isValid: boolean
+  error?: string
+  latency?: number
+}> => {
+  try {
+    const startTime = Date.now()
+    
+    // 尝试连接API健康检查端点
+    const response = await fetch(`${ENV_CONFIG.API_BASE_URL}/health`, {
+      method: 'GET',
+      timeout: ENV_CONFIG.API_TIMEOUT
+    } as RequestInit)
+    
+    const latency = Date.now() - startTime
+    
+    if (response.ok) {
+      return { isValid: true, latency }
+    } else {
+      return { 
+        isValid: false, 
+        error: `API返回错误: ${response.status}`,
+        latency 
+      }
+    }
+  } catch (error: any) {
+    return { 
+      isValid: false, 
+      error: `API连接失败: ${error.message}` 
+    }
+  }
+}
+
+/**
+ * 检查WebSocket连接可用性
+ */
+export const checkWebSocketAvailability = (): Promise<{
+  isAvailable: boolean
+  error?: string
+}> => {
+  return new Promise((resolve) => {
+    try {
+      const ws = new WebSocket(ENV_CONFIG.WS_URL)
+      
+      const timeout = setTimeout(() => {
+        ws.close()
+        resolve({ 
+          isAvailable: false, 
+          error: 'WebSocket连接超时' 
+        })
+      }, 5000)
+      
+      ws.onopen = () => {
+        clearTimeout(timeout)
+        ws.close()
+        resolve({ isAvailable: true })
+      }
+      
+      ws.onerror = (error) => {
+        clearTimeout(timeout)
+        resolve({ 
+          isAvailable: false, 
+          error: 'WebSocket连接失败' 
+        })
+      }
+    } catch (error: any) {
+      resolve({ 
+        isAvailable: false, 
+        error: error.message 
+      })
+    }
+  })
+}
+
+/**
+ * 打印连接测试结果
+ */
+export const logConnectionTest = async (): Promise<void> => {
+  if (!isDev()) return
+  
+  console.group('🔗 连接测试')
+  
+  // API连接测试
+  console.log('🌐 测试API连接...')
+  const apiResult = await validateApiConnection()
+  if (apiResult.isValid) {
+    console.log(`✅ API连接正常 (${apiResult.latency}ms)`)
+  } else {
+    console.error(`❌ API连接失败: ${apiResult.error}`)
+  }
+  
+  // WebSocket连接测试
+  console.log('🔌 测试WebSocket连接...')
+  const wsResult = await checkWebSocketAvailability()
+  if (wsResult.isAvailable) {
+    console.log('✅ WebSocket连接正常')
+  } else {
+    console.error(`❌ WebSocket连接失败: ${wsResult.error}`)
+  }
+  
+  console.groupEnd()
+}

@@ -5,8 +5,15 @@ import { createGameApiService, GameApiService } from '@/services/gameApi'
 import { useBettingStore } from '@/stores/bettingStore'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudio } from './useAudio'
-import { parseGameParams, validateGameParams, logGameParams } from '@/utils/urlParams'
-import { ENV_CONFIG, isDev } from '@/utils/envUtils'
+import { 
+  parseGameParams, 
+  validateGameParams, 
+  validateCurrentGameType,
+  isSicBoGame,
+  getGameTypeDescription,
+  logGameParams 
+} from '@/utils/urlParams'
+import { ENV_CONFIG, isDev, validateApiConnection, logConnectionTest } from '@/utils/envUtils'
 import type { 
   GameParams, 
   UserInfo, 
@@ -30,6 +37,12 @@ export interface GameLifecycleState {
   tableInfo: any
   currentGame: any
   lastGameResult: GameResultData | null
+  gameTypeValidation: {
+    isValid: boolean
+    currentType: string
+    expectedType: string
+    error?: string
+  }
 }
 
 export interface GameLifecycleOptions {
@@ -38,6 +51,7 @@ export interface GameLifecycleOptions {
   enableAudio?: boolean
   enableVibration?: boolean
   debugMode?: boolean
+  skipGameTypeValidation?: boolean
 }
 
 export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
@@ -46,7 +60,8 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     autoInitialize = true,
     enableAudio = true,
     enableVibration = true,
-    debugMode = ENV_CONFIG.DEBUG_MODE
+    debugMode = ENV_CONFIG.DEBUG_MODE,
+    skipGameTypeValidation = false
   } = options
 
   // Store 引用
@@ -70,7 +85,12 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     userInfo: null,
     tableInfo: null,
     currentGame: null,
-    lastGameResult: null
+    lastGameResult: null,
+    gameTypeValidation: {
+      isValid: true,
+      currentType: '',
+      expectedType: '9'
+    }
   })
 
   // 性能监控
@@ -86,7 +106,8 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const isReady = computed(() => 
     lifecycleState.isInitialized && 
     lifecycleState.connectionStatus === 'connected' &&
-    !lifecycleState.error
+    !lifecycleState.error &&
+    lifecycleState.gameTypeValidation.isValid
   )
 
   const canPlaceBets = computed(() => 
@@ -104,6 +125,24 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       'result': '结果公布'
     }
     return phaseMap[lifecycleState.currentGame?.status] || '未知状态'
+  })
+
+  const initializationWarnings = computed(() => {
+    const warnings: string[] = []
+    
+    if (!lifecycleState.gameTypeValidation.isValid) {
+      warnings.push(lifecycleState.gameTypeValidation.error || '游戏类型不匹配')
+    }
+    
+    if (enableMock) {
+      warnings.push('当前运行在Mock模式下，数据为模拟数据')
+    }
+    
+    if (debugMode) {
+      warnings.push('调试模式已启用')
+    }
+    
+    return warnings
   })
 
   /**
@@ -150,17 +189,27 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       // 1. 解析和验证URL参数
       await parseAndValidateParams()
 
-      // 2. 如果开启Mock模式，跳过真实服务初始化
+      // 2. 验证游戏类型匹配
+      if (!skipGameTypeValidation) {
+        validateGameTypeMatch()
+      }
+
+      // 3. 连接测试（开发环境）
+      if (debugMode) {
+        await logConnectionTest()
+      }
+
+      // 4. 如果开启Mock模式，跳过真实服务初始化
       if (enableMock) {
         await initializeMockMode()
       } else {
         await initializeProductionMode()
       }
 
-      // 3. 初始化游戏状态
+      // 5. 初始化游戏状态
       initializeGameStores()
 
-      // 4. 启用音频（如果需要）
+      // 6. 启用音频（如果需要）
       if (enableAudio) {
         await initializeAudio()
       }
@@ -170,8 +219,15 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
 
       debugLog('游戏生命周期初始化完成', {
         duration: performanceMetrics.initializationTime,
-        mode: enableMock ? 'Mock' : 'Production'
+        mode: enableMock ? 'Mock' : 'Production',
+        gameType: getGameTypeDescription(gameParams.value.game_type),
+        warnings: initializationWarnings.value
       })
+
+      // 输出初始化警告
+      if (initializationWarnings.value.length > 0) {
+        console.warn('⚠️ 初始化警告:', initializationWarnings.value)
+      }
 
     } catch (error: any) {
       setError(error)
@@ -204,6 +260,28 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     }
 
     debugLog('URL参数验证通过', gameParams.value)
+  }
+
+  /**
+   * 验证游戏类型匹配
+   */
+  const validateGameTypeMatch = (): void => {
+    debugLog('验证游戏类型匹配')
+    
+    const validation = validateCurrentGameType()
+    lifecycleState.gameTypeValidation = validation
+    
+    if (!validation.isValid) {
+      const errorMsg = `游戏类型不匹配: 当前为${getGameTypeDescription(validation.currentType)}，期望骰宝游戏(ID:9)`
+      console.warn('⚠️ 游戏类型警告:', errorMsg)
+      
+      // 在生产环境中，游戏类型不匹配应该是错误
+      if (ENV_CONFIG.IS_PROD) {
+        throw new Error(errorMsg)
+      }
+    } else {
+      debugLog('游戏类型验证通过: 骰宝游戏')
+    }
   }
 
   /**
@@ -245,17 +323,39 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const initializeProductionMode = async (): Promise<void> => {
     debugLog('初始化生产模式')
 
-    // 1. 创建API服务
+    // 1. 验证API连接
+    await validateApiConnectionAvailability()
+
+    // 2. 创建API服务
     apiService.value = createGameApiService(gameParams.value)
 
-    // 2. 获取用户信息
+    // 3. 获取用户信息
     await fetchUserInfo()
 
-    // 3. 获取桌台信息
+    // 4. 获取桌台信息
     await fetchTableInfo()
 
-    // 4. 初始化WebSocket连接
+    // 5. 初始化WebSocket连接
     await initializeWebSocket()
+  }
+
+  /**
+   * 验证API连接可用性
+   */
+  const validateApiConnectionAvailability = async (): Promise<void> => {
+    debugLog('验证API连接可用性')
+    
+    try {
+      const result = await validateApiConnection()
+      if (!result.isValid) {
+        throw new Error(result.error || 'API连接验证失败')
+      }
+      
+      debugLog(`API连接验证通过 (${result.latency}ms)`)
+    } catch (error) {
+      debugLog('API连接验证失败', error)
+      throw new Error('无法连接到游戏服务器，请检查网络连接')
+    }
   }
 
   /**
@@ -272,7 +372,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       debugLog('用户信息获取成功', userInfo)
     } catch (error) {
       debugLog('获取用户信息失败', error)
-      throw new Error('获取用户信息失败，请检查网络连接')
+      throw new Error('获取用户信息失败，请检查账户状态或网络连接')
     }
   }
 
@@ -289,6 +389,11 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     } catch (error) {
       debugLog('获取桌台信息失败，使用默认配置', error)
       // 使用默认配置，不抛出错误
+      lifecycleState.tableInfo = {
+        table_name: `骰宝${gameParams.value.table_id}号桌`,
+        min_bet: 10,
+        max_bet: 50000
+      }
     }
   }
 
@@ -318,24 +423,22 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     // 设置游戏事件监听器
     setupWebSocketEventListeners()
 
-    // 等待连接建立 - 修复的连接检查逻辑
+    // 等待连接建立
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('WebSocket连接超时'))
       }, 10000)
 
       let checkCount = 0
-      const maxChecks = 100 // 最多检查100次
+      const maxChecks = 100
 
       const checkConnection = () => {
         checkCount++
         
-        // 方式1: 检查 wsService 的连接状态
         const wsConnected = wsService.value && 
                            wsService.value.isConnected && 
                            wsService.value.isConnected.value === true
         
-        // 方式2: 检查本地状态
         const localConnected = lifecycleState.connectionStatus === 'connected'
         
         if (wsConnected || localConnected) {
@@ -388,7 +491,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       gameStore.updateGameStatus(data.status)
       gameStore.updateCountdown(data.countdown)
       
-      // 播放新游戏音效
       if (enableAudio) {
         playSound('new-game')
       }
@@ -407,7 +509,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       gameStore.updateCountdown(data.countdown)
       bettingStore.updateGamePhase(data.status as any)
       
-      // 播放状态变化音效
       if (enableAudio) {
         switch (data.status) {
           case 'betting':
@@ -431,7 +532,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       
       gameStore.updateCountdown(data.countdown)
       
-      // 最后5秒播放倒计时音效
       if (enableAudio && data.countdown <= 5 && data.countdown > 0) {
         playSound('countdown-tick')
       }
@@ -442,8 +542,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       debugLog('游戏结果', data)
       
       lifecycleState.lastGameResult = data
-      
-      // 计算投注结果
       handleGameResult(data)
     })
 
@@ -456,7 +554,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         bettingStore.updateBalance(data.balance)
       }
       
-      // 播放余额变化音效
       if (enableAudio) {
         if (data.change > 0) {
           playWinSound('small')
@@ -479,15 +576,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const handleGameResult = (gameResult: GameResultData): void => {
     debugLog('处理游戏结果', gameResult)
 
-    // 如果有投注，计算结果
     const currentBets = { ...bettingStore.currentBets }
     if (Object.keys(currentBets).length > 0) {
-      // 这里应该根据实际的投注结算逻辑来处理
-      // 由于结算会通过WebSocket的balance_update事件来处理
-      // 所以这里主要是展示结果和播放音效
-      
       if (enableAudio) {
-        // 延迟播放结果音效，等待结算完成
         setTimeout(() => {
           const hasWinningBets = checkWinningBets(currentBets, gameResult)
           if (hasWinningBets) {
@@ -499,7 +590,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       }
     }
 
-    // 清除当前投注
     setTimeout(() => {
       bettingStore.clearBets()
     }, 3000)
@@ -511,7 +601,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const checkWinningBets = (bets: Record<string, number>, gameResult: GameResultData): boolean => {
     const { dice_results, total, is_big, is_odd } = gameResult
     
-    // 简单的中奖检查逻辑
     for (const betType of Object.keys(bets)) {
       switch (betType) {
         case 'small':
@@ -527,7 +616,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
           if (!is_odd) return true
           break
         default:
-          // 其他类型的投注检查...
           break
       }
     }
@@ -541,13 +629,11 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const initializeGameStores = (): void => {
     debugLog('初始化游戏状态存储')
 
-    // 初始化投注存储
     bettingStore.init()
     if (lifecycleState.userInfo) {
       bettingStore.updateBalance(lifecycleState.userInfo.balance)
     }
 
-    // 初始化游戏存储
     if (lifecycleState.tableInfo) {
       gameStore.settings.tableName = lifecycleState.tableInfo.table_name
       gameStore.settings.limits.min = lifecycleState.tableInfo.min_bet
@@ -572,7 +658,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       debugLog('音频系统初始化成功')
     } catch (error) {
       debugLog('音频系统初始化失败', error)
-      // 不抛出错误，音频是可选功能
     }
   }
 
@@ -587,7 +672,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     }
 
     if (enableMock) {
-      // Mock模式下的投注处理
       const totalAmount = bets.reduce((sum, bet) => sum + bet.amount, 0)
       const newBalance = lifecycleState.userInfo!.balance - totalAmount
       
@@ -602,18 +686,16 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         bets: bets.map(bet => ({
           bet_type: bet.bet_type,
           amount: bet.amount,
-          odds: '1:1' // 简化的赔率
+          odds: '1:1'
         }))
       }
     } else {
-      // 生产模式下的投注处理
       const startTime = Date.now()
       
       try {
         const result = await apiService.value!.placeBets(bets)
         performanceMetrics.apiLatency = Date.now() - startTime
         
-        // 更新本地余额
         if (lifecycleState.userInfo) {
           lifecycleState.userInfo.balance = result.new_balance
           bettingStore.updateBalance(result.new_balance)
@@ -639,11 +721,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       performanceMetrics.reconnectCount++
       
       if (enableMock) {
-        // Mock模式下的重连
         await new Promise(resolve => setTimeout(resolve, 1000))
         lifecycleState.connectionStatus = 'connected'
       } else {
-        // 生产模式下的重连
         if (wsService.value && typeof wsService.value.reconnect === 'function') {
           await wsService.value.reconnect()
         }
@@ -669,9 +749,11 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     countdown: lifecycleState.currentGame?.countdown,
     userBalance: lifecycleState.userInfo?.balance,
     connectionStatus: lifecycleState.connectionStatus,
+    gameTypeValidation: lifecycleState.gameTypeValidation,
     enableMock,
     debugMode,
-    envConfig: ENV_CONFIG
+    envConfig: ENV_CONFIG,
+    warnings: initializationWarnings.value
   })
 
   /**
@@ -680,12 +762,10 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const cleanup = (): void => {
     debugLog('清理游戏生命周期资源')
     
-    // 断开WebSocket连接
     if (wsService.value && typeof wsService.value.disconnect === 'function') {
       wsService.value.disconnect()
     }
     
-    // 清理状态
     lifecycleState.isInitialized = false
     lifecycleState.connectionStatus = 'disconnected'
     
@@ -716,6 +796,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     isReady,
     canPlaceBets,
     gamePhaseText,
+    initializationWarnings,
     
     // 方法
     initialize,
