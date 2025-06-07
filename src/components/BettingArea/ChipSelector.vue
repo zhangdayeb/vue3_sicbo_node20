@@ -3,65 +3,36 @@
     <!-- Naive UI 配置提供者 - 应用游戏主题 -->
     <n-config-provider :theme-overrides="gameTheme">
       <!-- 筹码选择容器 -->
-      <n-space justify="center" align="center" class="chip-container">
-        <!-- 筹码选择按钮组 -->
-        <n-space :size="8" align="center" class="chip-list">
-          <!-- 常用筹码按钮 -->
-          <n-tooltip
+      <div class="chip-container">
+        <div class="chip-list">
+          <!-- 5个常用筹码 -->
+          <button
             v-for="chip in favoriteChips"
             :key="chip.value"
-            :delay="800"
-            placement="top"
-            trigger="hover"
+            class="chip-btn"
+            :class="{ 'active': selectedChip === chip.value }"
+            @click="selectChip(chip.value)"
           >
-            <template #trigger>
-              <n-button
-                :type="selectedChip === chip.value ? 'primary' : 'default'"
-                size="large"
-                circle
-                @click="selectChip(chip.value)"
-                class="chip-btn"
-                :class="{ 'active-chip': selectedChip === chip.value }"
-              >
-                <template #icon>
-                  <div class="chip-content">
-                    <img 
-                      :src="getChipImage(chip.value, 'selected')" 
-                      :alt="chip.label"
-                      class="chip-image"
-                    />
-                  </div>
-                </template>
-              </n-button>
-            </template>
-            <span class="chip-tooltip">
-              <n-text strong>{{ chip.label }}</n-text>
-              <n-divider vertical />
-              <n-text depth="2">点击选择</n-text>
-            </span>
-          </n-tooltip>
+            <img 
+              :src="getChipImage(chip.value, 'selected')" 
+              :alt="chip.label"
+              class="chip-image"
+            />
+          </button>
           
           <!-- 设置按钮 -->
-          <n-tooltip placement="top" trigger="hover" :delay="500">
-            <template #trigger>
-              <n-button
-                type="tertiary"
-                size="large"
-                circle
-                @click="openSettings"
-                class="settings-btn"
-              >
-                <template #icon>
-                  <n-icon size="20" class="settings-icon">
-                    <SettingsIcon />
-                  </n-icon>
-                </template>
-              </n-button>
-            </template>
-            <span>筹码设置</span>
-          </n-tooltip>
-        </n-space>
-      </n-space>
+          <button
+            class="chip-btn settings-btn"
+            @click="openSettings"
+          >
+            <img 
+              src="/src/assets/images/chips/chip.png" 
+              alt="设置"
+              class="chip-image settings-icon"
+            />
+          </button>
+        </div>
+      </div>
 
       <!-- 设置弹窗 -->
       <n-modal 
@@ -151,40 +122,6 @@
                 rail-color="rgba(255, 255, 255, 0.1)"
                 class="selection-progress"
               />
-            </n-card>
-
-            <!-- 快速预设 -->
-            <n-card 
-              class="presets-card"
-              :bordered="false"
-              size="small"
-            >
-              <template #header>
-                <n-space align="center" :size="8">
-                  <n-icon size="16" color="#ffd700">
-                    <FlashIcon />
-                  </n-icon>
-                  <n-text strong>快速预设</n-text>
-                </n-space>
-              </template>
-              
-              <n-space :size="8">
-                <n-button
-                  v-for="preset in chipPresets"
-                  :key="preset.id"
-                  size="small"
-                  type="tertiary"
-                  @click="applyPreset(preset.chips)"
-                  class="preset-btn"
-                >
-                  <template #icon>
-                    <n-icon size="14">
-                      <component :is="preset.icon" />
-                    </n-icon>
-                  </template>
-                  {{ preset.name }}
-                </n-button>
-              </n-space>
             </n-card>
 
             <!-- 筹码选择区域 -->
@@ -322,7 +259,6 @@ import {
   NScrollbar,
   NH3,
   NText,
-  NDivider,
   NAvatar,
   NStatistic,
   NProgress,
@@ -337,12 +273,7 @@ import {
   Save as SaveIcon,
   Close as CloseIcon,
   LogoUsd as CasinoIcon,
-  Flash as FlashIcon,
-  Grid as GridIcon,
-  TrendingUp as TrendingUpIcon,
-  Star as StarIcon,
-  Diamond as DiamondIcon,
-  Trophy as TrophyIcon
+  Grid as GridIcon
 } from '@vicons/ionicons5'
 
 // 游戏主题配置
@@ -367,27 +298,6 @@ const gameTheme = {
     boxShadow1: '0 2px 8px rgba(0, 0, 0, 0.3)',
     boxShadow2: '0 4px 16px rgba(0, 0, 0, 0.4)',
     boxShadow3: '0 8px 32px rgba(0, 0, 0, 0.5)',
-  },
-  Button: {
-    textColor: '#ffffff',
-    textColorHover: '#ffffff',
-    textColorPressed: '#ffffff',
-    textColorFocus: '#ffffff',
-    
-    colorPrimary: '#27ae60',
-    colorPrimaryHover: '#2ecc71',
-    colorPrimaryPressed: '#229954',
-    
-    colorTertiary: 'rgba(255, 255, 255, 0.1)',
-    colorTertiaryHover: 'rgba(255, 255, 255, 0.2)',
-    colorTertiaryPressed: 'rgba(255, 255, 255, 0.15)',
-    
-    fontWeight: '600',
-    borderRadius: '50%',
-    
-    paddingRoundLarge: '0',
-    widthLarge: '48px',
-    heightLarge: '48px',
   },
   Card: {
     color: 'rgba(45, 90, 66, 0.6)',
@@ -465,34 +375,6 @@ const allChips: ChipConfig[] = [
   { value: 1000000000, label: '1000M', filename: '1000M' }
 ]
 
-// 预设方案
-const chipPresets = [
-  {
-    id: 'beginner',
-    name: '新手',
-    icon: StarIcon,
-    chips: [1, 10, 100, 1000, 10000]
-  },
-  {
-    id: 'standard',
-    name: '标准',
-    icon: TrendingUpIcon,
-    chips: [10, 50, 100, 500, 1000]
-  },
-  {
-    id: 'high',
-    name: '高额',
-    icon: DiamondIcon,
-    chips: [1000, 5000, 10000, 50000, 100000]
-  },
-  {
-    id: 'vip',
-    name: 'VIP',
-    icon: TrophyIcon,
-    chips: [10000, 50000, 100000, 500000, 1000000]
-  }
-]
-
 // 默认常用筹码
 const defaultFavorites = [1, 10, 100, 1000, 10000]
 
@@ -552,16 +434,6 @@ const toggleChipSelection = (value: number): void => {
       message.warning('最多只能选择5个常用筹码')
     }
   }
-}
-
-const applyPreset = (chips: number[]): void => {
-  tempFavorites.value = [...chips]
-  
-  const presetName = chipPresets.find(p => 
-    JSON.stringify(p.chips.sort()) === JSON.stringify(chips.sort())
-  )?.name || '自定义'
-  
-  message.success(`已应用 ${presetName} 预设`)
 }
 
 const resetToDefault = (): void => {
@@ -632,82 +504,71 @@ onMounted(() => {
 .chip-selector {
   background: rgba(0, 0, 0, 0.95);
   border-top: 1px solid #2d5a42;
-  padding: 12px;
-  backdrop-filter: blur(10px);
+  padding: 8px 4px; /* 减少左右内边距 */
 }
 
+/* 筹码容器 */
 .chip-container {
+  display: flex;
+  justify-content: center;
   width: 100%;
 }
 
 .chip-list {
-  width: 100%;
-  max-width: 400px;
+  display: flex;
+  justify-content: space-between; /* 改为平分空间 */
+  align-items: center;
+  width: 100%; /* 占满整个宽度 */
+  max-width: 100%; /* 移除最大宽度限制 */
+  gap: 4px; /* 减小间距 */
+  padding: 0 8px; /* 添加左右内边距 */
 }
 
-/* 筹码按钮样式 */
 .chip-btn {
   position: relative;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.chip-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3);
-}
-
-.chip-btn.active-chip {
-  transform: translateY(-3px) scale(1.1);
-  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
-}
-
-.chip-content {
-  position: relative;
-  width: 40px;
-  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  padding: 3px;
+  border-radius: 50%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  flex: 1; /* 平均分配空间 */
+  max-width: 60px; /* 限制最大宽度 */
+}
+
+.chip-btn:active {
+  transform: scale(0.95);
+}
+
+.chip-btn.active {
+  transform: scale(1.1);
 }
 
 .chip-image {
-  width: 38px;
-  height: 38px;
+  width: 50px; /* 增大筹码尺寸 */
+  height: 50px;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   transition: all 0.3s ease;
 }
 
-.chip-btn.active-chip .chip-image {
-  filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.6));
-}
-
-/* 设置按钮 */
-.settings-btn {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-}
-
-.settings-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.2);
+.chip-btn.active .chip-image {
+  filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.5));
 }
 
 .settings-icon {
-  transition: transform 0.3s ease;
+  opacity: 0.8;
 }
 
 .settings-btn:hover .settings-icon {
-  transform: rotate(90deg);
-}
-
-/* 工具提示样式 */
-.chip-tooltip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  opacity: 1;
+  transform: rotate(15deg);
 }
 
 /* 模态框标题 */
@@ -746,27 +607,6 @@ onMounted(() => {
 
 .selection-progress {
   margin-top: 12px;
-}
-
-/* 预设卡片 */
-.presets-card {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 193, 7, 0.1)) !important;
-  border: 2px solid rgba(255, 215, 0, 0.3) !important;
-}
-
-.preset-btn {
-  border-radius: 6px !important;
-  font-size: 12px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  transition: all 0.3s ease;
-}
-
-.preset-btn:hover {
-  background: rgba(255, 215, 0, 0.2) !important;
-  border-color: rgba(255, 215, 0, 0.4) !important;
-  transform: translateY(-1px);
 }
 
 /* 筹码选择卡片 */
@@ -908,6 +748,11 @@ onMounted(() => {
 
 /* 响应式适配 */
 @media (max-width: 768px) {
+  .chip-image {
+    width: 46px;
+    height: 46px;
+  }
+  
   .chips-grid {
     grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
     gap: 10px;
@@ -930,17 +775,17 @@ onMounted(() => {
 
 @media (max-width: 480px) {
   .chip-selector {
-    padding: 8px;
+    padding: 8px 2px; /* 进一步减少边距 */
   }
   
-  .chip-content {
-    width: 36px;
-    height: 36px;
+  .chip-list {
+    gap: 2px;
+    padding: 0 4px;
   }
   
   .chip-image {
-    width: 34px;
-    height: 34px;
+    width: 42px;
+    height: 42px;
   }
   
   .chips-grid {
@@ -954,6 +799,18 @@ onMounted(() => {
   
   .chip-label {
     font-size: 11px;
+  }
+}
+
+@media (max-width: 375px) {
+  .chip-image {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .chip-list {
+    gap: 1px;
+    padding: 0 2px;
   }
 }
 
@@ -1009,12 +866,6 @@ onMounted(() => {
   border-color: #5bb77c !important;
   box-shadow: 0 4px 12px rgba(39, 174, 96, 0.5) !important;
   transform: translateY(-1px) !important;
-}
-
-:deep(.n-button--tertiary-type) {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 2px solid rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
 }
 
 :deep(.n-card) {
