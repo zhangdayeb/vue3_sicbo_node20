@@ -1,0 +1,707 @@
+// src/composables/useGameLifecycle.ts
+import { ref, computed, reactive, onMounted, onUnmounted, readonly } from 'vue'
+import { useWebSocket } from './useWebSocket'
+import { createGameApiService, GameApiService } from '@/services/gameApi'
+import { useBettingStore } from '@/stores/bettingStore'
+import { useGameStore } from '@/stores/gameStore'
+import { useAudio } from './useAudio'
+import { parseGameParams, validateGameParams, logGameParams } from '@/utils/urlParams'
+import type { 
+  GameParams, 
+  UserInfo, 
+  BetResponseData,
+  WSConnectionStatus,
+  TableJoinedData,
+  NewGameStartedData,
+  GameStatusChangeData,
+  CountdownTickData,
+  GameResultData,
+  BalanceUpdateData,
+  WSErrorData
+} from '@/types/api'
+
+export interface GameLifecycleState {
+  isInitialized: boolean
+  isLoading: boolean
+  connectionStatus: WSConnectionStatus
+  error: string | null
+  userInfo: UserInfo | null
+  tableInfo: any
+  currentGame: any
+  lastGameResult: GameResultData | null
+}
+
+export interface GameLifecycleOptions {
+  enableMock?: boolean
+  autoInitialize?: boolean
+  enableAudio?: boolean
+  enableVibration?: boolean
+  debugMode?: boolean
+}
+
+export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
+  const {
+    enableMock = import.meta.env.VITE_ENABLE_MOCK === 'true',
+    autoInitialize = true,
+    enableAudio = true,
+    enableVibration = true,
+    debugMode = import.meta.env.DEV
+  } = options
+
+  // Store 引用
+  const bettingStore = useBettingStore()
+  const gameStore = useGameStore()
+  const { playSound, playWinSound, unlockAudioContext } = useAudio()
+
+  // 游戏参数
+  const gameParams = ref<GameParams>({ table_id: '', game_type: '', user_id: '', token: '' })
+  
+  // 服务实例
+  const apiService = ref<GameApiService | null>(null)
+  const wsService = ref<ReturnType<typeof useWebSocket> | null>(null)
+
+  // 游戏生命周期状态
+  const lifecycleState = reactive<GameLifecycleState>({
+    isInitialized: false,
+    isLoading: false,
+    connectionStatus: 'disconnected',
+    error: null,
+    userInfo: null,
+    tableInfo: null,
+    currentGame: null,
+    lastGameResult: null
+  })
+
+  // 性能监控
+  const performanceMetrics = reactive({
+    initializationTime: 0,
+    apiLatency: 0,
+    wsLatency: 0,
+    errorCount: 0,
+    reconnectCount: 0
+  })
+
+  // 计算属性
+  const isReady = computed(() => 
+    lifecycleState.isInitialized && 
+    lifecycleState.connectionStatus === 'connected' &&
+    !lifecycleState.error
+  )
+
+  const canPlaceBets = computed(() => 
+    isReady.value && 
+    lifecycleState.currentGame?.status === 'betting' &&
+    lifecycleState.userInfo &&
+    lifecycleState.userInfo.balance > 0
+  )
+
+  const gamePhaseText = computed(() => {
+    const phaseMap: Record<string, string> = {
+      'waiting': '等待开始',
+      'betting': '投注进行中',
+      'dealing': '开牌中',
+      'result': '结果公布'
+    }
+    return phaseMap[lifecycleState.currentGame?.status] || '未知状态'
+  })
+
+  /**
+   * 调试日志
+   */
+  const debugLog = (message: string, data?: any) => {
+    if (debugMode) {
+      if (data) {
+        console.log(`[GameLifecycle] ${message}`, data)
+      } else {
+        console.log(`[GameLifecycle] ${message}`)
+      }
+    }
+  }
+
+  /**
+   * 设置错误状态
+   */
+  const setError = (error: string | Error) => {
+    const errorMessage = error instanceof Error ? error.message : error
+    lifecycleState.error = errorMessage
+    performanceMetrics.errorCount++
+    debugLog('设置错误状态', errorMessage)
+  }
+
+  /**
+   * 清除错误状态
+   */
+  const clearError = () => {
+    lifecycleState.error = null
+  }
+
+  /**
+   * 初始化游戏生命周期
+   */
+  const initialize = async (): Promise<void> => {
+    const startTime = Date.now()
+    debugLog('开始初始化游戏生命周期')
+    
+    try {
+      lifecycleState.isLoading = true
+      clearError()
+
+      // 1. 解析和验证URL参数
+      await parseAndValidateParams()
+
+      // 2. 如果开启Mock模式，跳过真实服务初始化
+      if (enableMock) {
+        await initializeMockMode()
+      } else {
+        await initializeProductionMode()
+      }
+
+      // 3. 初始化游戏状态
+      initializeGameStores()
+
+      // 4. 启用音频（如果需要）
+      if (enableAudio) {
+        await initializeAudio()
+      }
+
+      lifecycleState.isInitialized = true
+      performanceMetrics.initializationTime = Date.now() - startTime
+
+      debugLog('游戏生命周期初始化完成', {
+        duration: performanceMetrics.initializationTime,
+        mode: enableMock ? 'Mock' : 'Production'
+      })
+
+    } catch (error: any) {
+      setError(error)
+      debugLog('初始化失败', error)
+      throw error
+    } finally {
+      lifecycleState.isLoading = false
+    }
+  }
+
+  /**
+   * 解析和验证URL参数
+   */
+  const parseAndValidateParams = async (): Promise<void> => {
+    debugLog('解析URL参数')
+    
+    // 解析URL参数
+    gameParams.value = parseGameParams()
+    
+    // 输出调试信息
+    if (debugMode) {
+      logGameParams()
+    }
+
+    // 验证参数
+    const validation = validateGameParams(gameParams.value)
+    if (!validation.isValid) {
+      const errorMsg = `URL参数无效: ${[...validation.missingParams, ...validation.errors].join(', ')}`
+      throw new Error(errorMsg)
+    }
+
+    debugLog('URL参数验证通过', gameParams.value)
+  }
+
+  /**
+   * 初始化Mock模式
+   */
+  const initializeMockMode = async (): Promise<void> => {
+    debugLog('初始化Mock模式')
+
+    // 模拟用户信息
+    lifecycleState.userInfo = {
+      user_id: gameParams.value.user_id,
+      username: '演示用户',
+      balance: 50000,
+      vip_level: 2,
+      currency: 'CNY'
+    }
+
+    // 模拟桌台信息
+    lifecycleState.tableInfo = {
+      table_name: `骰宝${gameParams.value.table_id}号桌`,
+      min_bet: 10,
+      max_bet: 50000
+    }
+
+    // 模拟当前游戏
+    lifecycleState.currentGame = {
+      game_number: `T${gameParams.value.table_id}24120700001`,
+      status: 'waiting',
+      countdown: 0,
+      round: 1
+    }
+
+    lifecycleState.connectionStatus = 'connected'
+  }
+
+  /**
+   * 初始化生产模式
+   */
+  const initializeProductionMode = async (): Promise<void> => {
+    debugLog('初始化生产模式')
+
+    // 1. 创建API服务
+    apiService.value = createGameApiService(gameParams.value)
+
+    // 2. 获取用户信息
+    await fetchUserInfo()
+
+    // 3. 获取桌台信息
+    await fetchTableInfo()
+
+    // 4. 初始化WebSocket连接
+    await initializeWebSocket()
+  }
+
+  /**
+   * 获取用户信息
+   */
+  const fetchUserInfo = async (): Promise<void> => {
+    const startTime = Date.now()
+    debugLog('获取用户信息')
+
+    try {
+      const userInfo = await apiService.value!.getUserInfo()
+      lifecycleState.userInfo = userInfo
+      performanceMetrics.apiLatency = Date.now() - startTime
+      debugLog('用户信息获取成功', userInfo)
+    } catch (error) {
+      debugLog('获取用户信息失败', error)
+      throw new Error('获取用户信息失败，请检查网络连接')
+    }
+  }
+
+  /**
+   * 获取桌台信息
+   */
+  const fetchTableInfo = async (): Promise<void> => {
+    debugLog('获取桌台信息')
+
+    try {
+      const tableInfo = await apiService.value!.getTableInfo()
+      lifecycleState.tableInfo = tableInfo
+      debugLog('桌台信息获取成功', tableInfo)
+    } catch (error) {
+      debugLog('获取桌台信息失败，使用默认配置', error)
+      // 使用默认配置，不抛出错误
+    }
+  }
+
+  /**
+   * 初始化WebSocket连接
+   */
+  const initializeWebSocket = async (): Promise<void> => {
+    debugLog('初始化WebSocket连接')
+
+    wsService.value = useWebSocket(gameParams.value, {
+      autoConnect: true,
+      autoReconnect: true,
+      onConnected: () => {
+        lifecycleState.connectionStatus = 'connected'
+        debugLog('WebSocket连接成功')
+      },
+      onDisconnected: () => {
+        lifecycleState.connectionStatus = 'disconnected'
+        debugLog('WebSocket连接断开')
+      },
+      onError: (error) => {
+        lifecycleState.connectionStatus = 'error'
+        debugLog('WebSocket连接错误', error)
+      }
+    })
+
+    // 设置游戏事件监听器
+    setupWebSocketEventListeners()
+
+    // 等待连接建立
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('WebSocket连接超时'))
+      }, 10000)
+
+      const checkConnection = () => {
+        if (wsService.value?.isConnected.value) {
+          clearTimeout(timeout)
+          resolve()
+        } else {
+          setTimeout(checkConnection, 100)
+        }
+      }
+      checkConnection()
+    })
+  }
+
+  /**
+   * 设置WebSocket事件监听器
+   */
+  const setupWebSocketEventListeners = (): void => {
+    if (!wsService.value) return
+
+    debugLog('设置WebSocket事件监听器')
+
+    // 桌台加入确认
+    wsService.value.on<TableJoinedData>('table_joined', (data) => {
+      debugLog('收到桌台加入确认', data)
+      
+      lifecycleState.tableInfo = data.table_info
+      lifecycleState.currentGame = data.current_game
+      
+      if (data.user_balance !== undefined) {
+        lifecycleState.userInfo!.balance = data.user_balance
+        bettingStore.updateBalance(data.user_balance)
+      }
+    })
+
+    // 新游戏开始
+    wsService.value.on<NewGameStartedData>('new_game_started', (data) => {
+      debugLog('新游戏开始', data)
+      
+      lifecycleState.currentGame = {
+        ...data,
+        status: data.status,
+        countdown: data.countdown
+      }
+      
+      gameStore.updateGameNumber(data.game_number)
+      gameStore.updateGameStatus(data.status)
+      gameStore.updateCountdown(data.countdown)
+      
+      // 播放新游戏音效
+      if (enableAudio) {
+        playSound('new-game')
+      }
+    })
+
+    // 游戏状态变化
+    wsService.value.on<GameStatusChangeData>('game_status_change', (data) => {
+      debugLog('游戏状态变化', data)
+      
+      if (lifecycleState.currentGame) {
+        lifecycleState.currentGame.status = data.status
+        lifecycleState.currentGame.countdown = data.countdown
+      }
+      
+      gameStore.updateGameStatus(data.status)
+      gameStore.updateCountdown(data.countdown)
+      bettingStore.updateGamePhase(data.status as any)
+      
+      // 播放状态变化音效
+      if (enableAudio) {
+        switch (data.status) {
+          case 'betting':
+            playSound('betting-start')
+            break
+          case 'dealing':
+            playSound('dealing-start')
+            break
+          case 'result':
+            playSound('result-ready')
+            break
+        }
+      }
+    })
+
+    // 倒计时更新
+    wsService.value.on<CountdownTickData>('countdown_tick', (data) => {
+      if (lifecycleState.currentGame) {
+        lifecycleState.currentGame.countdown = data.countdown
+      }
+      
+      gameStore.updateCountdown(data.countdown)
+      
+      // 最后5秒播放倒计时音效
+      if (enableAudio && data.countdown <= 5 && data.countdown > 0) {
+        playSound('countdown-tick')
+      }
+    })
+
+    // 游戏结果
+    wsService.value.on<GameResultData>('game_result', (data) => {
+      debugLog('游戏结果', data)
+      
+      lifecycleState.lastGameResult = data
+      
+      // 计算投注结果
+      handleGameResult(data)
+    })
+
+    // 余额更新
+    wsService.value.on<BalanceUpdateData>('balance_update', (data) => {
+      debugLog('余额更新', data)
+      
+      if (lifecycleState.userInfo) {
+        lifecycleState.userInfo.balance = data.balance
+        bettingStore.updateBalance(data.balance)
+      }
+      
+      // 播放余额变化音效
+      if (enableAudio) {
+        if (data.change > 0) {
+          playWinSound('small')
+        } else if (data.reason === 'bet_placed') {
+          playSound('bet-placed')
+        }
+      }
+    })
+
+    // WebSocket错误
+    wsService.value.on<WSErrorData>('error', (data) => {
+      debugLog('WebSocket错误', data)
+      setError(`WebSocket错误: ${data.message}`)
+    })
+  }
+
+  /**
+   * 处理游戏结果
+   */
+  const handleGameResult = (gameResult: GameResultData): void => {
+    debugLog('处理游戏结果', gameResult)
+
+    // 如果有投注，计算结果
+    const currentBets = { ...bettingStore.currentBets }
+    if (Object.keys(currentBets).length > 0) {
+      // 这里应该根据实际的投注结算逻辑来处理
+      // 由于结算会通过WebSocket的balance_update事件来处理
+      // 所以这里主要是展示结果和播放音效
+      
+      if (enableAudio) {
+        // 延迟播放结果音效，等待结算完成
+        setTimeout(() => {
+          const hasWinningBets = checkWinningBets(currentBets, gameResult)
+          if (hasWinningBets) {
+            playWinSound('medium')
+          } else {
+            playSound('lose')
+          }
+        }, 1000)
+      }
+    }
+
+    // 清除当前投注
+    setTimeout(() => {
+      bettingStore.clearBets()
+    }, 3000)
+  }
+
+  /**
+   * 检查是否有中奖投注
+   */
+  const checkWinningBets = (bets: Record<string, number>, gameResult: GameResultData): boolean => {
+    const { dice_results, total, is_big, is_odd } = gameResult
+    
+    // 简单的中奖检查逻辑
+    for (const betType of Object.keys(bets)) {
+      switch (betType) {
+        case 'small':
+          if (!is_big) return true
+          break
+        case 'big':
+          if (is_big) return true
+          break
+        case 'odd':
+          if (is_odd) return true
+          break
+        case 'even':
+          if (!is_odd) return true
+          break
+        default:
+          // 其他类型的投注检查...
+          break
+      }
+    }
+    
+    return false
+  }
+
+  /**
+   * 初始化游戏状态存储
+   */
+  const initializeGameStores = (): void => {
+    debugLog('初始化游戏状态存储')
+
+    // 初始化投注存储
+    bettingStore.init()
+    if (lifecycleState.userInfo) {
+      bettingStore.updateBalance(lifecycleState.userInfo.balance)
+    }
+
+    // 初始化游戏存储
+    if (lifecycleState.tableInfo) {
+      gameStore.settings.tableName = lifecycleState.tableInfo.table_name
+      gameStore.settings.limits.min = lifecycleState.tableInfo.min_bet
+      gameStore.settings.limits.max = lifecycleState.tableInfo.max_bet
+    }
+
+    if (lifecycleState.currentGame) {
+      gameStore.updateGameNumber(lifecycleState.currentGame.game_number)
+      gameStore.updateGameStatus(lifecycleState.currentGame.status)
+      gameStore.updateCountdown(lifecycleState.currentGame.countdown)
+    }
+  }
+
+  /**
+   * 初始化音频
+   */
+  const initializeAudio = async (): Promise<void> => {
+    debugLog('初始化音频系统')
+
+    try {
+      await unlockAudioContext()
+      debugLog('音频系统初始化成功')
+    } catch (error) {
+      debugLog('音频系统初始化失败', error)
+      // 不抛出错误，音频是可选功能
+    }
+  }
+
+  /**
+   * 提交投注
+   */
+  const submitBets = async (bets: Array<{ bet_type: string; amount: number }>): Promise<BetResponseData> => {
+    debugLog('提交投注', bets)
+
+    if (!canPlaceBets.value) {
+      throw new Error('当前无法投注')
+    }
+
+    if (enableMock) {
+      // Mock模式下的投注处理
+      const totalAmount = bets.reduce((sum, bet) => sum + bet.amount, 0)
+      const newBalance = lifecycleState.userInfo!.balance - totalAmount
+      
+      lifecycleState.userInfo!.balance = newBalance
+      bettingStore.updateBalance(newBalance)
+      
+      return {
+        bet_id: `mock_bet_${Date.now()}`,
+        game_number: lifecycleState.currentGame?.game_number || '',
+        total_amount: totalAmount,
+        new_balance: newBalance,
+        bets: bets.map(bet => ({
+          bet_type: bet.bet_type,
+          amount: bet.amount,
+          odds: '1:1' // 简化的赔率
+        }))
+      }
+    } else {
+      // 生产模式下的投注处理
+      const startTime = Date.now()
+      
+      try {
+        const result = await apiService.value!.placeBets(bets)
+        performanceMetrics.apiLatency = Date.now() - startTime
+        
+        // 更新本地余额
+        if (lifecycleState.userInfo) {
+          lifecycleState.userInfo.balance = result.new_balance
+          bettingStore.updateBalance(result.new_balance)
+        }
+        
+        debugLog('投注提交成功', result)
+        return result
+      } catch (error) {
+        debugLog('投注提交失败', error)
+        throw error
+      }
+    }
+  }
+
+  /**
+   * 重新连接
+   */
+  const reconnect = async (): Promise<void> => {
+    debugLog('重新连接')
+    
+    try {
+      lifecycleState.connectionStatus = 'reconnecting'
+      performanceMetrics.reconnectCount++
+      
+      if (enableMock) {
+        // Mock模式下的重连
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        lifecycleState.connectionStatus = 'connected'
+      } else {
+        // 生产模式下的重连
+        await wsService.value?.reconnect()
+      }
+      
+      clearError()
+      debugLog('重新连接成功')
+    } catch (error: any) {
+      setError(error)
+      debugLog('重新连接失败', error)
+      throw error
+    }
+  }
+
+  /**
+   * 获取游戏统计信息
+   */
+  const getGameStats = () => ({
+    ...performanceMetrics,
+    isReady: isReady.value,
+    canPlaceBets: canPlaceBets.value,
+    gamePhase: lifecycleState.currentGame?.status,
+    countdown: lifecycleState.currentGame?.countdown,
+    userBalance: lifecycleState.userInfo?.balance,
+    connectionStatus: lifecycleState.connectionStatus
+  })
+
+  /**
+   * 清理资源
+   */
+  const cleanup = (): void => {
+    debugLog('清理游戏生命周期资源')
+    
+    // 断开WebSocket连接
+    wsService.value?.disconnect()
+    
+    // 清理状态
+    lifecycleState.isInitialized = false
+    lifecycleState.connectionStatus = 'disconnected'
+    
+    debugLog('资源清理完成')
+  }
+
+  // 自动初始化
+  if (autoInitialize) {
+    onMounted(() => {
+      initialize().catch(error => {
+        console.error('游戏生命周期初始化失败:', error)
+      })
+    })
+  }
+
+  // 清理资源
+  onUnmounted(() => {
+    cleanup()
+  })
+
+  return {
+    // 状态
+    lifecycleState: readonly(lifecycleState),
+    gameParams: readonly(gameParams),
+    performanceMetrics: readonly(performanceMetrics),
+    
+    // 计算属性
+    isReady,
+    canPlaceBets,
+    gamePhaseText,
+    
+    // 方法
+    initialize,
+    submitBets,
+    reconnect,
+    clearError,
+    getGameStats,
+    cleanup,
+    
+    // 服务实例访问
+    apiService: readonly(apiService),
+    wsService: readonly(wsService)
+  }
+}
