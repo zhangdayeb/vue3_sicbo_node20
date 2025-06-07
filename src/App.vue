@@ -11,24 +11,16 @@
         <BettingArea />
       </div>
 
-      <!-- 开发环境测试控制台 -->
-      <TestConsole v-if="showTestConsole" />
+
     </div>
   </n-message-provider>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
-import TestConsole from '@/components/Testing/TestConsole.vue'
 
-// 只在开发环境显示测试控制台
-const showTestConsole = computed(() => {
-  return import.meta.env.DEV || 
-         import.meta.env.VITE_ENABLE_TEST_CONSOLE === 'true'
-})
 </script>
 
 <style>
