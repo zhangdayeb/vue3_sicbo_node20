@@ -608,3 +608,4 @@ onMounted(() => {
 .betting-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 215, 0, 0.5);
 }
+</style>

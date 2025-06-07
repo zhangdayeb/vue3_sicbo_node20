@@ -69,19 +69,6 @@ export interface GlowEffect {
   pulseSpeed?: number
 }
 
-export interface ChipEffectOptions {
-  startX: number
-  startY: number
-  endX: number
-  endY: number
-  chipValue: number
-  animationType: 'fly' | 'stack' | 'collect' | 'scatter' | 'pulse'
-  duration?: number
-  easing?: string
-  showTrail?: boolean
-  bounceOnLand?: boolean
-}
-
 export interface WinEffectOptions {
   winAmount: number
   winType: 'small' | 'medium' | 'big' | 'jackpot'
@@ -114,8 +101,7 @@ export const useGameEffects = () => {
     qualityLevel: 'high'
   })
 
-  // 组件引用
-  const chipAnimationRef = ref<ComponentPublicInstance>()
+  // 组件引用 - 移除 chipAnimationRef
   const winningEffectRef = ref<ComponentPublicInstance>()
   const diceRollingEffectRef = ref<ComponentPublicInstance>()
 
@@ -148,109 +134,13 @@ export const useGameEffects = () => {
     return `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  // 设置组件引用
-  const setChipAnimationRef = (ref: ComponentPublicInstance | null) => {
-    if (ref) chipAnimationRef.value = ref
-  }
-
+  // 移除筹码动画相关的 setChipAnimationRef 方法
   const setWinningEffectRef = (ref: ComponentPublicInstance | null) => {
     if (ref) winningEffectRef.value = ref
   }
 
   const setDiceRollingEffectRef = (ref: ComponentPublicInstance | null) => {
     if (ref) diceRollingEffectRef.value = ref
-  }
-
-  // 筹码特效
-  const playChipEffect = async (options: ChipEffectOptions): Promise<string | null> => {
-    if (!canPlayEffects.value || !chipAnimationRef.value) return null
-
-    const effectId = generateEffectId('chip')
-    const adjustedDuration = (options.duration || 1000) / effectiveSpeed.value
-
-    try {
-      let animationId: string | null = null
-
-      switch (options.animationType) {
-        case 'fly':
-          animationId = await (chipAnimationRef.value as any).flyChip(
-            options.chipValue,
-            options.startX,
-            options.startY,
-            options.endX,
-            options.endY,
-            {
-              duration: adjustedDuration,
-              bounceOnLand: options.bounceOnLand,
-              showTrail: options.showTrail && config.enableParticles,
-              curve: 'arc'
-            }
-          )
-          // 播放筹码放置音效
-          playSound('chip-place')
-          break
-
-        case 'stack':
-          animationId = await (chipAnimationRef.value as any).stackChips(
-            options.endX,
-            options.endY,
-            [options.chipValue],
-            { showAmount: true }
-          )
-          playSound('chip-stack')
-          break
-
-        case 'collect':
-          animationId = await (chipAnimationRef.value as any).collectChips(
-            options.endX,
-            options.endY,
-            [options.chipValue],
-            { collectDuration: adjustedDuration }
-          )
-          playSound('chips-collect')
-          break
-
-        case 'scatter':
-          animationId = await (chipAnimationRef.value as any).scatterChips(
-            options.startX,
-            options.startY,
-            [options.chipValue],
-            { duration: adjustedDuration }
-          )
-          break
-
-        case 'pulse':
-          animationId = await (chipAnimationRef.value as any).pulseChip(
-            options.endX,
-            options.endY,
-            options.chipValue,
-            { pulseDuration: adjustedDuration }
-          )
-          break
-      }
-
-      if (animationId) {
-        const effectInstance: EffectInstance = {
-          id: effectId,
-          type: `chip-${options.animationType}`,
-          startTime: Date.now(),
-          duration: adjustedDuration,
-          isActive: true
-        }
-        activeEffects.value.set(effectId, effectInstance)
-
-        // 自动清理
-        setTimeout(() => {
-          activeEffects.value.delete(effectId)
-        }, adjustedDuration)
-
-        return effectId
-      }
-      return null
-    } catch (error) {
-      console.error('筹码特效播放失败:', error)
-      return null
-    }
   }
 
   // 中奖特效
@@ -709,19 +599,6 @@ export const useGameEffects = () => {
     ])
   }
 
-  const playChipPlaceCombo = async (options: ChipEffectOptions): Promise<void> => {
-    const chipEffectId = await playChipEffect(options)
-    if (chipEffectId && options.endX && options.endY) {
-      // 添加落地发光效果
-      setTimeout(() => {
-        const landingElement = document.elementFromPoint(options.endX, options.endY) as HTMLElement
-        if (landingElement) {
-          playGlowEffect(landingElement, { duration: 300 })
-        }
-      }, options.duration || 1000)
-    }
-  }
-
   // 配置管理
   const updateConfig = (newConfig: Partial<EffectConfig>): void => {
     Object.assign(config, newConfig)
@@ -777,22 +654,19 @@ export const useGameEffects = () => {
     effectiveSpeed,
     qualityMultiplier,
     
-    // 组件引用设置
-    setChipAnimationRef,
+    // 组件引用设置 - 移除 setChipAnimationRef
     setWinningEffectRef,
     setDiceRollingEffectRef,
     
-    // 特效播放
-    playChipEffect,
+    // 特效播放 - 移除筹码相关方法
     playWinEffect,
     playDiceEffect,
     playScreenShake,
     playParticleEffect,
     playGlowEffect,
     
-    // 复合特效
+    // 复合特效 - 移除筹码相关的复合特效
     playBetConfirmEffect,
-    playChipPlaceCombo,
     
     // 控制方法
     stopEffect,
