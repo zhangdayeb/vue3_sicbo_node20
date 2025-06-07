@@ -18,7 +18,7 @@
         @mouseup="endPressAnimation"
         @mouseleave="endPressAnimation"
       >
-        <!-- 投注金额显示 - 右上角 - 修复显示条件和样式 -->
+        <!-- 投注金额显示 - 右上角 -->
         <div 
           v-if="getBetAmount(bet.type) > 0" 
           class="bet-amount-corner"
@@ -42,91 +42,11 @@
         <div class="bet-border-glow" v-if="isSelected(bet.type)"></div>
       </div>
     </div>
-
-    <!-- 调试面板 - 帮助排查问题 -->
-    <div v-if="showDebugInfo" class="debug-panel">
-      <h4>🔍 调试信息</h4>
-      
-      <div class="debug-section">
-        <div class="debug-title">📊 当前状态</div>
-        <div class="debug-row">
-          <span class="debug-label">选中筹码:</span>
-          <span class="debug-value highlight">{{ selectedChip }}</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label">可以投注:</span>
-          <span class="debug-value" :class="canPlaceBet ? 'success' : 'error'">
-            {{ canPlaceBet ? '✅ 是' : '❌ 否' }}
-          </span>
-        </div>
-      </div>
-
-      <div class="debug-section">
-        <div class="debug-title">💰 投注记录</div>
-        <div class="debug-row">
-          <span class="debug-label">总投注项目:</span>
-          <span class="debug-value highlight">{{ Object.keys(currentBets).filter(key => currentBets[key] > 0).length }}</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label">总投注金额:</span>
-          <span class="debug-value highlight">{{ totalBetAmount }}</span>
-        </div>
-        <div class="debug-row">
-          <span class="debug-label">详细投注:</span>
-        </div>
-        <div class="debug-bets">
-          <div v-if="Object.keys(currentBets).length === 0" class="no-bets">
-            暂无投注记录
-          </div>
-          <div v-else>
-            <div 
-              v-for="(amount, betType) in currentBets" 
-              :key="betType"
-              v-show="amount > 0"
-              class="bet-record"
-            >
-              <span class="bet-type">{{ getBetLabel(betType) }}</span>
-              <span class="bet-amount">{{ amount }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="debug-section">
-        <div class="debug-title">🎯 各按钮投注金额</div>
-        <div class="bet-amounts-grid">
-          <div 
-            v-for="bet in mainBets" 
-            :key="bet.type"
-            class="bet-amount-item"
-            :class="{ 'has-amount': getBetAmount(bet.type) > 0 }"
-          >
-            <span class="bet-name">{{ bet.label }}</span>
-            <span class="amount">{{ getBetAmount(bet.type) || 0 }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="debug-section">
-        <div class="debug-title">📝 操作日志</div>
-        <div class="debug-logs">
-          <div 
-            v-for="(log, index) in debugLogs" 
-            :key="index"
-            class="log-entry"
-            :class="log.type"
-          >
-            <span class="log-time">{{ log.time }}</span>
-            <span class="log-message">{{ log.message }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 // Props
 interface Props {
@@ -134,13 +54,11 @@ interface Props {
   currentBets: Record<string, number>
   canPlaceBet?: boolean
   enableHapticFeedback?: boolean
-  showDebugInfo?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   canPlaceBet: true,
-  enableHapticFeedback: true,
-  showDebugInfo: true // 默认开启调试，方便排查问题
+  enableHapticFeedback: true
 })
 
 // Emits
@@ -178,9 +96,8 @@ const mainBets = [
 
 // 响应式数据
 const pressAnimationActive = ref(false)
-const debugLogs = ref<Array<{time: string, message: string, type: string}>>([])
 
-// 修复计算属性 - 确保正确返回函数
+// 计算属性
 const isSelected = computed(() => {
   return (betType: string) => {
     const amount = props.currentBets[betType] || 0
@@ -191,13 +108,8 @@ const isSelected = computed(() => {
 const getBetAmount = computed(() => {
   return (betType: string) => {
     const amount = props.currentBets[betType] || 0
-    // 移除计算属性中的日志，避免递归更新警告
     return amount
   }
-})
-
-const totalBetAmount = computed(() => {
-  return Object.values(props.currentBets).reduce((sum, amount) => sum + amount, 0)
 })
 
 // 方法
@@ -210,57 +122,22 @@ const formatBetAmount = (amount: number): string => {
   return amount.toString()
 }
 
-const getBetLabel = (betType: string): string => {
-  const bet = mainBets.find(b => b.type === betType)
-  return bet ? bet.label : betType
-}
-
-const addDebugLog = (message: string, type: string = 'info') => {
-  const now = new Date()
-  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-  
-  debugLogs.value.unshift({
-    time,
-    message,
-    type
-  })
-  
-  // 只保留最近20条日志
-  if (debugLogs.value.length > 20) {
-    debugLogs.value = debugLogs.value.slice(0, 20)
-  }
-}
-
 const handleBetClick = (bet: any) => {
-  addDebugLog(`🎯 点击投注: ${bet.label} (${bet.type})`, 'action')
-  
   if (!props.canPlaceBet) {
-    addDebugLog('❌ 无法投注: canPlaceBet为false', 'error')
     return
   }
 
   if (!props.selectedChip || props.selectedChip <= 0) {
-    addDebugLog('❌ 无法投注: 未选择有效筹码', 'error')
     return
   }
 
-  addDebugLog(`💰 投注参数: 筹码=${props.selectedChip}, 目标=${bet.type}`, 'info')
-
-  try {
-    // 触发震动反馈
-    if (props.enableHapticFeedback && 'vibrate' in navigator) {
-      navigator.vibrate(50)
-    }
-
-    // 发射投注事件 - 这应该会更新父组件的 currentBets
-    emit('place-bet', bet.type)
-    
-    addDebugLog(`✅ 发射投注事件: place-bet(${bet.type})`, 'success')
-
-  } catch (error) {
-    addDebugLog(`💥 投注出错: ${error}`, 'error')
-    console.error('投注失败:', error)
+  // 触发震动反馈
+  if (props.enableHapticFeedback && 'vibrate' in navigator) {
+    navigator.vibrate(50)
   }
+
+  // 发射投注事件
+  emit('place-bet', bet.type)
 }
 
 const startPressAnimation = () => {
@@ -270,40 +147,6 @@ const startPressAnimation = () => {
 const endPressAnimation = () => {
   pressAnimationActive.value = false
 }
-
-// 监听投注变化
-watch(() => props.currentBets, (newBets, oldBets) => {
-  addDebugLog(`📊 投注数据变化检测`, 'watch')
-  addDebugLog(`  旧数据: ${JSON.stringify(oldBets)}`, 'watch')
-  addDebugLog(`  新数据: ${JSON.stringify(newBets)}`, 'watch')
-  
-  // 检查具体变化
-  for (const betType of Object.keys({...oldBets, ...newBets})) {
-    const oldAmount = oldBets?.[betType] || 0
-    const newAmount = newBets?.[betType] || 0
-    if (oldAmount !== newAmount) {
-      addDebugLog(`  🔄 ${getBetLabel(betType)}: ${oldAmount} → ${newAmount}`, 'watch')
-      
-      // 强制更新界面
-      if (newAmount > 0) {
-        addDebugLog(`  ✨ ${getBetLabel(betType)} 应该显示金额: ${newAmount}`, 'watch')
-      }
-    }
-  }
-}, {
-  deep: true,
-  immediate: true
-})
-
-// 监听筹码变化
-watch(() => props.selectedChip, (newChip, oldChip) => {
-  addDebugLog(`🪙 筹码变化: ${oldChip} → ${newChip}`, 'watch')
-})
-
-// 监听投注能力变化
-watch(() => props.canPlaceBet, (newValue, oldValue) => {
-  addDebugLog(`🎮 投注能力变化: ${oldValue} → ${newValue}`, 'watch')
-})
 </script>
 
 <style scoped>
@@ -375,11 +218,11 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   pointer-events: none;
 }
 
-/* 右上角投注金额显示 - 调整位置避免被遮挡 */
+/* 右上角投注金额显示 */
 .bet-amount-corner {
   position: absolute;
-  top: 2px;    /* 从 -6px 改为 2px，向下移动 */
-  right: 2px;  /* 从 -6px 改为 2px，向左移动 */
+  top: 2px;
+  right: 2px;
   background: linear-gradient(135deg, #ff4757, #ff3742);
   color: white;
   border-radius: 8px;
@@ -526,178 +369,6 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   50% { opacity: 1; }
 }
 
-/* 调试面板样式 */
-.debug-panel {
-  margin-top: 16px;
-  padding: 16px;
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(13, 40, 24, 0.8));
-  border: 2px solid #2d5a42;
-  border-radius: 12px;
-  color: white;
-  font-size: 12px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-  backdrop-filter: blur(5px);
-}
-
-.debug-panel h4 {
-  margin: 0 0 12px 0;
-  color: #ffd700;
-  font-size: 14px;
-  text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.debug-section {
-  margin-bottom: 12px;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.debug-title {
-  color: #00bcd4;
-  font-weight: bold;
-  margin-bottom: 8px;
-  font-size: 11px;
-}
-
-.debug-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-  padding: 2px 0;
-}
-
-.debug-label {
-  color: #ccc;
-  font-size: 10px;
-}
-
-.debug-value {
-  color: white;
-  font-weight: bold;
-  font-size: 10px;
-}
-
-.debug-value.highlight {
-  color: #ffd700;
-}
-
-.debug-value.success {
-  color: #4caf50;
-}
-
-.debug-value.error {
-  color: #f44336;
-}
-
-.debug-bets {
-  margin-top: 4px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-}
-
-.no-bets {
-  color: #888;
-  font-style: italic;
-  text-align: center;
-  padding: 8px;
-}
-
-.bet-record {
-  display: flex;
-  justify-content: space-between;
-  padding: 2px 4px;
-  margin-bottom: 2px;
-  background: rgba(255, 215, 0, 0.1);
-  border-radius: 3px;
-}
-
-.bet-type {
-  color: #ffd700;
-}
-
-.bet-amount {
-  color: #4caf50;
-  font-weight: bold;
-}
-
-.bet-amounts-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
-}
-
-.bet-amount-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  font-size: 10px;
-}
-
-.bet-amount-item.has-amount {
-  background: rgba(255, 215, 0, 0.2);
-  border: 1px solid rgba(255, 215, 0, 0.4);
-}
-
-.bet-name {
-  color: #ccc;
-}
-
-.amount {
-  color: #4caf50;
-  font-weight: bold;
-}
-
-.debug-logs {
-  max-height: 200px;
-  overflow-y: auto;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 4px;
-  padding: 4px;
-}
-
-.log-entry {
-  display: flex;
-  gap: 8px;
-  padding: 2px 4px;
-  margin-bottom: 1px;
-  border-radius: 2px;
-  font-size: 9px;
-  line-height: 1.3;
-}
-
-.log-entry.action {
-  background: rgba(0, 188, 212, 0.2);
-}
-
-.log-entry.success {
-  background: rgba(76, 175, 80, 0.2);
-}
-
-.log-entry.error {
-  background: rgba(244, 67, 54, 0.2);
-}
-
-.log-entry.watch {
-  background: rgba(255, 193, 7, 0.2);
-}
-
-.log-time {
-  color: #888;
-  min-width: 50px;
-}
-
-.log-message {
-  color: white;
-  flex: 1;
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
   .main-bet-wrapper {
@@ -737,11 +408,6 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   
   .main-bets-section {
     padding: 6px;
-  }
-  
-  .debug-panel {
-    font-size: 10px;
-    padding: 12px;
   }
 }
 
