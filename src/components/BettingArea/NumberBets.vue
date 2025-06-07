@@ -1,75 +1,140 @@
 <template>
   <div class="number-bets-section">
-    <!-- 上排：小数区域 4-10 -->
-    <div class="number-row">
-      <div class="numbers-grid">
-        <button
-          v-for="number in smallNumbers"
-          :key="number.value"
-          class="number-btn"
-          :class="{ 
-            selected: isSelected(`total-${number.value}`),
-            'has-bet': getBetAmount(`total-${number.value}`) > 0,
-            'high-odds': number.odds >= 30
-          }"
-          @click="placeBet(`total-${number.value}`)"
-        >
-          <!-- 投注金额显示 -->
-          <div 
-            v-if="getBetAmount(`total-${number.value}`) > 0" 
-            class="bet-amount"
+    <!-- Naive UI 配置提供者 - 应用游戏主题 -->
+    <n-config-provider :theme-overrides="gameTheme">
+      <!-- 上排：小数区域 4-10 -->
+      <div class="number-row">
+        <div class="numbers-grid">
+          <div
+            v-for="number in smallNumbers"
+            :key="number.value"
+            class="number-bet-wrapper"
+            :class="{ 
+              'selected': isSelected(`total-${number.value}`),
+              'has-bet': getBetAmount(`total-${number.value}`) > 0,
+              'disabled': !canPlaceBet
+            }"
+            :data-bet-type="`total-${number.value}`"
+            @click="handleBetClick(number)"
+            @touchstart="startPressAnimation"
+            @touchend="endPressAnimation"
+            @mousedown="startPressAnimation"
+            @mouseup="endPressAnimation"
+            @mouseleave="endPressAnimation"
           >
-            {{ getBetAmount(`total-${number.value}`) }}
+            <!-- 投注金额显示 - 右上角 -->
+            <div 
+              v-if="getBetAmount(`total-${number.value}`) > 0" 
+              class="bet-amount-corner"
+            >
+              {{ formatBetAmount(getBetAmount(`total-${number.value}`)) }}
+            </div>
+            
+            <!-- 按钮内容 -->
+            <div class="bet-content">
+              <!-- 数字值 -->
+              <div class="number-value">{{ number.value }}</div>
+              
+              <!-- 赔率显示 -->
+              <div class="number-odds">{{ number.oddsDisplay }}</div>
+              
+              <!-- 概率显示 -->
+              <div class="number-probability">{{ number.probability }}</div>
+            </div>
+
+            <!-- 按钮边框装饰 -->
+            <div class="bet-border-glow" v-if="isSelected(`total-${number.value}`)"></div>
           </div>
-          
-          <div class="number-value">{{ number.value }}</div>
-          <div class="number-odds">{{ number.oddsDisplay }}</div>
-          <div class="number-probability">{{ number.probability }}</div>
-        </button>
+        </div>
       </div>
-    </div>
-    
-    <!-- 下排：大数区域 11-17 (倒序) -->
-    <div class="number-row">
-      <div class="numbers-grid">
-        <button
-          v-for="number in bigNumbers"
-          :key="number.value"
-          class="number-btn"
-          :class="{ 
-            selected: isSelected(`total-${number.value}`),
-            'has-bet': getBetAmount(`total-${number.value}`) > 0,
-            'high-odds': number.odds >= 30
-          }"
-          @click="placeBet(`total-${number.value}`)"
-        >
-          <!-- 投注金额显示 -->
-          <div 
-            v-if="getBetAmount(`total-${number.value}`) > 0" 
-            class="bet-amount"
+      
+      <!-- 下排：大数区域 11-17 (倒序) -->
+      <div class="number-row">
+        <div class="numbers-grid">
+          <div
+            v-for="number in bigNumbers"
+            :key="number.value"
+            class="number-bet-wrapper"
+            :class="{ 
+              'selected': isSelected(`total-${number.value}`),
+              'has-bet': getBetAmount(`total-${number.value}`) > 0,
+              'disabled': !canPlaceBet
+            }"
+            :data-bet-type="`total-${number.value}`"
+            @click="handleBetClick(number)"
+            @touchstart="startPressAnimation"
+            @touchend="endPressAnimation"
+            @mousedown="startPressAnimation"
+            @mouseup="endPressAnimation"
+            @mouseleave="endPressAnimation"
           >
-            {{ getBetAmount(`total-${number.value}`) }}
+            <!-- 投注金额显示 - 右上角 -->
+            <div 
+              v-if="getBetAmount(`total-${number.value}`) > 0" 
+              class="bet-amount-corner"
+            >
+              {{ formatBetAmount(getBetAmount(`total-${number.value}`)) }}
+            </div>
+            
+            <!-- 按钮内容 -->
+            <div class="bet-content">
+              <!-- 数字值 -->
+              <div class="number-value">{{ number.value }}</div>
+              
+              <!-- 赔率显示 -->
+              <div class="number-odds">{{ number.oddsDisplay }}</div>
+              
+              <!-- 概率显示 -->
+              <div class="number-probability">{{ number.probability }}</div>
+            </div>
+
+            <!-- 按钮边框装饰 -->
+            <div class="bet-border-glow" v-if="isSelected(`total-${number.value}`)"></div>
           </div>
-          
-          <div class="number-value">{{ number.value }}</div>
-          <div class="number-odds">{{ number.oddsDisplay }}</div>
-          <div class="number-probability">{{ number.probability }}</div>
-        </button>
+        </div>
       </div>
-    </div>
+    </n-config-provider>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { NConfigProvider } from 'naive-ui'
+
+// 游戏主题配置
+const gameTheme = {
+  common: {
+    primaryColor: '#27ae60',
+    primaryColorHover: '#2ecc71',
+    primaryColorPressed: '#229954',
+    
+    textColorBase: '#ffffff',
+    textColor1: 'rgba(255, 255, 255, 0.95)',
+    textColor2: 'rgba(255, 255, 255, 0.82)',
+    
+    baseColor: 'rgba(13, 40, 24, 0.95)',
+    cardColor: 'rgba(45, 90, 66, 0.4)',
+    
+    borderRadius: '8px',
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    
+    boxShadow1: '0 2px 8px rgba(0, 0, 0, 0.3)',
+    boxShadow2: '0 4px 16px rgba(0, 0, 0, 0.4)',
+  }
+}
 
 // Props
 interface Props {
   selectedChip: number
   currentBets: Record<string, number>
+  canPlaceBet?: boolean
+  enableHapticFeedback?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  canPlaceBet: true,
+  enableHapticFeedback: true
+})
 
 // Emits
 const emit = defineEmits<{
@@ -94,6 +159,9 @@ const numberConfigs = {
   17: { odds: 62, probability: '3种' }   // 最难出现
 }
 
+// 响应式数据
+const pressAnimationActive = ref(false)
+
 // 小数区域 4-10
 const smallNumbers = computed(() => {
   return [4, 5, 6, 7, 8, 9, 10].map(num => ({
@@ -115,29 +183,65 @@ const bigNumbers = computed(() => {
 })
 
 // 计算属性
-const isSelected = (betType: string) => {
-  return props.currentBets[betType] > 0
-}
+const isSelected = computed(() => {
+  return (betType: string) => {
+    const amount = props.currentBets[betType] || 0
+    return amount > 0
+  }
+})
 
-const getBetAmount = (betType: string) => {
-  return props.currentBets[betType] || 0
-}
+const getBetAmount = computed(() => {
+  return (betType: string) => {
+    const amount = props.currentBets[betType] || 0
+    return amount
+  }
+})
 
 // 方法
-const placeBet = (betType: string) => {
-  emit('place-bet', betType)
+const formatBetAmount = (amount: number): string => {
+  if (amount >= 10000) {
+    return (amount / 10000).toFixed(1) + 'W'
+  } else if (amount >= 1000) {
+    return (amount / 1000).toFixed(1) + 'K'
+  }
+  return amount.toString()
+}
+
+const handleBetClick = (number: any) => {
+  if (!props.canPlaceBet) {
+    return
+  }
+
+  if (!props.selectedChip || props.selectedChip <= 0) {
+    return
+  }
+
+  // 触发震动反馈
+  if (props.enableHapticFeedback && 'vibrate' in navigator) {
+    navigator.vibrate(50)
+  }
+
+  // 发射投注事件
+  emit('place-bet', `total-${number.value}`)
+}
+
+const startPressAnimation = () => {
+  pressAnimationActive.value = true
+}
+
+const endPressAnimation = () => {
+  pressAnimationActive.value = false
 }
 </script>
 
 <style scoped>
 .number-bets-section {
-  /* 移除background和border */
   padding: 8px;
 }
 
 /* 数字行布局 */
 .number-row {
-  margin-bottom: 8px; /* 减少行间距 */
+  margin-bottom: 8px;
 }
 
 .number-row:last-of-type {
@@ -148,9 +252,13 @@ const placeBet = (betType: string) => {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
+  overflow: visible;
+  padding: 4px;
 }
 
-.number-btn {
+/* 数字投注包装器 */
+.number-bet-wrapper {
+  position: relative;
   background: #2d7a4f;
   border: 2px solid #4a9f6e;
   color: white;
@@ -159,103 +267,212 @@ const placeBet = (betType: string) => {
   cursor: pointer;
   text-align: center;
   transition: all 0.2s ease;
-  position: relative;
   min-height: 55px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  font-weight: 600;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  
+  /* 提高文字对比度 */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  
+  /* 确保不会裁剪投注金额 */
+  overflow: visible;
 }
 
-.number-btn:active {
+.number-bet-wrapper:active {
   transform: scale(0.95);
   background: #4a9f6e;
 }
 
-.number-btn.selected {
+.number-bet-wrapper.selected {
   background: #ffd700;
   color: #333;
   border-color: #ffed4e;
-  box-shadow: 0 3px 8px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+  
+  /* 选中状态的文字阴影调整 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-.number-btn.has-bet {
+.number-bet-wrapper.has-bet:not(.selected) {
   border-color: #ffd700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
 
-/* 高赔率特殊样式 */
-.number-btn.high-odds {
-  background: linear-gradient(135deg, #2d7a4f, #1e5f3f);
-  border-color: #ff6b6b;
+.number-bet-wrapper.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-.number-btn.high-odds.selected {
-  background: linear-gradient(135deg, #ffd700, #ffed4e);
-}
-
-/* 投注金额显示 */
-.bet-amount {
+/* 右上角投注金额显示 */
+.bet-amount-corner {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  background: #ff4757;
+  top: 2px;
+  right: 2px;
+  background: linear-gradient(135deg, #ff4757, #ff3742);
   color: white;
-  border-radius: 50%;
-  min-width: 16px;
+  border-radius: 8px;
+  min-width: 20px;
   height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9px;
-  font-weight: bold;
+  font-weight: 900;
   padding: 0 3px;
-  border: 1px solid white;
-  animation: betAmountAppear 0.3s ease;
+  border: 2px solid white;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 71, 87, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  z-index: 30;
+  
+  /* 强化文字对比度 */
+  text-shadow: 
+    0 1px 0 rgba(0, 0, 0, 1),
+    0 1px 3px rgba(0, 0, 0, 0.9);
+  
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  letter-spacing: 0.2px;
+  
+  /* 入场动画 */
+  animation: betAmountAppear 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* 强制显示并确保在最顶层 */
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateZ(15px);
+  
+  /* 防止被其他元素遮挡 */
+  pointer-events: none;
 }
 
+/* 强化动画确保可见性 */
 @keyframes betAmountAppear {
   0% {
     opacity: 0;
-    transform: scale(0.5);
+    transform: scale(0.2) rotate(-15deg) translateZ(0);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.2) rotate(5deg) translateZ(0);
   }
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) rotate(0deg) translateZ(0);
   }
 }
 
-/* 数字内容 */
-.number-value {
-  font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 2px;
-  line-height: 1;
+/* 按钮内容 */
+.bet-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
 }
 
+/* 数字值 - 强化对比度 */
+.number-value {
+  font-size: 16px;
+  font-weight: 900;
+  margin-bottom: 2px;
+  line-height: 1;
+  
+  /* 增强文字清晰度 */
+  text-shadow: 
+    0 1px 0 rgba(0, 0, 0, 0.9),
+    0 2px 4px rgba(0, 0, 0, 0.7);
+  
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Arial Black', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.number-bet-wrapper.selected .number-value {
+  color: #1a1a1a;
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 3px rgba(255, 215, 0, 0.8);
+}
+
+/* 赔率显示 */
 .number-odds {
   font-size: 8px;
   color: #90ee90;
-  font-weight: 600;
+  font-weight: 800;
   margin-bottom: 1px;
+  text-shadow: 
+    0 1px 0 rgba(0, 0, 0, 1),
+    0 0 6px rgba(144, 238, 144, 0.8);
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  letter-spacing: 0.5px;
 }
 
+.number-bet-wrapper.selected .number-odds {
+  color: #2d5a2d;
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.8),
+    0 0 4px rgba(45, 90, 45, 0.6);
+}
+
+/* 概率显示 */
 .number-probability {
   font-size: 7px;
   color: #ccc;
   opacity: 0.8;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+}
+
+.number-bet-wrapper.selected .number-probability {
+  color: #666;
+  opacity: 0.9;
+}
+
+/* 选中状态边框发光效果 */
+.bet-border-glow {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  background: linear-gradient(45deg, 
+    rgba(255, 215, 0, 0.4) 0%, 
+    rgba(255, 193, 7, 0.3) 25%, 
+    rgba(255, 235, 59, 0.4) 50%, 
+    rgba(255, 193, 7, 0.3) 75%, 
+    rgba(255, 215, 0, 0.4) 100%);
+  border-radius: 10px;
+  z-index: -1;
+  animation: borderGlow 2s infinite;
+}
+
+@keyframes borderGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 /* 响应式适配 */
 @media (max-width: 375px) {
   .numbers-grid {
     gap: 4px;
+    padding: 2px;
   }
   
-  .number-btn {
+  .number-bet-wrapper {
     padding: 6px 2px;
-    min-height: 55px;
+    min-height: 50px;
+    margin: 2px 1px;
   }
   
   .number-value {
@@ -270,6 +487,16 @@ const placeBet = (betType: string) => {
     font-size: 6px;
   }
   
+  .bet-amount-corner {
+    min-width: 18px;
+    height: 14px;
+    font-size: 8px;
+    top: 1px;
+    right: 1px;
+    border-width: 1.5px;
+    padding: 0 2px;
+  }
+  
   .number-bets-section {
     padding: 6px;
   }
@@ -277,16 +504,24 @@ const placeBet = (betType: string) => {
   .number-row {
     margin-bottom: 6px;
   }
+  
+  .high-odds-badge {
+    width: 14px;
+    height: 14px;
+    top: -1px;
+    left: -1px;
+  }
 }
 
 @media (max-width: 320px) {
   .numbers-grid {
     gap: 3px;
+    padding: 1px;
   }
   
-  .number-btn {
+  .number-bet-wrapper {
     padding: 4px 1px;
-    min-height: 50px;
+    min-height: 45px;
   }
   
   .number-value {
@@ -304,12 +539,18 @@ const placeBet = (betType: string) => {
   .number-bets-section {
     padding: 4px;
   }
+  
+  .bet-amount-corner {
+    min-width: 16px;
+    height: 12px;
+    font-size: 7px;
+  }
 }
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
-  .number-btn {
-    min-height: 45px;
+  .number-bet-wrapper {
+    min-height: 40px;
     padding: 4px 2px;
   }
   
@@ -324,14 +565,20 @@ const placeBet = (betType: string) => {
   .number-bets-section {
     padding: 6px;
   }
+  
+  .bet-amount-corner {
+    min-width: 16px;
+    height: 12px;
+    font-size: 7px;
+  }
 }
 
 /* 点击波纹效果 */
-.number-btn {
+.number-bet-wrapper {
   overflow: hidden;
 }
 
-.number-btn::before {
+.number-bet-wrapper::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -344,8 +591,30 @@ const placeBet = (betType: string) => {
   transition: width 0.2s ease, height 0.2s ease;
 }
 
-.number-btn:active::before {
+.number-bet-wrapper:active::before {
   width: 60px;
   height: 60px;
+}
+
+/* 深度样式覆盖 */
+/* 高对比度模式适配 */
+@media (prefers-contrast: high) {
+  .number-bet-wrapper {
+    border-width: 3px;
+  }
+  
+  .bet-amount-corner {
+    border-width: 2px;
+  }
+}
+
+/* 减少动画模式适配 */
+@media (prefers-reduced-motion: reduce) {
+  .number-bet-wrapper,
+  .bet-amount-corner,
+  .bet-border-glow {
+    animation: none;
+    transition: none;
+  }
 }
 </style>
