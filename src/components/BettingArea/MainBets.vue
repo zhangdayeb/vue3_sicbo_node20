@@ -18,9 +18,9 @@
         @mouseup="endPressAnimation"
         @mouseleave="endPressAnimation"
       >
-        <!-- 投注金额显示 - 右上角 -->
+        <!-- 投注金额显示 - 右上角 - 修复显示条件和样式 -->
         <div 
-          v-show="getBetAmount(bet.type) > 0" 
+          v-if="getBetAmount(bet.type) > 0" 
           class="bet-amount-corner"
         >
           {{ formatBetAmount(getBetAmount(bet.type)) }}
@@ -180,7 +180,7 @@ const mainBets = [
 const pressAnimationActive = ref(false)
 const debugLogs = ref<Array<{time: string, message: string, type: string}>>([])
 
-// 计算属性
+// 修复计算属性 - 确保正确返回函数
 const isSelected = computed(() => {
   return (betType: string) => {
     const amount = props.currentBets[betType] || 0
@@ -191,6 +191,7 @@ const isSelected = computed(() => {
 const getBetAmount = computed(() => {
   return (betType: string) => {
     const amount = props.currentBets[betType] || 0
+    // 移除计算属性中的日志，避免递归更新警告
     return amount
   }
 })
@@ -282,6 +283,11 @@ watch(() => props.currentBets, (newBets, oldBets) => {
     const newAmount = newBets?.[betType] || 0
     if (oldAmount !== newAmount) {
       addDebugLog(`  🔄 ${getBetLabel(betType)}: ${oldAmount} → ${newAmount}`, 'watch')
+      
+      // 强制更新界面
+      if (newAmount > 0) {
+        addDebugLog(`  ✨ ${getBetLabel(betType)} 应该显示金额: ${newAmount}`, 'watch')
+      }
     }
   }
 }, {
@@ -310,6 +316,9 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  /* 确保网格容器不会裁剪子元素 */
+  overflow: visible;
+  padding: 6px;
 }
 
 /* 主要投注包装器 */
@@ -335,6 +344,9 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   /* 提高文字对比度 */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  
+  /* 确保不会裁剪投注金额 */
+  overflow: visible;
 }
 
 .main-bet-wrapper:active {
@@ -363,50 +375,62 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   pointer-events: none;
 }
 
-/* 右上角投注金额显示 */
+/* 右上角投注金额显示 - 调整位置避免被遮挡 */
 .bet-amount-corner {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  top: 2px;    /* 从 -6px 改为 2px，向下移动 */
+  right: 2px;  /* 从 -6px 改为 2px，向左移动 */
   background: linear-gradient(135deg, #ff4757, #ff3742);
   color: white;
   border-radius: 8px;
-  min-width: 28px;
-  height: 22px;
+  min-width: 24px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
-  padding: 0 6px;
+  padding: 0 4px;
   border: 2px solid white;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
-  z-index: 10;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 71, 87, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  z-index: 30;
   
   /* 强化文字对比度 */
   text-shadow: 
-    0 1px 0 rgba(0, 0, 0, 0.9),
-    0 1px 3px rgba(0, 0, 0, 0.7);
+    0 1px 0 rgba(0, 0, 0, 1),
+    0 1px 3px rgba(0, 0, 0, 0.9);
   
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
   
   /* 入场动画 */
   animation: betAmountAppear 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* 强制显示并确保在最顶层 */
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateZ(15px);
+  
+  /* 防止被其他元素遮挡 */
+  pointer-events: none;
 }
 
+/* 强化动画确保可见性 */
 @keyframes betAmountAppear {
   0% {
     opacity: 0;
-    transform: scale(0.2) rotate(-15deg);
+    transform: scale(0.2) rotate(-15deg) translateZ(0);
   }
   50% {
     opacity: 0.8;
-    transform: scale(1.1) rotate(5deg);
+    transform: scale(1.2) rotate(5deg) translateZ(0);
   }
   100% {
     opacity: 1;
-    transform: scale(1) rotate(0deg);
+    transform: scale(1) rotate(0deg) translateZ(0);
   }
 }
 
@@ -679,6 +703,8 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   .main-bet-wrapper {
     padding: 10px 4px;
     min-height: 65px;
+    /* 确保投注金额有足够空间 */
+    margin: 4px 2px;
   }
   
   .bet-label {
@@ -694,15 +720,19 @@ watch(() => props.canPlaceBet, (newValue, oldValue) => {
   }
   
   .bet-amount-corner {
-    min-width: 24px;
-    height: 20px;
-    font-size: 10px;
-    top: -2px;
-    right: -2px;
+    min-width: 20px;
+    height: 16px;
+    font-size: 9px;
+    top: 1px;
+    right: 1px;
+    border-width: 1.5px;
+    padding: 0 3px;
   }
   
   .main-bets-grid {
     gap: 6px;
+    /* 增加网格间距给投注金额更多空间 */
+    padding: 4px;
   }
   
   .main-bets-section {

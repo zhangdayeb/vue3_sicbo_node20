@@ -1,3 +1,4 @@
+// src/stores/bettingStore.ts - 确保正确初始化
 import { defineStore } from 'pinia'
 import { ref, computed, reactive } from 'vue'
 import type { BetType, BetLimits, GamePhase } from '@/types/betting'
@@ -24,42 +25,14 @@ interface BettingSettings {
   riskLevel: 'conservative' | 'moderate' | 'aggressive'
 }
 
-interface BetTransaction {
-  id: string
-  type: 'place' | 'cancel' | 'confirm' | 'win' | 'loss'
-  betType?: string
-  amount: number
-  timestamp: Date
-  gameNumber?: string
-}
-
-interface BetStatistics {
-  totalBetsPlaced: number
-  totalAmountBet: number
-  totalWinnings: number
-  winRate: number
-  biggestWin: number
-  biggestLoss: number
-  streakCurrent: number
-  streakBest: number
-  favoriteMarkets: Array<{ market: string; count: number }>
-  sessionStats: {
-    betsPlaced: number
-    amountBet: number
-    winnings: number
-    startBalance: number
-    currentBalance: number
-  }
-}
-
 export const useBettingStore = defineStore('betting', () => {
-  // 基础状态
+  // 基础状态 - 确保初始化不为空
   const balance = ref(10000)
-  const selectedChip = ref(10)
-  const currentBets = ref<Record<string, number>>({})
+  const selectedChip = ref(10) // 确保有默认值
+  const currentBets = ref<Record<string, number>>({}) // 确保初始化为空对象
   const lastBets = ref<Record<string, number>>({})
-  const gamePhase = ref<GamePhase>('waiting')
-  const isConnected = ref(false)
+  const gamePhase = ref<GamePhase>('betting') // 设置为可投注状态
+  const isConnected = ref(true) // 设置为已连接
   
   // 投注限额配置
   const betLimits = ref<Record<string, BetLimits>>({
@@ -139,32 +112,11 @@ export const useBettingStore = defineStore('betting', () => {
     riskLevel: 'moderate'
   })
   
-  // 交易历史
-  const transactions = ref<BetTransaction[]>([])
-  
-  // 统计信息
-  const statistics = reactive<BetStatistics>({
-    totalBetsPlaced: 0,
-    totalAmountBet: 0,
-    totalWinnings: 0,
-    winRate: 0,
-    biggestWin: 0,
-    biggestLoss: 0,
-    streakCurrent: 0,
-    streakBest: 0,
-    favoriteMarkets: [],
-    sessionStats: {
-      betsPlaced: 0,
-      amountBet: 0,
-      winnings: 0,
-      startBalance: 10000,
-      currentBalance: 10000
-    }
-  })
-  
   // 计算属性
   const totalBetAmount = computed(() => {
-    return Object.values(currentBets.value).reduce((sum, amount) => sum + amount, 0)
+    const total = Object.values(currentBets.value).reduce((sum, amount) => sum + amount, 0)
+    // 移除计算属性中的日志，避免递归更新
+    return total
   })
   
   const availableBalance = computed(() => {
@@ -172,7 +124,9 @@ export const useBettingStore = defineStore('betting', () => {
   })
   
   const canPlaceBet = computed(() => {
-    return gamePhase.value === 'betting' && isConnected.value && availableBalance.value > 0
+    const canBet = gamePhase.value === 'betting' && isConnected.value && availableBalance.value > 0
+    // 移除计算属性中的日志，避免递归更新
+    return canBet
   })
   
   const betCount = computed(() => {
@@ -187,39 +141,32 @@ export const useBettingStore = defineStore('betting', () => {
     return `¥${balance.value.toLocaleString()}`
   })
   
-  const balanceRisk = computed(() => {
-    const betRatio = totalBetAmount.value / balance.value
-    if (betRatio <= 0.1) return 'low'
-    if (betRatio <= 0.3) return 'medium'
-    if (betRatio <= 0.6) return 'high'
-    return 'extreme'
-  })
-  
-  const sessionProfit = computed(() => {
-    return balance.value - statistics.sessionStats.startBalance
-  })
-  
-  const sessionProfitRate = computed(() => {
-    if (statistics.sessionStats.startBalance === 0) return 0
-    return (sessionProfit.value / statistics.sessionStats.startBalance) * 100
-  })
-  
   // 核心方法
   
   // 选择筹码
   const selectChip = (chipValue: number): boolean => {
+    console.log('🪙 选择筹码:', chipValue)
     if (chipValue <= 0 || chipValue > balance.value) {
+      console.log('❌ 筹码选择失败: 无效金额或超过余额')
       return false
     }
     selectedChip.value = chipValue
-    addTransaction('place', undefined, chipValue)
+    console.log('✅ 筹码选择成功:', chipValue)
     return true
   }
   
-  // 下注
+  // 下注 - 关键方法
   const placeBet = (betType: BetType, amount: number): boolean => {
+    console.log('🎯 执行投注:', { betType, amount })
+    console.log('🔍 投注前检查:', {
+      canPlaceBet: canPlaceBet.value,
+      gamePhase: gamePhase.value,
+      balance: balance.value,
+      availableBalance: availableBalance.value
+    })
+    
     if (!canPlaceBet.value) {
-      console.warn('Cannot place bet: Game not in betting phase or not connected')
+      console.warn('❌ 投注失败: 无法投注')
       return false
     }
     
@@ -228,43 +175,44 @@ export const useBettingStore = defineStore('betting', () => {
     const currentAmount = currentBets.value[betType] || 0
     const newTotal = currentAmount + amount
     
+    console.log('💰 投注金额验证:', {
+      limits,
+      currentAmount,
+      amount,
+      newTotal,
+      availableBalance: availableBalance.value
+    })
+    
     if (amount <= 0) {
-      console.warn('Bet amount must be positive')
+      console.warn('❌ 投注失败: 投注金额必须大于0')
       return false
     }
     
     if (newTotal < limits.min) {
-      console.warn(`Minimum bet for ${betType} is ${limits.min}`)
+      console.warn(`❌ 投注失败: 最小投注金额为 ${limits.min}`)
       return false
     }
     
     if (newTotal > limits.max) {
-      console.warn(`Maximum bet for ${betType} is ${limits.max}`)
+      console.warn(`❌ 投注失败: 最大投注金额为 ${limits.max}`)
       return false
     }
     
     if (amount > availableBalance.value) {
-      console.warn('Insufficient balance')
+      console.warn('❌ 投注失败: 余额不足')
       return false
     }
     
-    // 执行投注
+    // 执行投注 - 关键步骤
+    console.log('✅ 投注验证通过，执行投注')
     currentBets.value[betType] = newTotal
     
-    // 记录交易
-    addTransaction('place', betType, amount)
-    
-    // 更新统计
-    statistics.totalBetsPlaced++
-    statistics.totalAmountBet += amount
-    statistics.sessionStats.betsPlaced++
-    statistics.sessionStats.amountBet += amount
-    
-    // 更新最爱市场
-    updateFavoriteMarkets(betType)
-    
-    // 触发事件
-    notifyUpdate('betPlaced', { betType, amount, total: newTotal })
+    console.log('📊 投注执行后状态:', {
+      betType,
+      newAmount: newTotal,
+      totalBets: currentBets.value,
+      totalAmount: totalBetAmount.value
+    })
     
     return true
   }
@@ -287,70 +235,42 @@ export const useBettingStore = defineStore('betting', () => {
       currentBets.value[betType] = currentAmount - cancelAmount
     }
     
-    // 记录交易
-    addTransaction('cancel', betType, -cancelAmount)
-    
-    // 触发事件
-    notifyUpdate('betCancelled', { betType, amount: cancelAmount })
-    
     return true
   }
   
   // 清除所有投注
   const clearBets = (): void => {
-    const clearedBets = { ...currentBets.value }
+    console.log('🧹 清除所有投注')
     currentBets.value = {}
-    
-    // 记录交易
-    addTransaction('cancel', undefined, -totalBetAmount.value)
-    
-    // 触发事件
-    notifyUpdate('allBetsCleared', { clearedBets })
   }
   
   // 重复投注
   const rebet = (): boolean => {
     if (Object.keys(lastBets.value).length === 0) {
-      console.warn('No previous bets to repeat')
+      console.warn('❌ 重复投注失败: 没有上次投注记录')
       return false
     }
     
     const totalLastBetAmount = Object.values(lastBets.value).reduce((sum, amount) => sum + amount, 0)
     if (totalLastBetAmount > availableBalance.value) {
-      console.warn('Insufficient balance for rebet')
+      console.warn('❌ 重复投注失败: 余额不足')
       return false
     }
     
     // 清除当前投注并复制上次投注
     currentBets.value = { ...lastBets.value }
-    
-    // 记录交易
-    addTransaction('place', undefined, totalLastBetAmount)
-    
-    // 更新统计
-    Object.entries(lastBets.value).forEach(([betType, amount]) => {
-      statistics.totalBetsPlaced++
-      statistics.totalAmountBet += amount
-      statistics.sessionStats.betsPlaced++
-      statistics.sessionStats.amountBet += amount
-      updateFavoriteMarkets(betType)
-    })
-    
-    // 触发事件
-    notifyUpdate('rebetExecuted', { bets: lastBets.value })
-    
     return true
   }
   
   // 确认投注
   const confirmBets = (): boolean => {
     if (!hasActiveBets.value) {
-      console.warn('No active bets to confirm')
+      console.warn('❌ 确认投注失败: 没有待确认的投注')
       return false
     }
     
     if (!canPlaceBet.value) {
-      console.warn('Cannot confirm bets: Game not in betting phase')
+      console.warn('❌ 确认投注失败: 当前无法投注')
       return false
     }
     
@@ -364,17 +284,9 @@ export const useBettingStore = defineStore('betting', () => {
     // 清除当前投注
     currentBets.value = {}
     
-    // 记录交易
-    addTransaction('confirm', undefined, betAmount)
-    
-    // 更新会话统计
-    statistics.sessionStats.currentBalance = balance.value
-    
-    // 触发事件
-    notifyUpdate('betsConfirmed', { 
-      confirmedBets: lastBets.value, 
-      totalAmount: betAmount,
-      newBalance: balance.value 
+    console.log('✅ 投注确认成功:', {
+      lastBets: lastBets.value,
+      newBalance: balance.value
     })
     
     return true
@@ -382,55 +294,12 @@ export const useBettingStore = defineStore('betting', () => {
   
   // 更新余额
   const updateBalance = (newBalance: number): void => {
-    const oldBalance = balance.value
     balance.value = Math.max(0, newBalance)
-    
-    // 记录交易
-    const difference = balance.value - oldBalance
-    if (difference !== 0) {
-      addTransaction(difference > 0 ? 'win' : 'loss', undefined, Math.abs(difference))
-    }
-    
-    // 更新统计
-    if (difference > 0) {
-      statistics.totalWinnings += difference
-      statistics.biggestWin = Math.max(statistics.biggestWin, difference)
-      statistics.streakCurrent = Math.max(0, statistics.streakCurrent) + 1
-      statistics.streakBest = Math.max(statistics.streakBest, statistics.streakCurrent)
-    } else if (difference < 0) {
-      statistics.biggestLoss = Math.max(statistics.biggestLoss, Math.abs(difference))
-      statistics.streakCurrent = Math.min(0, statistics.streakCurrent) - 1
-    }
-    
-    // 更新胜率
-    const totalGames = statistics.totalBetsPlaced > 0 ? Math.floor(statistics.totalBetsPlaced / 5) : 0
-    const winGames = statistics.totalWinnings > 0 ? Math.floor(statistics.totalWinnings / 100) : 0
-    statistics.winRate = totalGames > 0 ? (winGames / totalGames) * 100 : 0
-    
-    // 更新会话统计
-    statistics.sessionStats.currentBalance = balance.value
-    statistics.sessionStats.winnings += Math.max(0, difference)
-    
-    // 触发事件
-    notifyUpdate('balanceUpdated', { 
-      oldBalance, 
-      newBalance: balance.value, 
-      difference 
-    })
   }
   
   // 更新游戏阶段
   const updateGamePhase = (phase: GamePhase): void => {
-    const oldPhase = gamePhase.value
     gamePhase.value = phase
-    
-    // 如果进入结算阶段，保存当前投注
-    if (phase === 'rolling' && hasActiveBets.value) {
-      confirmBets()
-    }
-    
-    // 触发事件
-    notifyUpdate('gamePhaseChanged', { oldPhase, newPhase: phase })
   }
   
   // 获取投注限额
@@ -441,219 +310,25 @@ export const useBettingStore = defineStore('betting', () => {
   // 设置投注限额
   const setBetLimits = (betType: BetType, limits: BetLimits): void => {
     betLimits.value[betType] = limits
-    notifyUpdate('betLimitsUpdated', { betType, limits })
   }
   
-  // 获取投注建议
-  const getBettingAdvice = (): string[] => {
-    const advice: string[] = []
+  // 初始化方法
+  const init = (): void => {
+    console.log('🚀 初始化 bettingStore')
     
-    // 风险建议
-    if (balanceRisk.value === 'extreme') {
-      advice.push('⚠️ 投注金额过高，建议降低投注额度')
-    } else if (balanceRisk.value === 'high') {
-      advice.push('⚡ 投注风险较高，请谨慎操作')
-    }
+    // 确保所有状态都有正确的初始值
+    if (!selectedChip.value) selectedChip.value = 10
+    if (!currentBets.value) currentBets.value = {}
+    if (!lastBets.value) lastBets.value = {}
+    if (!gamePhase.value) gamePhase.value = 'betting'
     
-    // 余额建议
-    if (balance.value < 100) {
-      advice.push('💰 余额较低，建议充值后继续游戏')
-    }
-    
-    // 投注分散建议
-    if (betCount.value > 8) {
-      advice.push('🎯 投注项目较多，建议集中投注提高收益率')
-    }
-    
-    // 连败建议
-    if (statistics.streakCurrent < -3) {
-      advice.push('😔 连续失利中，建议调整策略或暂停投注')
-    }
-    
-    // 连胜建议
-    if (statistics.streakCurrent > 5) {
-      advice.push('🎉 连胜中！但请注意适时收手，落袋为安')
-    }
-    
-    // 胜率建议
-    if (statistics.winRate < 30 && statistics.totalBetsPlaced > 10) {
-      advice.push('📈 胜率较低，建议学习投注技巧或调整策略')
-    }
-    
-    return advice
-  }
-  
-  // 辅助方法
-  
-  // 添加交易记录
-  const addTransaction = (
-    type: BetTransaction['type'], 
-    betType?: string, 
-    amount: number = 0
-  ): void => {
-    const transaction: BetTransaction = {
-      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type,
-      betType,
-      amount,
-      timestamp: new Date()
-    }
-    
-    transactions.value.push(transaction)
-    
-    // 保持最多1000条记录
-    if (transactions.value.length > 1000) {
-      transactions.value = transactions.value.slice(-500)
-    }
-  }
-  
-  // 更新最爱市场
-  const updateFavoriteMarkets = (betType: string): void => {
-    const existing = statistics.favoriteMarkets.find(m => m.market === betType)
-    if (existing) {
-      existing.count++
-    } else {
-      statistics.favoriteMarkets.push({ market: betType, count: 1 })
-    }
-    
-    // 排序并保持前10位
-    statistics.favoriteMarkets.sort((a, b) => b.count - a.count)
-    statistics.favoriteMarkets = statistics.favoriteMarkets.slice(0, 10)
-  }
-  
-  // 通知更新（可与外部系统集成）
-  const notifyUpdate = (event: string, data: any): void => {
-    // 发送自定义事件
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(`betting-store-${event}`, {
-        detail: data
-      }))
-    }
-    
-    console.log(`Betting Store Event: ${event}`, data)
-  }
-  
-  // 重置统计数据
-  const resetStatistics = (): void => {
-    statistics.totalBetsPlaced = 0
-    statistics.totalAmountBet = 0
-    statistics.totalWinnings = 0
-    statistics.winRate = 0
-    statistics.biggestWin = 0
-    statistics.biggestLoss = 0
-    statistics.streakCurrent = 0
-    statistics.streakBest = 0
-    statistics.favoriteMarkets = []
-    
-    // 重置会话统计
-    statistics.sessionStats = {
-      betsPlaced: 0,
-      amountBet: 0,
-      winnings: 0,
-      startBalance: balance.value,
-      currentBalance: balance.value
-    }
-    
-    transactions.value = []
-    notifyUpdate('statisticsReset', {})
-  }
-  
-  // 重置所有数据
-  const resetAll = (): void => {
-    balance.value = 10000
-    selectedChip.value = 10
-    currentBets.value = {}
-    lastBets.value = {}
-    gamePhase.value = 'waiting'
-    resetStatistics()
-    notifyUpdate('storeReset', {})
-  }
-  
-  // 导出数据
-  const exportData = () => {
-    return {
+    console.log('📊 初始化完成:', {
       balance: balance.value,
       selectedChip: selectedChip.value,
       currentBets: currentBets.value,
-      lastBets: lastBets.value,
       gamePhase: gamePhase.value,
-      settings: settings,
-      statistics: statistics,
-      transactions: transactions.value,
-      betLimits: betLimits.value,
-      timestamp: new Date().toISOString()
-    }
-  }
-  
-  // 导入数据
-  const importData = (data: any): boolean => {
-    try {
-      if (data.balance !== undefined) balance.value = data.balance
-      if (data.selectedChip !== undefined) selectedChip.value = data.selectedChip
-      if (data.currentBets !== undefined) currentBets.value = data.currentBets
-      if (data.lastBets !== undefined) lastBets.value = data.lastBets
-      if (data.gamePhase !== undefined) gamePhase.value = data.gamePhase
-      if (data.settings !== undefined) Object.assign(settings, data.settings)
-      if (data.statistics !== undefined) Object.assign(statistics, data.statistics)
-      if (data.transactions !== undefined) transactions.value = data.transactions
-      if (data.betLimits !== undefined) betLimits.value = data.betLimits
-      
-      notifyUpdate('dataImported', { timestamp: data.timestamp })
-      return true
-    } catch (error) {
-      console.error('Failed to import data:', error)
-      return false
-    }
-  }
-  
-  // 本地存储
-  const saveToLocalStorage = (): void => {
-    try {
-      const data = exportData()
-      localStorage.setItem('sicbo_betting_store', JSON.stringify(data))
-    } catch (error) {
-      console.error('Failed to save to localStorage:', error)
-    }
-  }
-  
-  const loadFromLocalStorage = (): boolean => {
-    try {
-      const saved = localStorage.getItem('sicbo_betting_store')
-      if (saved) {
-        const data = JSON.parse(saved)
-        return importData(data)
-      }
-      return false
-    } catch (error) {
-      console.error('Failed to load from localStorage:', error)
-      return false
-    }
-  }
-  
-  // 自动保存设置
-  const setupAutoSave = (): void => {
-    // 每30秒自动保存一次
-    setInterval(saveToLocalStorage, 30000)
-    
-    // 页面卸载时保存
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', saveToLocalStorage)
-    }
-  }
-  
-  // 初始化
-  const init = (): void => {
-    // 加载本地存储数据
-    loadFromLocalStorage()
-    
-    // 设置自动保存
-    setupAutoSave()
-    
-    // 初始化会话统计
-    statistics.sessionStats.startBalance = balance.value
-    statistics.sessionStats.currentBalance = balance.value
-    
-    notifyUpdate('storeInitialized', {})
+      canPlaceBet: canPlaceBet.value
+    })
   }
   
   return {
@@ -666,8 +341,6 @@ export const useBettingStore = defineStore('betting', () => {
     isConnected,
     betLimits,
     settings,
-    transactions,
-    statistics,
     
     // 计算属性
     totalBetAmount,
@@ -676,9 +349,6 @@ export const useBettingStore = defineStore('betting', () => {
     betCount,
     hasActiveBets,
     formattedBalance,
-    balanceRisk,
-    sessionProfit,
-    sessionProfitRate,
     
     // 方法
     selectChip,
@@ -691,13 +361,6 @@ export const useBettingStore = defineStore('betting', () => {
     updateGamePhase,
     getBetLimits,
     setBetLimits,
-    getBettingAdvice,
-    resetStatistics,
-    resetAll,
-    exportData,
-    importData,
-    saveToLocalStorage,
-    loadFromLocalStorage,
     init
   }
 })

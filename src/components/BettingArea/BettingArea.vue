@@ -5,19 +5,14 @@
       <!-- 统一的投注容器 - 添加边框 -->
       <div class="betting-container">
         <div class="betting-sections">
-          <!-- 大小单双投注区域 -->
-          <!-- <MainBets 
+          <!-- 大小单双投注区域 - 修复 props 传递 -->
+          <MainBets 
             :selectedChip="selectedChip"
             :currentBets="currentBets"
+            :canPlaceBet="canBet"
+            :showDebugInfo="true" 
             @place-bet="handlePlaceBet"
-          /> -->
-          <MainBets 
-  :selectedChip="selectedChip"
-  :currentBets="currentBets"
-  :showDebugInfo="true" 
-  @place-bet="handlePlaceBet"
-  @debug-info="handleDebugInfo"
-/>
+          />
 
           <!-- 点数投注区域 -->
           <NumberBets 
@@ -64,10 +59,6 @@
       <!-- 筹码选择器 -->
       <ChipSelector
         :selectedChip="selectedChip"
-        :balance="balance"
-        :totalBetAmount="totalBetAmount"
-        :currentBets="currentBets"
-        :betLimits="{ min: 1, max: 10000 }"
         @select-chip="selectChip"
       />
 
@@ -78,14 +69,11 @@
         :lastBets="lastBets"
         :balance="balance"
         :canBet="canBet"
-        @clear-bets="clearBets"
-        @clear-all-bets="clearAllBets"
+        @cancel-current-bets="clearBets"
+        @clear-field="clearBets"
+        @clear-all-field="clearAllBets"
         @rebet="rebet"
         @confirm-bets="confirmBets"
-        @undo-last="undoLast"
-        @quick-bet="quickBet"
-        @max-bet="maxBet"
-        @open-settings="openSettings"
       />
     </div>
 
@@ -139,17 +127,25 @@ const {
   setWinningEffectRef,
   setDiceRollingEffectRef 
 } = useGameEffects()
-const handleDebugInfo = (info: any) => {
-  console.log('调试信息:', info)
-}
+
 // 组件引用
 const chipAnimationRef = ref()
 const winningEffectRef = ref()
 const diceRollingEffectRef = ref()
 
-// 计算属性 - 从 bettingStore 获取状态
-const selectedChip = computed(() => bettingStore.selectedChip)
-const currentBets = computed(() => bettingStore.currentBets)
+// 计算属性 - 从 bettingStore 获取状态，确保响应式
+const selectedChip = computed(() => {
+  const chip = bettingStore.selectedChip
+  console.log('🪙 当前选中筹码:', chip)
+  return chip
+})
+
+const currentBets = computed(() => {
+  const bets = bettingStore.currentBets
+  console.log('💰 当前投注:', bets)
+  return bets
+})
+
 const lastBets = computed(() => bettingStore.lastBets)
 const balance = computed(() => bettingStore.balance)
 const totalBetAmount = computed(() => bettingStore.totalBetAmount)
@@ -158,16 +154,28 @@ const canBet = computed(() => bettingStore.canPlaceBet)
 
 // 方法
 const selectChip = (value: number): void => {
+  console.log('🎯 选择筹码:', value)
   const success = bettingStore.selectChip(value)
   if (success) {
     playChipSelectSound()
+    console.log('✅ 筹码选择成功:', value)
   } else {
     playErrorSound()
+    console.log('❌ 筹码选择失败:', value)
   }
 }
 
 const handlePlaceBet = async (betType: string): Promise<void> => {
+  console.log('🎯 BettingArea 收到投注请求:', betType)
+  console.log('🪙 当前筹码:', selectedChip.value)
+  console.log('💰 投注前状态:', currentBets.value)
+  
   const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
+  
+  console.log('📊 投注结果:', success)
+  console.log('📊 投注后状态:', currentBets.value)
+  console.log('📊 Store 内部状态:', bettingStore.currentBets)
+  
   if (success) {
     playChipPlaceSound()
     
@@ -189,22 +197,24 @@ const handlePlaceBet = async (betType: string): Promise<void> => {
     }
   } else {
     playErrorSound()
-    // 可以添加错误提示
-    console.warn('投注失败：余额不足或其他错误')
+    console.warn('❌ 投注失败：余额不足或其他错误')
   }
 }
 
 const clearBets = (): void => {
+  console.log('🧹 清除投注')
   bettingStore.clearBets()
   playChipSelectSound()
 }
 
 const clearAllBets = (): void => {
-  bettingStore.clearBets() // 可以扩展为清除历史记录
+  console.log('🧹 清除所有投注')
+  bettingStore.clearBets()
   playChipSelectSound()
 }
 
 const rebet = (): void => {
+  console.log('🔄 重复投注')
   const success = bettingStore.rebet()
   if (success) {
     playChipPlaceSound()
@@ -214,6 +224,7 @@ const rebet = (): void => {
 }
 
 const confirmBets = async (): Promise<void> => {
+  console.log('✅ 确认投注')
   const success = bettingStore.confirmBets()
   if (success) {
     playBetConfirmSound()
@@ -228,29 +239,18 @@ const confirmBets = async (): Promise<void> => {
   }
 }
 
-const undoLast = (): void => {
-  // 撤销最后一次投注的逻辑
-  playChipSelectSound()
-}
-
-const quickBet = (): void => {
-  // 快速投注逻辑
-  playChipPlaceSound()
-}
-
-const maxBet = (): void => {
-  // 梭哈投注逻辑
-  playBetConfirmSound()
-}
-
-const openSettings = (): void => {
-  // 打开设置面板
-  console.log('打开设置')
-}
-
 onMounted(() => {
+  console.log('🚀 BettingArea 组件挂载')
+  
   // 初始化 bettingStore
   bettingStore.init()
+  
+  // 打印初始状态
+  console.log('📊 初始状态:')
+  console.log('  - 选中筹码:', selectedChip.value)
+  console.log('  - 当前投注:', currentBets.value)
+  console.log('  - 余额:', balance.value)
+  console.log('  - 可以投注:', canBet.value)
   
   // 设置特效组件引用
   if (chipAnimationRef.value) {
