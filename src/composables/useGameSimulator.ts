@@ -5,6 +5,7 @@ import { useBettingStore } from '@/stores/bettingStore'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudio } from '@/composables/useAudio'
 import type { GamePhase } from '@/types/game'
+import type { GameStatus } from '@/types/game' // 添加 GameStatus 导入
 
 export interface GameCycleConfig {
   bettingDuration: number      // 投注阶段时长(秒)
@@ -27,7 +28,7 @@ export interface GameSimulatorState {
 export const useGameSimulator = (config: Partial<GameCycleConfig> = {}) => {
   const bettingStore = useBettingStore()
   const gameStore = useGameStore()
-  const { playSound, playDiceEffect, playWinSound } = useAudio()
+  const { playSound, playWinSound } = useAudio() // 移除不存在的 playDiceEffect
 
   // 默认配置
   const defaultConfig: GameCycleConfig = {
@@ -54,7 +55,6 @@ export const useGameSimulator = (config: Partial<GameCycleConfig> = {}) => {
   // 定时器引用
   let countdownTimer: number | null = null
   let phaseTimer: number | null = null
-  let gameLoopTimer: number | null = null
 
   // 计算属性
   const isGameRunning = computed(() => simulatorState.value.isRunning)
@@ -131,7 +131,17 @@ export const useGameSimulator = (config: Partial<GameCycleConfig> = {}) => {
     console.log(`🎮 游戏阶段变更: ${simulatorState.value.currentPhase} -> ${phase}`)
     
     simulatorState.value.currentPhase = phase
-    gameStore.updateGameStatus(phase)
+    
+    // 将 GamePhase 转换为 GameStatus
+    const statusMap: Record<GamePhase, GameStatus> = {
+      'waiting': 'waiting',
+      'betting': 'betting', 
+      'rolling': 'dealing',  // GamePhase 的 'rolling' 对应 GameStatus 的 'dealing'
+      'result': 'result',
+      'settling': 'result'   // settling 也映射为 result
+    }
+    
+    gameStore.updateGameStatus(statusMap[phase])
     bettingStore.updateGamePhase(phase)
     
     // 更新 mock 数据
@@ -241,7 +251,7 @@ export const useGameSimulator = (config: Partial<GameCycleConfig> = {}) => {
         
         // 更新余额
         const newBalance = bettingStore.balance + winResults.netProfit
-        await bettingStore.updateBalance(newBalance)
+        bettingStore.updateBalance(newBalance)
         await mockApiService.updateBalance(newBalance)
         
         // 保存历史记录
@@ -365,11 +375,6 @@ export const useGameSimulator = (config: Partial<GameCycleConfig> = {}) => {
     if (phaseTimer) {
       clearTimeout(phaseTimer)
       phaseTimer = null
-    }
-    
-    if (gameLoopTimer) {
-      clearTimeout(gameLoopTimer)
-      gameLoopTimer = null
     }
     
     updatePhase('waiting')
