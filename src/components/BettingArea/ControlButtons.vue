@@ -1,73 +1,248 @@
 <template>
   <div class="control-buttons">
-    <!-- 主要控制按钮行 -->
-    <div class="main-controls">
-      <button 
-        class="control-btn cancel-btn" 
-        @click="handleCancel"
-        :disabled="!canCancel"
-        v-long-press="handleClearAll"
+    <!-- Naive UI 配置提供者 - 应用游戏主题 -->
+    <n-config-provider :theme-overrides="gameTheme">
+      <!-- 主要控制按钮组 -->
+      <n-button-group class="main-controls">
+        <!-- 取消按钮 -->
+        <n-button
+          type="error"
+          size="large"
+          :disabled="!canCancel"
+          @click="handleCancel"
+          @contextmenu.prevent="handleClearAll"
+          class="control-button cancel-button"
+        >
+          <template #icon>
+            <n-icon><TrashIcon /></n-icon>
+          </template>
+          取消
+          <n-badge
+            v-if="canCancel && betCount > 0"
+            :value="betCount"
+            :max="99"
+            class="button-badge"
+          />
+        </n-button>
+        
+        <!-- 重复投注按钮 -->
+        <n-button
+          type="warning"
+          size="large"
+          :disabled="!canRebet"
+          @click="handleRebet"
+          class="control-button rebet-button"
+        >
+          <template #icon>
+            <n-icon><RefreshIcon /></n-icon>
+          </template>
+          重复
+          <n-badge
+            v-if="lastBetAmount > 0"
+            :value="formatAmount(lastBetAmount)"
+            :max="999"
+            class="button-badge"
+          />
+        </n-button>
+        
+        <!-- 确认投注按钮 -->
+        <n-button
+          type="success"
+          size="large"
+          :disabled="!canConfirm"
+          @click="handleConfirm"
+          class="control-button confirm-button"
+          :class="{ 'pulsing': canConfirm && totalBetAmount > 0 }"
+        >
+          <template #icon>
+            <n-icon><CheckmarkIcon /></n-icon>
+          </template>
+          确认
+          <n-badge
+            v-if="totalBetAmount > 0"
+            :value="formatAmount(totalBetAmount)"
+            :max="999"
+            class="button-badge"
+          />
+        </n-button>
+      </n-button-group>
+
+      <!-- 确认对话框 -->
+      <n-modal
+        v-model:show="showConfirmDialog"
+        preset="dialog"
+        :type="dialogType"
+        :title="confirmTitle"
+        :positive-text="confirmButtonText"
+        :negative-text="'取消'"
+        :mask-closable="true"
+        :close-on-esc="true"
+        :on-positive-click="confirmAction"
+        :on-negative-click="cancelConfirm"
+        class="confirm-dialog"
       >
-        <div class="btn-content">
-          <span class="btn-text">取消</span>
-          <div v-if="canCancel" class="btn-badge">{{ betCount }}</div>
-        </div>
-      </button>
-      
-      <button 
-        class="control-btn rebet-btn" 
-        @click="handleRebet"
-        :disabled="!canRebet"
-      >
-        <div class="btn-content">
-          <span class="btn-text">重复</span>
-          <div v-if="lastBetAmount > 0" class="btn-badge">{{ lastBetAmount }}</div>
-        </div>
-      </button>
-      
-      <button 
-        class="control-btn confirm-btn" 
-        @click="handleConfirm"
-        :disabled="!canConfirm"
-        :class="{ 'pulsing': canConfirm && totalBetAmount > 0 }"
-      >
-        <div class="btn-content">
-          <span class="btn-text">确认</span>
-          <div v-if="totalBetAmount > 0" class="btn-badge">{{ totalBetAmount }}</div>
-        </div>
-      </button>
-    </div>
-    
-    <!-- 操作确认弹窗 -->
-    <div v-if="showConfirmDialog" class="confirm-dialog-overlay" @click="cancelConfirm">
-      <div class="confirm-dialog" @click.stop>
-        <div class="dialog-header">
-          <h3 class="dialog-title">{{ confirmTitle }}</h3>
-        </div>
+        <template #header>
+          <n-space align="center">
+            <n-icon size="20" :color="getDialogIconColor()">
+              <component :is="getDialogIcon()" />
+            </n-icon>
+            <span>{{ confirmTitle }}</span>
+          </n-space>
+        </template>
+
         <div class="dialog-content">
           <p class="dialog-message">{{ confirmMessage }}</p>
-          <div v-if="confirmDetails" class="dialog-details">
-            <div v-for="detail in confirmDetails" :key="detail.label" class="detail-item">
-              <span class="detail-label">{{ detail.label }}:</span>
-              <span class="detail-value">{{ detail.value }}</span>
-            </div>
-          </div>
+          
+          <!-- 详细信息卡片 -->
+          <n-card 
+            v-if="confirmDetails" 
+            size="small" 
+            class="details-card"
+            :bordered="false"
+          >
+            <template #header>
+              <n-space align="center" size="small">
+                <n-icon size="16" :color="getDialogIconColor()">
+                  <InfoIcon />
+                </n-icon>
+                <n-text depth="2">详细信息</n-text>
+              </n-space>
+            </template>
+            
+            <n-space vertical size="small">
+              <div 
+                v-for="detail in confirmDetails" 
+                :key="detail.label" 
+                class="detail-row"
+              >
+                <n-space justify="space-between" align="center">
+                  <n-text depth="2">{{ detail.label }}:</n-text>
+                  <n-text 
+                    strong 
+                    :type="getDetailValueType(detail.label)"
+                    class="detail-value"
+                  >
+                    {{ detail.value }}
+                  </n-text>
+                </n-space>
+              </div>
+            </n-space>
+          </n-card>
+          
+          <!-- 风险提示 -->
+          <n-alert 
+            v-if="shouldShowRiskWarning()" 
+            type="warning" 
+            size="small"
+            class="risk-warning"
+            :show-icon="true"
+          >
+            <template #header>风险提示</template>
+            {{ getRiskWarningText() }}
+          </n-alert>
         </div>
-        <div class="dialog-actions">
-          <button class="dialog-btn cancel-btn" @click="cancelConfirm">
-            取消
-          </button>
-          <button class="dialog-btn confirm-action-btn" @click="confirmAction">
-            {{ confirmButtonText }}
-          </button>
-        </div>
-      </div>
-    </div>
+      </n-modal>
+    </n-config-provider>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { 
+  NConfigProvider,
+  NButtonGroup,
+  NButton, 
+  NCard, 
+  NSpace, 
+  NText, 
+  NIcon, 
+  NAlert,
+  NModal,
+  NBadge,
+  useMessage,
+  useDialog
+} from 'naive-ui'
+import {
+  TrashOutline as TrashIcon,
+  RefreshOutline as RefreshIcon,
+  CheckmarkCircleOutline as CheckmarkIcon,
+  WarningOutline as WarningIcon,
+  InformationCircleOutline as InfoIcon,
+  AlertCircleOutline as AlertIcon
+} from '@vicons/ionicons5'
+
+// 游戏主题配置
+const gameTheme = {
+  common: {
+    primaryColor: '#27ae60',
+    primaryColorHover: '#2ecc71',
+    primaryColorPressed: '#229954',
+    
+    errorColor: '#e74c3c',
+    errorColorHover: '#c0392b',
+    errorColorPressed: '#a93226',
+    
+    warningColor: '#f39c12',
+    warningColorHover: '#e67e22',
+    warningColorPressed: '#d68910',
+    
+    successColor: '#27ae60',
+    successColorHover: '#2ecc71',
+    successColorPressed: '#229954',
+    
+    textColorBase: '#ffffff',
+    textColor1: 'rgba(255, 255, 255, 0.95)',
+    textColor2: 'rgba(255, 255, 255, 0.82)',
+    
+    baseColor: 'rgba(13, 40, 24, 0.95)',
+    modalColor: 'rgba(0, 0, 0, 0.9)',
+    cardColor: 'rgba(45, 90, 66, 0.4)',
+    
+    borderRadius: '8px',
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    
+    boxShadow1: '0 2px 8px rgba(0, 0, 0, 0.3)',
+    boxShadow2: '0 4px 16px rgba(0, 0, 0, 0.4)',
+  },
+  Button: {
+    textColor: '#ffffff',
+    textColorHover: '#ffffff',
+    textColorPressed: '#ffffff',
+    textColorFocus: '#ffffff',
+    
+    colorError: '#e74c3c',
+    colorErrorHover: '#c0392b',
+    colorErrorPressed: '#a93226',
+    
+    colorWarning: '#f39c12',
+    colorWarningHover: '#e67e22',
+    colorWarningPressed: '#d68910',
+    
+    colorSuccess: '#27ae60',
+    colorSuccessHover: '#2ecc71',
+    colorSuccessPressed: '#229954',
+    
+    fontWeight: '600',
+    borderRadius: '6px',
+  },
+  Card: {
+    color: 'rgba(45, 90, 66, 0.4)',
+    borderColor: 'rgba(255, 215, 0, 0.2)',
+    titleTextColor: '#ffd700',
+    textColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  Dialog: {
+    color: 'rgba(13, 40, 24, 0.95)',
+    textColor: 'rgba(255, 255, 255, 0.95)',
+    titleTextColor: '#ffd700',
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  Badge: {
+    color: '#ff4757',
+    textColor: '#ffffff',
+    fontWeight: '700',
+  }
+}
 
 // Props
 interface Props {
@@ -82,12 +257,15 @@ const props = defineProps<Props>()
 
 // Emits
 const emit = defineEmits<{
-  'cancel-current-bets': []  // 取消当前投注（恢复到提交订单状态）
-  'clear-field': []          // 清场（清除筹码展示）
-  'clear-all-field': []      // 完全清场（清除所有记录和展示）
-  'rebet': []               // 重复投注
-  'confirm-bets': []        // 确认投注
+  'cancel-current-bets': []
+  'clear-field': []
+  'clear-all-field': []
+  'rebet': []
+  'confirm-bets': []
 }>()
+
+// 使用 Naive UI 消息组件
+const message = useMessage()
 
 // 响应式数据
 const showConfirmDialog = ref(false)
@@ -96,6 +274,8 @@ const confirmMessage = ref('')
 const confirmButtonText = ref('')
 const confirmDetails = ref<Array<{label: string, value: string}> | null>(null)
 const pendingAction = ref<(() => void) | null>(null)
+const dialogType = ref<'info' | 'success' | 'warning' | 'error'>('info')
+const actionType = ref<'cancel' | 'clear' | 'clearAll' | 'rebet' | 'confirm'>('confirm')
 
 // 计算属性
 const betCount = computed(() => {
@@ -107,11 +287,9 @@ const lastBetAmount = computed(() => {
 })
 
 const canCancel = computed(() => {
-  // 投注期间或有当前投注时可以取消
   return (props.totalBetAmount > 0 || hasLastConfirmedBets.value) && props.canBet
 })
 
-// 检查是否有已确认的投注（非投注期间需要清场）
 const hasLastConfirmedBets = computed(() => {
   return Object.values(props.lastBets).some(amount => amount > 0)
 })
@@ -125,19 +303,95 @@ const canConfirm = computed(() => {
 })
 
 // 方法
+const formatAmount = (amount: number): string => {
+  if (amount >= 10000) {
+    return (amount / 10000).toFixed(1) + 'W'
+  } else if (amount >= 1000) {
+    return (amount / 1000).toFixed(1) + 'K'
+  }
+  return amount.toString()
+}
+
+const getDialogType = (action: string) => {
+  switch (action) {
+    case 'cancel':
+    case 'clear':
+    case 'clearAll':
+      return 'warning'
+    case 'rebet':
+      return 'info'
+    case 'confirm':
+      return 'success'
+    default:
+      return 'info'
+  }
+}
+
+const getDialogIcon = () => {
+  switch (actionType.value) {
+    case 'cancel':
+    case 'clear':
+    case 'clearAll':
+      return TrashIcon
+    case 'rebet':
+      return RefreshIcon
+    case 'confirm':
+      return CheckmarkIcon
+    default:
+      return InfoIcon
+  }
+}
+
+const getDialogIconColor = () => {
+  switch (actionType.value) {
+    case 'cancel':
+    case 'clear':
+    case 'clearAll':
+      return '#f39c12'
+    case 'rebet':
+      return '#00bcd4'
+    case 'confirm':
+      return '#27ae60'
+    default:
+      return '#00bcd4'
+  }
+}
+
+const getDetailValueType = (label: string) => {
+  if (label.includes('金额') || label.includes('余额')) {
+    return 'success'
+  }
+  if (label.includes('项目') || label.includes('投注')) {
+    return 'info'
+  }
+  return 'default'
+}
+
+const shouldShowRiskWarning = () => {
+  if (actionType.value === 'confirm' && props.totalBetAmount > props.balance * 0.5) {
+    return true
+  }
+  if (actionType.value === 'rebet' && lastBetAmount.value > props.balance * 0.3) {
+    return true
+  }
+  return false
+}
+
+const getRiskWarningText = () => {
+  if (actionType.value === 'confirm') {
+    return '投注金额较大，请谨慎操作。建议合理控制投注风险。'
+  }
+  if (actionType.value === 'rebet') {
+    return '重复投注金额较大，请确认您的投注策略。'
+  }
+  return ''
+}
+
 const handleCancel = () => {
   if (!canCancel.value) return
   
-  // 业务逻辑待实现：
-  // 1. 投注期间：点击取消按钮恢复到投注提交订单的状态
-  //    - 撤销当前未确认的投注
-  //    - 恢复到上次确认投注后的状态
-  // 2. 非投注期间：清场操作
-  //    - 清除所有筹码展示
-  //    - 重置投注界面
-  
   if (props.totalBetAmount > 0) {
-    // 投注期间 - 恢复到提交订单状态
+    actionType.value = 'cancel'
     showConfirmation(
       '取消投注',
       '确定要取消当前投注吗？将恢复到上次确认的状态。',
@@ -146,13 +400,10 @@ const handleCancel = () => {
         { label: '当前投注', value: `${betCount.value} 项` },
         { label: '投注金额', value: `¥${props.totalBetAmount.toLocaleString()}` }
       ],
-      () => {
-        // TODO: 实现恢复到投注提交订单状态的逻辑
-        emit('cancel-current-bets') // 新增事件：取消当前投注
-      }
+      () => emit('cancel-current-bets')
     )
   } else if (hasLastConfirmedBets.value) {
-    // 非投注期间 - 清场操作
+    actionType.value = 'clear'
     showConfirmation(
       '清场操作',
       '确定要清场吗？将清除所有筹码展示。',
@@ -161,16 +412,13 @@ const handleCancel = () => {
         { label: '操作类型', value: '清场' },
         { label: '影响范围', value: '所有筹码展示' }
       ],
-      () => {
-        // TODO: 实现清场逻辑
-        emit('clear-field') // 新增事件：清场
-      }
+      () => emit('clear-field')
     )
   }
 }
 
 const handleClearAll = () => {
-  // 长按清场 - 完全清除所有投注记录和筹码展示
+  actionType.value = 'clearAll'
   showConfirmation(
     '完全清场',
     '确定要完全清场吗？这将清除所有投注记录和筹码展示。',
@@ -179,10 +427,7 @@ const handleClearAll = () => {
       { label: '操作类型', value: '完全清场' },
       { label: '影响范围', value: '所有记录和展示' }
     ],
-    () => {
-      // TODO: 实现完全清场逻辑
-      emit('clear-all-field') // 新增事件：完全清场
-    }
+    () => emit('clear-all-field')
   )
 }
 
@@ -191,6 +436,7 @@ const handleRebet = () => {
   
   const lastBetCount = Object.keys(props.lastBets).filter(key => props.lastBets[key] > 0).length
   
+  actionType.value = 'rebet'
   showConfirmation(
     '重复投注',
     '确定要重复上次的投注吗？',
@@ -207,6 +453,7 @@ const handleRebet = () => {
 const handleConfirm = () => {
   if (!canConfirm.value) return
   
+  actionType.value = 'confirm'
   showConfirmation(
     '确认投注',
     '确定要提交当前投注吗？投注一旦确认将无法撤销。',
@@ -222,24 +469,37 @@ const handleConfirm = () => {
 
 const showConfirmation = (
   title: string,
-  message: string,
+  messageText: string,
   buttonText: string,
   details: Array<{label: string, value: string}> | null,
   action: () => void
 ) => {
   confirmTitle.value = title
-  confirmMessage.value = message
+  confirmMessage.value = messageText
   confirmButtonText.value = buttonText
   confirmDetails.value = details
   pendingAction.value = action
+  dialogType.value = getDialogType(actionType.value)
   showConfirmDialog.value = true
 }
 
 const confirmAction = () => {
   if (pendingAction.value) {
     pendingAction.value()
+    
+    // 显示成功消息
+    const actionNames = {
+      cancel: '已取消投注',
+      clear: '已清场',
+      clearAll: '已完全清场',
+      rebet: '已重复投注',
+      confirm: '投注已确认'
+    }
+    
+    message.success(actionNames[actionType.value] || '操作完成')
   }
   cancelConfirm()
+  return true
 }
 
 const cancelConfirm = () => {
@@ -249,430 +509,173 @@ const cancelConfirm = () => {
   confirmButtonText.value = ''
   confirmDetails.value = null
   pendingAction.value = null
+  return true
 }
 
-// 长按指令
-const longPressDirective = {
-  mounted(el: HTMLElement, binding: any) {
-    let timer: number | null = null
-    
-    const startPress = () => {
-      timer = window.setTimeout(() => {
-        binding.value()
-      }, 1000) // 长按1秒触发
-    }
-    
-    const endPress = () => {
-      if (timer) {
-        clearTimeout(timer)
-        timer = null
-      }
-    }
-    
-    el.addEventListener('touchstart', startPress)
-    el.addEventListener('touchend', endPress)
-    el.addEventListener('touchcancel', endPress)
-    el.addEventListener('mousedown', startPress)
-    el.addEventListener('mouseup', endPress)
-    el.addEventListener('mouseleave', endPress)
-    
-    // 存储清理函数
-    ;(el as any)._longPressCleanup = () => {
-      el.removeEventListener('touchstart', startPress)
-      el.removeEventListener('touchend', endPress)
-      el.removeEventListener('touchcancel', endPress)
-      el.removeEventListener('mousedown', startPress)
-      el.removeEventListener('mouseup', endPress)
-      el.removeEventListener('mouseleave', endPress)
-    }
-  },
-  unmounted(el: HTMLElement) {
-    if ((el as any)._longPressCleanup) {
-      ;(el as any)._longPressCleanup()
-    }
+// 长按处理 (右键菜单替代)
+let longPressTimer: number | null = null
+
+const startLongPress = () => {
+  longPressTimer = window.setTimeout(() => {
+    handleClearAll()
+  }, 1000)
+}
+
+const endLongPress = () => {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
   }
 }
-
-// 注册指令
-const vLongPress = longPressDirective
 </script>
 
 <style scoped>
 .control-buttons {
-  background: rgba(0, 0, 0, 0.95); /* 统一背景色 */
-  padding: 6px; /* 从8px减少到6px */
-  border-top: 1px solid #2d5a42; /* 统一边框颜色 */
-  
+  background: rgba(0, 0, 0, 0.95);
+  border-top: 1px solid #2d5a42;
+  padding: 8px;
   /* iOS Safari安全区域适配 */
-  padding-bottom: max(6px, env(safe-area-inset-bottom)); /* 从8px减少到6px */
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
-/* 主要控制按钮 */
 .main-controls {
+  width: 100%;
   display: flex;
-  gap: 5px; /* 从6px减少到5px */
 }
 
-.control-btn {
+.control-button {
   flex: 1;
-  background: linear-gradient(135deg, #4a7c59, #2d5a42);
-  border: 2px solid #4a7c59;
-  color: white;
-  padding: 6px 4px; /* 从8px减少到6px */
-  border-radius: 6px;
-  cursor: pointer;
+  height: 48px;
   font-weight: 600;
-  transition: all 0.3s ease;
   position: relative;
-  min-height: 42px; /* 从50px减少到42px */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  overflow: hidden;
+  transition: all 0.3s ease;
+  font-size: 12px;
 }
 
-.control-btn:active {
-  transform: scale(0.95);
+.control-button:active {
+  transform: scale(0.98);
 }
 
-.control-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* 按钮特定样式 */
-.cancel-btn {
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
-  border-color: #e74c3c;
-}
-
-.rebet-btn {
-  background: linear-gradient(135deg, #f39c12, #d68910);
-  border-color: #f39c12;
-}
-
-.confirm-btn {
-  background: linear-gradient(135deg, #27ae60, #229954);
-  border-color: #27ae60;
-}
-
-.confirm-btn.pulsing {
+/* 确认按钮脉冲动画 */
+.confirm-button.pulsing {
   animation: confirmPulse 2s infinite;
-  box-shadow: 0 0 20px rgba(39, 174, 96, 0.5);
 }
 
 @keyframes confirmPulse {
   0%, 100% { 
-    transform: scale(1); 
-    box-shadow: 0 0 20px rgba(39, 174, 96, 0.5);
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.4);
   }
   50% { 
-    transform: scale(1.02); 
-    box-shadow: 0 0 30px rgba(39, 174, 96, 0.8);
+    box-shadow: 0 0 0 8px rgba(39, 174, 96, 0);
   }
 }
 
-/* 按钮内容 */
-.btn-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  height: 100%;
-  gap: 1px; /* 从2px减少到1px */
-}
-
-.btn-text {
-  font-size: 11px; /* 从12px减少到11px */
-  font-weight: 700;
-  line-height: 1;
-}
-
-.btn-badge {
+/* 徽章样式 */
+.button-badge {
   position: absolute;
-  top: -5px; /* 从-6px调整到-5px */
-  right: -5px; /* 从-6px调整到-5px */
-  background: #ff4757;
-  color: white;
-  border-radius: 50%;
-  min-width: 12px; /* 从14px减少到12px */
-  height: 12px; /* 从14px减少到12px */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 7px; /* 从8px减少到7px */
-  font-weight: bold;
-  padding: 0 2px; /* 从3px减少到2px */
-  border: 1px solid white;
-  animation: badgeAppear 0.3s ease;
+  top: -4px;
+  right: -4px;
+  z-index: 10;
 }
 
-@keyframes badgeAppear {
-  0% {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* 确认对话框 */
-.confirm-dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.confirm-dialog {
-  background: #2c3e50;
-  border-radius: 12px;
-  border: 1px solid #34495e;
-  min-width: 280px;
-  max-width: 400px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  animation: dialogAppear 0.3s ease;
-}
-
-@keyframes dialogAppear {
-  0% {
-    opacity: 0;
-    transform: scale(0.8) translateY(-20px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.dialog-header {
-  padding: 16px 20px 12px 20px;
-  border-bottom: 1px solid #34495e;
-}
-
-.dialog-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #ecf0f1;
-  text-align: center;
-}
-
+/* 对话框内容样式 */
 .dialog-content {
-  padding: 16px 20px;
+  padding: 8px 0;
 }
 
 .dialog-message {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  color: #bdc3c7;
-  line-height: 1.4;
-  text-align: center;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.dialog-details {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  padding: 10px;
-  margin-top: 12px;
+.details-card {
+  margin: 16px 0;
+  background: rgba(45, 90, 66, 0.3) !important;
+  border: 1px solid rgba(255, 215, 0, 0.2) !important;
 }
 
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-  font-size: 12px;
-}
-
-.detail-item:last-child {
-  margin-bottom: 0;
-}
-
-.detail-label {
-  color: #95a5a6;
+.detail-row {
+  padding: 4px 0;
 }
 
 .detail-value {
-  color: #ecf0f1;
-  font-weight: 600;
+  font-family: 'Monaco', 'Menlo', monospace;
+  letter-spacing: 0.5px;
 }
 
-.dialog-actions {
-  padding: 12px 20px 16px 20px;
-  display: flex;
-  gap: 10px;
-  border-top: 1px solid #34495e;
+.risk-warning {
+  margin-top: 16px;
+  background: rgba(243, 156, 18, 0.1) !important;
+  border: 1px solid rgba(243, 156, 18, 0.3) !important;
 }
 
-.dialog-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.dialog-btn:active {
-  transform: scale(0.95);
-}
-
-.cancel-btn {
-  background: #7f8c8d;
-  color: white;
-}
-
-.cancel-btn:hover {
-  background: #95a5a6;
-}
-
-.confirm-action-btn {
-  background: #e74c3c;
-  color: white;
-}
-
-.confirm-action-btn:hover {
-  background: #c0392b;
-}
-
-/* 响应式适配 - 进一步优化 */
+/* 响应式适配 */
 @media (max-width: 375px) {
-  .main-controls {
-    gap: 3px; /* 从4px减少到3px */
-  }
-  
-  .control-btn {
-    padding: 5px 3px; /* 进一步压缩 */
-    min-height: 38px; /* 从42px减少到38px */
-  }
-  
-  .btn-text {
-    font-size: 10px; /* 从11px减少到10px */
-  }
-  
-  .confirm-dialog {
-    min-width: 260px;
-    margin: 0 10px;
+  .control-button {
+    height: 44px;
+    font-size: 11px;
   }
 }
 
 @media (max-width: 320px) {
-  .main-controls {
-    gap: 2px;
-  }
-  
-  .control-btn {
-    padding: 4px 2px;
-    min-height: 36px;
-  }
-  
-  .btn-text {
-    font-size: 9px;
-  }
-}
-
-/* 高度限制的设备优化 */
-@media (max-height: 667px) {
-  .control-btn {
-    min-height: 38px;
-    padding: 5px 3px;
-  }
-  
-  .btn-text {
+  .control-button {
+    height: 40px;
     font-size: 10px;
   }
-}
-
-@media (max-height: 600px) {
+  
   .control-buttons {
-    padding: 4px;
-  }
-  
-  .control-btn {
-    min-height: 34px;
-    padding: 4px 2px;
-  }
-  
-  .btn-text {
-    font-size: 9px;
+    padding: 6px;
   }
 }
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
-  .control-btn {
-    min-height: 32px;
-    padding: 3px 2px;
-  }
-  
-  .btn-text {
-    font-size: 9px;
+  .control-button {
+    height: 40px;
+    font-size: 11px;
   }
   
   .control-buttons {
-    padding: 4px;
+    padding: 6px;
   }
 }
 
-/* 点击波纹效果 */
-.control-btn {
-  overflow: hidden;
+/* 深度样式覆盖 */
+:deep(.n-button-group .n-button) {
+  border-radius: 6px !important;
 }
 
-.control-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  transform: translate(-50%, -50%);
-  transition: width 0.3s ease, height 0.3s ease;
+:deep(.n-button-group .n-button:first-child) {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
-.control-btn:active::before {
-  width: 80px; /* 从100px减少到80px */
-  height: 80px; /* 从100px减少到80px */
+:deep(.n-button-group .n-button:last-child) {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
 }
 
-/* 按钮悬浮效果（非移动端） */
-@media (hover: hover) {
-  .control-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
-  
-  .cancel-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
-  }
-  
-  .rebet-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
-  }
-  
-  .confirm-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
-  }
+:deep(.n-button-group .n-button:not(:first-child):not(:last-child)) {
+  border-radius: 0 !important;
+}
+
+:deep(.n-modal .n-dialog) {
+  background: rgba(13, 40, 24, 0.98) !important;
+  border: 2px solid #2d5a42 !important;
+  backdrop-filter: blur(12px);
+}
+
+:deep(.n-modal .n-dialog .n-dialog__title) {
+  color: #ffd700 !important;
+  font-weight: 700 !important;
+}
+
+:deep(.n-badge .n-badge-sup) {
+  background: #ff4757 !important;
+  color: white !important;
+  font-weight: 700 !important;
+  border: 1px solid white !important;
+  font-size: 10px !important;
 }
 </style>
