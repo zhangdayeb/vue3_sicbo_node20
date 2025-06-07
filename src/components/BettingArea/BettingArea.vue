@@ -8,21 +8,6 @@
           <p class="welcome-subtitle">点击开始按钮进入游戏并启用音效</p>
         </div>
         
-        <div class="welcome-features">
-          <div class="feature-item">
-            <span class="feature-icon">🎵</span>
-            <span class="feature-text">沉浸式音效体验</span>
-          </div>
-          <div class="feature-item">
-            <span class="feature-icon">📱</span>
-            <span class="feature-text">触觉反馈支持</span>
-          </div>
-          <div class="feature-item">
-            <span class="feature-icon">⚡</span>
-            <span class="feature-text">流畅投注体验</span>
-          </div>
-        </div>
-        
         <button class="welcome-button" @click="startGame">
           <span class="button-text">开始游戏</span>
           <span class="button-icon">🚀</span>
@@ -370,32 +355,6 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-.welcome-features {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin: 30px 0;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  border: 1px solid rgba(74, 159, 110, 0.3);
-}
-
-.feature-icon {
-  font-size: 20px;
-}
-
-.feature-text {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
 .welcome-button {
   background: linear-gradient(135deg, #4a9f6e, #27ae60);
   border: 2px solid #5bb77c;
@@ -410,7 +369,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 30px auto 20px;
+  margin: 20px auto;
   box-shadow: 
     0 4px 15px rgba(74, 159, 110, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -541,11 +500,6 @@ onMounted(() => {
     padding: 25px 20px;
   }
   
-  .welcome-features {
-    margin: 20px 0;
-    gap: 12px;
-  }
-  
   .betting-content {
     padding-bottom: 110px;
     padding-top: 12px;
@@ -561,19 +515,6 @@ onMounted(() => {
   .welcome-card {
     padding: 20px;
     max-width: 350px;
-  }
-  
-  .welcome-features {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-  }
-  
-  .feature-item {
-    flex: 1;
-    min-width: 100px;
-    padding: 8px 12px;
   }
   
   .bottom-fixed-area {
