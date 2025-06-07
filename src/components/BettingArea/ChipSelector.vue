@@ -32,74 +32,135 @@
       </div>
     </div>
 
-    <!-- 筹码设置弹窗 -->
-    <div v-if="showSettings" class="settings-overlay" @click="closeSettings">
-      <div class="settings-dialog" @click.stop>
-        <div class="settings-header">
-          <h3 class="settings-title">筹码设置</h3>
-          <button class="close-btn" @click="closeSettings">×</button>
+    <!-- 使用 Naive UI Modal -->
+    <n-modal 
+      v-model:show="showSettings" 
+      preset="card"
+      :style="{ width: '90%', maxWidth: '600px' }"
+      title="筹码设置"
+      size="huge"
+      :bordered="false"
+      :segmented="false"
+      :close-on-esc="true"
+      :mask-closable="true"
+      :auto-focus="false"
+    >
+      <template #header>
+        <div class="modal-header">
+          <n-icon size="20" color="#ffd700">
+            <SettingsIcon />
+          </n-icon>
+          <span class="modal-title">筹码设置</span>
         </div>
-        
-        <div class="settings-content">
-          <div class="settings-section">
-            <h4 class="section-title">选择常用筹码（最多5个）</h4>
-            <div class="current-selection">
-              <div class="selection-info">
-                已选择 {{ tempFavorites.length }} / 5
-              </div>
-              <button 
-                class="reset-btn" 
-                @click="resetToDefault"
-                :disabled="isDefaultSelection"
-              >
-                恢复默认
-              </button>
-            </div>
-          </div>
+      </template>
+
+      <div class="settings-content">
+        <!-- 当前选择信息 -->
+        <div class="current-selection">
+          <n-space justify="space-between" align="center">
+            <n-text type="info">
+              已选择 {{ tempFavorites.length }} / 5 个常用筹码
+            </n-text>
+            <n-button 
+              size="small"
+              type="primary"
+              ghost
+              @click="resetToDefault"
+              :disabled="isDefaultSelection"
+            >
+              <template #icon>
+                <n-icon><RefreshIcon /></n-icon>
+              </template>
+              恢复默认
+            </n-button>
+          </n-space>
+        </div>
+
+        <!-- 筹码选择网格 -->
+        <div class="chips-section">
+          <n-text depth="2" style="margin-bottom: 12px; display: block;">
+            点击选择常用筹码（最多5个）
+          </n-text>
           
           <div class="all-chips-grid">
-            <button
+            <div
               v-for="chip in allChips"
               :key="chip.value"
-              class="all-chip-btn"
+              class="chip-card"
               :class="{ 
                 'selected': tempFavorites.includes(chip.value),
                 'disabled': !tempFavorites.includes(chip.value) && tempFavorites.length >= 5
               }"
               @click="toggleChipSelection(chip.value)"
             >
-              <img 
-                :src="getChipImage(chip.value, 'all')" 
-                :alt="chip.label"
-                class="all-chip-image"
-              />
-              <div class="all-chip-label">{{ chip.label }}</div>
-              <div v-if="tempFavorites.includes(chip.value)" class="selection-badge">
-                {{ tempFavorites.indexOf(chip.value) + 1 }}
+              <div class="chip-card-inner">
+                <img 
+                  :src="getChipImage(chip.value, 'all')" 
+                  :alt="chip.label"
+                  class="chip-card-image"
+                />
+                <n-text class="chip-card-label">{{ chip.label }}</n-text>
+                
+                <!-- 选中序号 -->
+                <div 
+                  v-if="tempFavorites.includes(chip.value)" 
+                  class="selection-badge"
+                >
+                  {{ tempFavorites.indexOf(chip.value) + 1 }}
+                </div>
+                
+                <!-- 选中图标 -->
+                <div 
+                  v-if="tempFavorites.includes(chip.value)"
+                  class="selection-icon"
+                >
+                  <n-icon size="16" color="#fff">
+                    <CheckIcon />
+                  </n-icon>
+                </div>
               </div>
-            </button>
+            </div>
           </div>
         </div>
-        
-        <div class="settings-actions">
-          <button class="action-btn cancel-btn" @click="cancelSettings">
+      </div>
+
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="cancelSettings">
             取消
-          </button>
-          <button 
-            class="action-btn save-btn" 
+          </n-button>
+          <n-button 
+            type="primary"
             @click="saveSettings"
             :disabled="tempFavorites.length === 0"
           >
+            <template #icon>
+              <n-icon><SaveIcon /></n-icon>
+            </template>
             保存设置
-          </button>
-        </div>
-      </div>
-    </div>
+          </n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { 
+  NModal, 
+  NButton, 
+  NIcon, 
+  NSpace, 
+  NText,
+  useMessage 
+} from 'naive-ui'
+import {
+  Settings as SettingsIcon,
+  Refresh as RefreshIcon,
+  Checkmark as CheckIcon,
+  Save as SaveIcon
+} from '@vicons/ionicons5'
 
 // Props
 interface Props {
@@ -114,11 +175,14 @@ const emit = defineEmits<{
   'settings-changed': [favorites: number[]]
 }>()
 
+// 使用 Naive UI 的消息组件
+const message = useMessage()
+
 // 筹码配置接口
 interface ChipConfig {
   value: number
   label: string
-  filename: string // 文件名前缀，如 '1K', '5M' 等
+  filename: string
 }
 
 // 所有可用筹码配置
@@ -146,7 +210,7 @@ const allChips: ChipConfig[] = [
   { value: 1000000000, label: '1000M', filename: '1000M' }
 ]
 
-// 默认常用筹码（前5个）
+// 默认常用筹码
 const defaultFavorites = [1, 10, 100, 1000, 10000]
 
 // 响应式数据
@@ -162,7 +226,7 @@ const favoriteChips = computed(() => {
 })
 
 const isDefaultSelection = computed(() => {
-  return JSON.stringify(tempFavorites.value.sort()) === JSON.stringify(defaultFavorites.sort())
+  return JSON.stringify([...tempFavorites.value].sort()) === JSON.stringify([...defaultFavorites].sort())
 })
 
 // 方法
@@ -181,15 +245,11 @@ const selectChip = (value: number): void => {
 const openSettings = (): void => {
   tempFavorites.value = [...favoriteChipValues.value]
   showSettings.value = true
-  // 阻止页面滚动
-  document.body.style.overflow = 'hidden'
 }
 
 const closeSettings = (): void => {
   showSettings.value = false
   tempFavorites.value = []
-  // 恢复页面滚动
-  document.body.style.overflow = ''
 }
 
 const toggleChipSelection = (value: number): void => {
@@ -202,12 +262,15 @@ const toggleChipSelection = (value: number): void => {
     // 添加选择（最多5个）
     if (tempFavorites.value.length < 5) {
       tempFavorites.value.push(value)
+    } else {
+      message.warning('最多只能选择5个常用筹码')
     }
   }
 }
 
 const resetToDefault = (): void => {
   tempFavorites.value = [...defaultFavorites]
+  message.info('已恢复默认设置')
 }
 
 const cancelSettings = (): void => {
@@ -215,7 +278,10 @@ const cancelSettings = (): void => {
 }
 
 const saveSettings = (): void => {
-  if (tempFavorites.value.length === 0) return
+  if (tempFavorites.value.length === 0) {
+    message.error('请至少选择一个筹码')
+    return
+  }
   
   // 如果选择少于5个，用默认值补齐
   const finalFavorites = [...tempFavorites.value]
@@ -233,6 +299,7 @@ const saveSettings = (): void => {
   // 发送事件
   emit('settings-changed', favoriteChipValues.value)
   
+  message.success('筹码设置已保存')
   closeSettings()
 }
 
@@ -241,6 +308,7 @@ const saveToLocalStorage = (): void => {
     localStorage.setItem('sicbo_favorite_chips', JSON.stringify(favoriteChipValues.value))
   } catch (error) {
     console.warn('Failed to save chip settings:', error)
+    message.error('保存设置失败')
   }
 }
 
@@ -266,9 +334,9 @@ onMounted(() => {
 
 <style scoped>
 .chip-selector {
-  background: rgba(0, 0, 0, 0.95); /* 统一背景色 */
+  background: rgba(0, 0, 0, 0.95);
   border-top: 1px solid #2d5a42;
-  padding: 8px; /* 从12px减少到8px */
+  padding: 8px;
 }
 
 /* 筹码容器 */
@@ -281,7 +349,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  gap: 6px; /* 从8px减少到6px */
+  gap: 6px;
   max-width: 400px;
   width: 100%;
 }
@@ -294,7 +362,7 @@ onMounted(() => {
   transition: all 0.3s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  padding: 3px; /* 从4px减少到3px */
+  padding: 3px;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -311,8 +379,8 @@ onMounted(() => {
 }
 
 .chip-image {
-  width: 42px; /* 从48px减少到42px */
-  height: 42px; /* 从48px减少到42px */
+  width: 42px;
+  height: 42px;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   transition: all 0.3s ease;
@@ -331,191 +399,101 @@ onMounted(() => {
   transform: rotate(15deg);
 }
 
-/* 设置弹窗 - 优化移动端显示 */
-.settings-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+/* Modal 自定义样式 */
+.modal-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px;
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  gap: 8px;
 }
 
-.settings-dialog {
-  background: #2c3e50;
-  border-radius: 16px;
-  border: 1px solid #34495e;
-  max-width: 600px;
-  width: 100%;
-  max-height: calc(100vh - 32px);
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  animation: dialogAppear 0.3s ease;
-  overflow: hidden;
-}
-
-@keyframes dialogAppear {
-  0% {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.settings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #34495e;
-  flex-shrink: 0;
-}
-
-.settings-title {
-  margin: 0;
+.modal-title {
   font-size: 18px;
-  font-weight: 700;
-  color: #ecf0f1;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #bdc3c7;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  font-weight: 600;
+  color: #ffd700;
 }
 
 .settings-content {
-  flex: 1;
-  padding: 20px 24px;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.settings-section {
-  margin-bottom: 20px;
-}
-
-.section-title {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #ecf0f1;
+  padding: 0;
 }
 
 .current-selection {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 12px 16px;
+  background: rgba(255, 215, 0, 0.1);
+  padding: 16px;
   border-radius: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
-.selection-info {
-  color: #bdc3c7;
-  font-size: 12px;
+.chips-section {
+  margin-bottom: 8px;
 }
 
-.reset-btn {
-  background: #3498db;
-  border: none;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s ease;
-}
-
-.reset-btn:hover:not(:disabled) {
-  background: #2980b9;
-}
-
-.reset-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 所有筹码网格 */
+/* 筹码选择网格 */
 .all-chips-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
   gap: 12px;
-  max-height: calc(65vh - 220px);
-  min-height: 200px;
+  max-height: 400px;
   overflow-y: auto;
   padding: 8px;
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.all-chip-btn {
+.chip-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid transparent;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 12px;
   transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.all-chip-btn:hover:not(.disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #3498db;
+.chip-card:hover:not(.disabled) {
+  transform: translateY(-2px);
 }
 
-.all-chip-btn.selected {
-  background: rgba(52, 152, 219, 0.2);
-  border-color: #3498db;
-  box-shadow: 0 0 12px rgba(52, 152, 219, 0.3);
+.chip-card.selected {
+  transform: translateY(-2px);
 }
 
-.all-chip-btn.disabled {
+.chip-card.disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
-.all-chip-image {
+.chip-card-inner {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  padding: 12px 8px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.chip-card:hover:not(.disabled) .chip-card-inner {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.chip-card.selected .chip-card-inner {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: #ffd700;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
+}
+
+.chip-card-image {
   width: 40px;
   height: 40px;
   object-fit: contain;
 }
 
-.all-chip-label {
-  color: #ecf0f1;
-  font-size: 10px;
+.chip-card-label {
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
 }
@@ -527,242 +505,101 @@ onMounted(() => {
   background: #e74c3c;
   color: white;
   border-radius: 50%;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: bold;
   border: 2px solid white;
+  z-index: 2;
 }
 
-/* 设置操作按钮 */
-.settings-actions {
-  padding: 16px 24px;
-  border-top: 1px solid #34495e;
-  display: flex;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.action-btn {
-  flex: 1;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.cancel-btn {
-  background: #7f8c8d;
-  color: white;
-}
-
-.cancel-btn:hover {
-  background: #95a5a6;
-}
-
-.save-btn {
+.selection-icon {
+  position: absolute;
+  top: 8px;
+  left: 8px;
   background: #27ae60;
-  color: white;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #229954;
-}
-
-.save-btn:disabled {
-  background: #7f8c8d;
-  cursor: not-allowed;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* 响应式适配 */
 @media (max-width: 768px) {
-  .settings-overlay {
-    padding: 12px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
-  }
-  
-  .settings-dialog {
-    max-width: 100%;
-    max-height: calc(100vh - 24px);
-    border-radius: 12px;
-  }
-  
   .all-chips-grid {
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 8px;
-    max-height: calc(60vh - 200px);
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+    gap: 10px;
+    max-height: 350px;
   }
   
-  .all-chip-image {
+  .chip-card-image {
     width: 36px;
     height: 36px;
+  }
+  
+  .chip-card-inner {
+    padding: 10px 6px;
   }
 }
 
 @media (max-width: 375px) {
   .chip-list {
-    gap: 4px; /* 从6px减少到4px */
+    gap: 4px;
   }
   
   .chip-image {
-    width: 38px; /* 从42px减少到38px */
-    height: 38px; /* 从42px减少到38px */
-  }
-  
-  .settings-overlay {
-    padding: 8px;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
-  }
-  
-  .settings-dialog {
-    border-radius: 8px;
-    max-height: calc(100vh - 16px);
-  }
-  
-  .settings-header,
-  .settings-content,
-  .settings-actions {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  
-  .settings-header {
-    padding-top: 16px;
-    padding-bottom: 12px;
-  }
-  
-  .settings-content {
-    padding-top: 16px;
-    padding-bottom: 16px;
-  }
-  
-  .settings-actions {
-    padding-top: 12px;
-    padding-bottom: 16px;
+    width: 38px;
+    height: 38px;
   }
   
   .all-chips-grid {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    gap: 6px;
-    max-height: calc(55vh - 160px);
-    padding: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+    max-height: 300px;
   }
   
-  .all-chip-image {
+  .chip-card-image {
     width: 32px;
     height: 32px;
   }
   
-  .all-chip-label {
-    font-size: 9px;
+  .chip-card-label {
+    font-size: 11px;
   }
 }
 
 @media (max-width: 320px) {
-  .settings-overlay {
-    padding: 4px;
-    padding-bottom: max(4px, env(safe-area-inset-bottom));
-  }
-  
-  .settings-dialog {
-    border-radius: 6px;
-    max-height: calc(100vh - 8px);
-  }
-  
-  .settings-header {
-    padding: 12px 12px 8px 12px;
-  }
-  
-  .settings-content {
-    padding: 12px;
-  }
-  
-  .settings-actions {
-    padding: 8px 12px 12px 12px;
-  }
-  
-  .settings-title {
-    font-size: 14px;
-  }
-  
   .all-chips-grid {
-    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-    gap: 4px;
-    max-height: calc(50vh - 120px);
-    min-height: 150px;
-    padding: 4px;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 6px;
+    max-height: 280px;
   }
   
-  .all-chip-image {
+  .chip-card-image {
     width: 28px;
     height: 28px;
   }
   
-  .all-chip-label {
-    font-size: 8px;
+  .chip-card-inner {
+    padding: 8px 4px;
   }
   
-  .current-selection {
-    padding: 8px 12px;
-  }
-  
-  .selection-info {
-    font-size: 11px;
-  }
-  
-  .reset-btn {
-    padding: 4px 8px;
-    font-size: 11px;
-  }
-  
-  .action-btn {
-    padding: 8px 16px;
-    font-size: 13px;
+  .chip-card-label {
+    font-size: 10px;
   }
 }
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
-  .settings-overlay {
-    padding: 8px;
-    align-items: flex-start;
-    padding-top: 20px;
-  }
-  
-  .settings-dialog {
-    max-height: calc(100vh - 40px);
-    max-width: 90vw;
-  }
-  
   .all-chips-grid {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    max-height: calc(100vh - 200px);
-    min-height: 120px;
-  }
-  
-  .all-chip-image {
-    width: 30px;
-    height: 30px;
-  }
-  
-  .settings-header {
-    padding: 12px 20px 8px 20px;
-  }
-  
-  .settings-content {
-    padding: 12px 20px;
-  }
-  
-  .settings-actions {
-    padding: 8px 20px 12px 20px;
+    max-height: 250px;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
   }
 }
 
@@ -785,21 +622,21 @@ onMounted(() => {
   background: rgba(255, 215, 0, 0.5);
 }
 
-.settings-content::-webkit-scrollbar {
-  width: 6px;
+/* Naive UI 深色主题适配 */
+:deep(.n-card) {
+  background-color: rgba(40, 40, 40, 0.95) !important;
+  backdrop-filter: blur(10px);
 }
 
-.settings-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+:deep(.n-card .n-card-header) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.settings-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 215, 0, 0.3);
-  border-radius: 3px;
+:deep(.n-card .n-card-footer) {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.settings-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 215, 0, 0.5);
+:deep(.n-modal-mask) {
+  backdrop-filter: blur(4px);
 }
 </style>

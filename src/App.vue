@@ -1,4 +1,5 @@
 <template>
+  <n-message-provider>
   <div id="app">
     <!-- 顶部视频区域 - 固定350px -->
     <div class="top-section">
@@ -10,9 +11,11 @@
       <BettingArea />
     </div>
   </div>
+  </n-message-provider>
 </template>
 
 <script setup lang="ts">
+import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
 </script>
