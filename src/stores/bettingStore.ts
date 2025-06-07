@@ -1,4 +1,3 @@
-// src/stores/bettingStore.ts - 确保正确初始化
 import { defineStore } from 'pinia'
 import { ref, computed, reactive } from 'vue'
 import type { BetType, BetLimits, GamePhase } from '@/types/betting'
@@ -23,16 +22,17 @@ interface BettingSettings {
   quickBetEnabled: boolean
   maxBetWarning: boolean
   riskLevel: 'conservative' | 'moderate' | 'aggressive'
+  debugMode: boolean
 }
 
 export const useBettingStore = defineStore('betting', () => {
   // 基础状态 - 确保初始化不为空
   const balance = ref(10000)
-  const selectedChip = ref(10) // 确保有默认值
-  const currentBets = ref<Record<string, number>>({}) // 确保初始化为空对象
+  const selectedChip = ref(10)
+  const currentBets = ref<Record<string, number>>({})
   const lastBets = ref<Record<string, number>>({})
-  const gamePhase = ref<GamePhase>('betting') // 设置为可投注状态
-  const isConnected = ref(true) // 设置为已连接
+  const gamePhase = ref<GamePhase>('betting')
+  const isConnected = ref(true)
   
   // 投注限额配置
   const betLimits = ref<Record<string, BetLimits>>({
@@ -109,13 +109,13 @@ export const useBettingStore = defineStore('betting', () => {
     vibrationEnabled: true,
     quickBetEnabled: true,
     maxBetWarning: true,
-    riskLevel: 'moderate'
+    riskLevel: 'moderate',
+    debugMode: false // 添加调试模式开关
   })
   
   // 计算属性
   const totalBetAmount = computed(() => {
     const total = Object.values(currentBets.value).reduce((sum, amount) => sum + amount, 0)
-    // 移除计算属性中的日志，避免递归更新
     return total
   })
   
@@ -124,9 +124,7 @@ export const useBettingStore = defineStore('betting', () => {
   })
   
   const canPlaceBet = computed(() => {
-    const canBet = gamePhase.value === 'betting' && isConnected.value && availableBalance.value > 0
-    // 移除计算属性中的日志，避免递归更新
-    return canBet
+    return gamePhase.value === 'betting' && isConnected.value && availableBalance.value > 0
   })
   
   const betCount = computed(() => {
@@ -141,32 +139,41 @@ export const useBettingStore = defineStore('betting', () => {
     return `¥${balance.value.toLocaleString()}`
   })
   
+  // 调试日志函数
+  const debugLog = (message: string, data?: any) => {
+    if (settings.debugMode) {
+      if (data) {
+        console.log(`[BettingStore] ${message}`, data)
+      } else {
+        console.log(`[BettingStore] ${message}`)
+      }
+    }
+  }
+  
   // 核心方法
   
   // 选择筹码
   const selectChip = (chipValue: number): boolean => {
-    console.log('🪙 选择筹码:', chipValue)
+    debugLog('选择筹码', chipValue)
     if (chipValue <= 0 || chipValue > balance.value) {
-      console.log('❌ 筹码选择失败: 无效金额或超过余额')
+      debugLog('筹码选择失败: 无效金额或超过余额')
       return false
     }
     selectedChip.value = chipValue
-    console.log('✅ 筹码选择成功:', chipValue)
+    debugLog('筹码选择成功', chipValue)
     return true
   }
   
   // 下注 - 关键方法
   const placeBet = (betType: BetType, amount: number): boolean => {
-    console.log('🎯 执行投注:', { betType, amount })
-    console.log('🔍 投注前检查:', {
-      canPlaceBet: canPlaceBet.value,
-      gamePhase: gamePhase.value,
-      balance: balance.value,
-      availableBalance: availableBalance.value
-    })
+    debugLog('执行投注', { betType, amount })
     
     if (!canPlaceBet.value) {
-      console.warn('❌ 投注失败: 无法投注')
+      debugLog('投注失败: 无法投注', {
+        gamePhase: gamePhase.value,
+        isConnected: isConnected.value,
+        availableBalance: availableBalance.value
+      })
       return false
     }
     
@@ -175,7 +182,7 @@ export const useBettingStore = defineStore('betting', () => {
     const currentAmount = currentBets.value[betType] || 0
     const newTotal = currentAmount + amount
     
-    console.log('💰 投注金额验证:', {
+    debugLog('投注金额验证', {
       limits,
       currentAmount,
       amount,
@@ -184,33 +191,33 @@ export const useBettingStore = defineStore('betting', () => {
     })
     
     if (amount <= 0) {
-      console.warn('❌ 投注失败: 投注金额必须大于0')
+      debugLog('投注失败: 投注金额必须大于0')
       return false
     }
     
     if (newTotal < limits.min) {
-      console.warn(`❌ 投注失败: 最小投注金额为 ${limits.min}`)
+      debugLog(`投注失败: 最小投注金额为 ${limits.min}`)
       return false
     }
     
     if (newTotal > limits.max) {
-      console.warn(`❌ 投注失败: 最大投注金额为 ${limits.max}`)
+      debugLog(`投注失败: 最大投注金额为 ${limits.max}`)
       return false
     }
     
     if (amount > availableBalance.value) {
-      console.warn('❌ 投注失败: 余额不足')
+      debugLog('投注失败: 余额不足')
       return false
     }
     
-    // 执行投注 - 关键步骤
-    console.log('✅ 投注验证通过，执行投注')
+    // 执行投注
+    debugLog('投注验证通过，执行投注')
     currentBets.value[betType] = newTotal
     
-    console.log('📊 投注执行后状态:', {
+    debugLog('投注执行成功', {
       betType,
       newAmount: newTotal,
-      totalBets: currentBets.value,
+      totalBets: Object.keys(currentBets.value).length,
       totalAmount: totalBetAmount.value
     })
     
@@ -235,42 +242,44 @@ export const useBettingStore = defineStore('betting', () => {
       currentBets.value[betType] = currentAmount - cancelAmount
     }
     
+    debugLog('取消投注', { betType, cancelAmount })
     return true
   }
   
   // 清除所有投注
   const clearBets = (): void => {
-    console.log('🧹 清除所有投注')
+    debugLog('清除所有投注')
     currentBets.value = {}
   }
   
   // 重复投注
   const rebet = (): boolean => {
     if (Object.keys(lastBets.value).length === 0) {
-      console.warn('❌ 重复投注失败: 没有上次投注记录')
+      debugLog('重复投注失败: 没有上次投注记录')
       return false
     }
     
     const totalLastBetAmount = Object.values(lastBets.value).reduce((sum, amount) => sum + amount, 0)
     if (totalLastBetAmount > availableBalance.value) {
-      console.warn('❌ 重复投注失败: 余额不足')
+      debugLog('重复投注失败: 余额不足')
       return false
     }
     
     // 清除当前投注并复制上次投注
     currentBets.value = { ...lastBets.value }
+    debugLog('重复投注成功', currentBets.value)
     return true
   }
   
   // 确认投注
   const confirmBets = (): boolean => {
     if (!hasActiveBets.value) {
-      console.warn('❌ 确认投注失败: 没有待确认的投注')
+      debugLog('确认投注失败: 没有待确认的投注')
       return false
     }
     
     if (!canPlaceBet.value) {
-      console.warn('❌ 确认投注失败: 当前无法投注')
+      debugLog('确认投注失败: 当前无法投注')
       return false
     }
     
@@ -284,9 +293,10 @@ export const useBettingStore = defineStore('betting', () => {
     // 清除当前投注
     currentBets.value = {}
     
-    console.log('✅ 投注确认成功:', {
+    debugLog('投注确认成功', {
       lastBets: lastBets.value,
-      newBalance: balance.value
+      newBalance: balance.value,
+      betAmount
     })
     
     return true
@@ -295,11 +305,13 @@ export const useBettingStore = defineStore('betting', () => {
   // 更新余额
   const updateBalance = (newBalance: number): void => {
     balance.value = Math.max(0, newBalance)
+    debugLog('更新余额', balance.value)
   }
   
   // 更新游戏阶段
   const updateGamePhase = (phase: GamePhase): void => {
     gamePhase.value = phase
+    debugLog('更新游戏阶段', phase)
   }
   
   // 获取投注限额
@@ -312,9 +324,15 @@ export const useBettingStore = defineStore('betting', () => {
     betLimits.value[betType] = limits
   }
   
+  // 切换调试模式
+  const toggleDebugMode = (): void => {
+    settings.debugMode = !settings.debugMode
+    console.log(`调试模式已${settings.debugMode ? '开启' : '关闭'}`)
+  }
+  
   // 初始化方法
   const init = (): void => {
-    console.log('🚀 初始化 bettingStore')
+    debugLog('初始化 bettingStore')
     
     // 确保所有状态都有正确的初始值
     if (!selectedChip.value) selectedChip.value = 10
@@ -322,10 +340,9 @@ export const useBettingStore = defineStore('betting', () => {
     if (!lastBets.value) lastBets.value = {}
     if (!gamePhase.value) gamePhase.value = 'betting'
     
-    console.log('📊 初始化完成:', {
+    debugLog('初始化完成', {
       balance: balance.value,
       selectedChip: selectedChip.value,
-      currentBets: currentBets.value,
       gamePhase: gamePhase.value,
       canPlaceBet: canPlaceBet.value
     })
@@ -361,6 +378,7 @@ export const useBettingStore = defineStore('betting', () => {
     updateGamePhase,
     getBetLimits,
     setBetLimits,
+    toggleDebugMode,
     init
   }
 })
