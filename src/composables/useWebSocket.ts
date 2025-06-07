@@ -232,9 +232,6 @@ export const useWebSocket = (
       }
       
       wsService.value?.on('heartbeat_response', handleHeartbeat)
-      
-      // 发送心跳消息（如果需要手动触发）
-      // wsService.value?.sendHeartbeat()
     })
   }
 
@@ -291,5 +288,5 @@ export const useWebSocket = (
   }
 }
 
-// 类型导出
+// 类型导出 - 使用 ReturnType 自动推断
 export type UseWebSocketReturn = ReturnType<typeof useWebSocket>

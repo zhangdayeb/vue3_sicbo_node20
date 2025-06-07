@@ -6,6 +6,7 @@ import { useBettingStore } from '@/stores/bettingStore'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudio } from './useAudio'
 import { parseGameParams, validateGameParams, logGameParams } from '@/utils/urlParams'
+import { ENV_CONFIG, isDev } from '@/utils/envUtils'
 import type { 
   GameParams, 
   UserInfo, 
@@ -41,11 +42,11 @@ export interface GameLifecycleOptions {
 
 export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const {
-    enableMock = import.meta.env.VITE_ENABLE_MOCK === 'true',
+    enableMock = ENV_CONFIG.ENABLE_MOCK,
     autoInitialize = true,
     enableAudio = true,
     enableVibration = true,
-    debugMode = import.meta.env.DEV
+    debugMode = ENV_CONFIG.DEBUG_MODE
   } = options
 
   // Store 引用
@@ -317,20 +318,37 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     // 设置游戏事件监听器
     setupWebSocketEventListeners()
 
-    // 等待连接建立
+    // 等待连接建立 - 修复的连接检查逻辑
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('WebSocket连接超时'))
       }, 10000)
 
+      let checkCount = 0
+      const maxChecks = 100 // 最多检查100次
+
       const checkConnection = () => {
-        if (wsService.value?.isConnected.value) {
+        checkCount++
+        
+        // 方式1: 检查 wsService 的连接状态
+        const wsConnected = wsService.value && 
+                           wsService.value.isConnected && 
+                           wsService.value.isConnected.value === true
+        
+        // 方式2: 检查本地状态
+        const localConnected = lifecycleState.connectionStatus === 'connected'
+        
+        if (wsConnected || localConnected) {
           clearTimeout(timeout)
           resolve()
+        } else if (checkCount >= maxChecks) {
+          clearTimeout(timeout)
+          reject(new Error('WebSocket连接检查超过最大次数'))
         } else {
           setTimeout(checkConnection, 100)
         }
       }
+      
       checkConnection()
     })
   }
@@ -626,7 +644,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         lifecycleState.connectionStatus = 'connected'
       } else {
         // 生产模式下的重连
-        await wsService.value?.reconnect()
+        if (wsService.value && typeof wsService.value.reconnect === 'function') {
+          await wsService.value.reconnect()
+        }
       }
       
       clearError()
@@ -648,7 +668,10 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     gamePhase: lifecycleState.currentGame?.status,
     countdown: lifecycleState.currentGame?.countdown,
     userBalance: lifecycleState.userInfo?.balance,
-    connectionStatus: lifecycleState.connectionStatus
+    connectionStatus: lifecycleState.connectionStatus,
+    enableMock,
+    debugMode,
+    envConfig: ENV_CONFIG
   })
 
   /**
@@ -658,7 +681,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     debugLog('清理游戏生命周期资源')
     
     // 断开WebSocket连接
-    wsService.value?.disconnect()
+    if (wsService.value && typeof wsService.value.disconnect === 'function') {
+      wsService.value.disconnect()
+    }
     
     // 清理状态
     lifecycleState.isInitialized = false

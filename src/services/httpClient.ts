@@ -7,14 +7,33 @@ import axios, {
 } from 'axios'
 import type { ApiResponse, ApiConfig } from '@/types/api'
 
+// 安全的环境变量获取函数
+const getEnvVar = (key: string, defaultValue: string = ''): string => {
+  try {
+    return import.meta.env[key] || defaultValue
+  } catch (error) {
+    console.warn(`无法读取环境变量 ${key}, 使用默认值: ${defaultValue}`)
+    return defaultValue
+  }
+}
+
+// 检查是否为开发环境
+const isDev = (): boolean => {
+  try {
+    return import.meta.env.DEV === true || import.meta.env.MODE === 'development'
+  } catch (error) {
+    return false
+  }
+}
+
 // 默认配置
 const defaultConfig: ApiConfig = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api',
-  wsURL: import.meta.env.VITE_WS_URL || 'ws://localhost:3001/ws',
+  baseURL: getEnvVar('VITE_API_BASE_URL', 'http://localhost:3001/api'),
+  wsURL: getEnvVar('VITE_WS_URL', 'ws://localhost:3001/ws'),
   timeout: 10000,
   retryAttempts: 3,
   retryDelay: 1000,
-  enableMock: import.meta.env.VITE_ENABLE_MOCK === 'true'
+  enableMock: getEnvVar('VITE_ENABLE_MOCK', 'false') === 'true'
 }
 
 export class HttpClient {
@@ -57,7 +76,7 @@ export class HttpClient {
         }
 
         // 记录请求日志（开发环境）
-        if (import.meta.env.DEV) {
+        if (isDev()) {
           console.log('🚀 HTTP请求:', {
             url: config.url,
             method: config.method?.toUpperCase(),
@@ -78,7 +97,7 @@ export class HttpClient {
     this.client.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
         // 记录响应日志（开发环境）
-        if (import.meta.env.DEV) {
+        if (isDev()) {
           console.log('✅ HTTP响应:', {
             url: response.config.url,
             status: response.status,
@@ -280,6 +299,20 @@ export class HttpClient {
   getConfig(): ApiConfig {
     return { ...this.config }
   }
+
+  /**
+   * 获取当前环境信息（用于调试）
+   */
+  getEnvInfo(): Record<string, any> {
+    return {
+      baseURL: this.config.baseURL,
+      wsURL: this.config.wsURL,
+      enableMock: this.config.enableMock,
+      isDev: isDev(),
+      mode: getEnvVar('MODE', 'unknown'),
+      nodeEnv: getEnvVar('NODE_ENV', 'unknown')
+    }
+  }
 }
 
 // 创建默认实例
@@ -287,3 +320,10 @@ export const httpClient = new HttpClient()
 
 // 导出默认实例的方法
 export const { get, post, put, delete: del } = httpClient
+
+// 导出环境信息查看函数
+export const logEnvInfo = (): void => {
+  console.group('🌍 环境变量信息')
+  console.log('📊 HTTP客户端配置:', httpClient.getEnvInfo())
+  console.groupEnd()
+}
