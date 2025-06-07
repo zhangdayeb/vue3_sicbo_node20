@@ -6,11 +6,18 @@
       <div class="betting-container">
         <div class="betting-sections">
           <!-- 大小单双投注区域 -->
-          <MainBets 
+          <!-- <MainBets 
             :selectedChip="selectedChip"
             :currentBets="currentBets"
             @place-bet="handlePlaceBet"
-          />
+          /> -->
+          <MainBets 
+  :selectedChip="selectedChip"
+  :currentBets="currentBets"
+  :showDebugInfo="true" 
+  @place-bet="handlePlaceBet"
+  @debug-info="handleDebugInfo"
+/>
 
           <!-- 点数投注区域 -->
           <NumberBets 
@@ -132,7 +139,9 @@ const {
   setWinningEffectRef,
   setDiceRollingEffectRef 
 } = useGameEffects()
-
+const handleDebugInfo = (info: any) => {
+  console.log('调试信息:', info)
+}
 // 组件引用
 const chipAnimationRef = ref()
 const winningEffectRef = ref()
