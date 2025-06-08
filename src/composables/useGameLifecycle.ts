@@ -46,7 +46,6 @@ export interface GameLifecycleState {
 }
 
 export interface GameLifecycleOptions {
-  enableMock?: boolean
   autoInitialize?: boolean
   enableAudio?: boolean
   enableVibration?: boolean
@@ -56,7 +55,6 @@ export interface GameLifecycleOptions {
 
 export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const {
-    enableMock = ENV_CONFIG.ENABLE_MOCK,
     autoInitialize = true,
     enableAudio = true,
     enableVibration = true,
@@ -134,10 +132,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       warnings.push(lifecycleState.gameTypeValidation.error || '游戏类型不匹配')
     }
     
-    if (enableMock) {
-      warnings.push('当前运行在Mock模式下，数据为模拟数据')
-    }
-    
+   
     if (debugMode) {
       warnings.push('调试模式已启用')
     }
@@ -200,11 +195,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       }
 
       // 4. 如果开启Mock模式，跳过真实服务初始化
-      if (enableMock) {
-        await initializeMockMode()
-      } else {
-        await initializeProductionMode()
-      }
+      await initializeProductionMode()
 
       // 5. 初始化游戏状态
       initializeGameStores()
@@ -219,7 +210,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
 
       debugLog('游戏生命周期初始化完成', {
         duration: performanceMetrics.initializationTime,
-        mode: enableMock ? 'Mock' : 'Production',
         gameType: getGameTypeDescription(gameParams.value.game_type),
         warnings: initializationWarnings.value
       })
@@ -282,39 +272,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     } else {
       debugLog('游戏类型验证通过: 骰宝游戏')
     }
-  }
-
-  /**
-   * 初始化Mock模式
-   */
-  const initializeMockMode = async (): Promise<void> => {
-    debugLog('初始化Mock模式')
-
-    // 模拟用户信息
-    lifecycleState.userInfo = {
-      user_id: gameParams.value.user_id,
-      username: '演示用户',
-      balance: 50000,
-      vip_level: 2,
-      currency: 'CNY'
-    }
-
-    // 模拟桌台信息
-    lifecycleState.tableInfo = {
-      table_name: `骰宝${gameParams.value.table_id}号桌`,
-      min_bet: 10,
-      max_bet: 50000
-    }
-
-    // 模拟当前游戏
-    lifecycleState.currentGame = {
-      game_number: `T${gameParams.value.table_id}24120700001`,
-      status: 'waiting',
-      countdown: 0,
-      round: 1
-    }
-
-    lifecycleState.connectionStatus = 'connected'
   }
 
   /**
@@ -671,25 +628,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       throw new Error('当前无法投注')
     }
 
-    if (enableMock) {
-      const totalAmount = bets.reduce((sum, bet) => sum + bet.amount, 0)
-      const newBalance = lifecycleState.userInfo!.balance - totalAmount
-      
-      lifecycleState.userInfo!.balance = newBalance
-      bettingStore.updateBalance(newBalance)
-      
-      return {
-        bet_id: `mock_bet_${Date.now()}`,
-        game_number: lifecycleState.currentGame?.game_number || '',
-        total_amount: totalAmount,
-        new_balance: newBalance,
-        bets: bets.map(bet => ({
-          bet_type: bet.bet_type,
-          amount: bet.amount,
-          odds: '1:1'
-        }))
-      }
-    } else {
       const startTime = Date.now()
       
       try {
@@ -707,7 +645,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         debugLog('投注提交失败', error)
         throw error
       }
-    }
   }
 
   /**
@@ -720,14 +657,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       lifecycleState.connectionStatus = 'reconnecting'
       performanceMetrics.reconnectCount++
       
-      if (enableMock) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        lifecycleState.connectionStatus = 'connected'
-      } else {
-        if (wsService.value && typeof wsService.value.reconnect === 'function') {
+      if (wsService.value && typeof wsService.value.reconnect === 'function') {
           await wsService.value.reconnect()
         }
-      }
       
       clearError()
       debugLog('重新连接成功')
@@ -750,7 +682,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     userBalance: lifecycleState.userInfo?.balance,
     connectionStatus: lifecycleState.connectionStatus,
     gameTypeValidation: lifecycleState.gameTypeValidation,
-    enableMock,
     debugMode,
     envConfig: ENV_CONFIG,
     warnings: initializationWarnings.value

@@ -32,8 +32,7 @@ const defaultConfig: ApiConfig = {
   wsURL: getEnvVar('VITE_WS_URL', 'wss://wsssicbo.wuming888.com'),
   timeout: 10000,
   retryAttempts: 3,
-  retryDelay: 1000,
-  enableMock: getEnvVar('VITE_ENABLE_MOCK', 'false') === 'true'
+  retryDelay: 1000
 }
 
 export class HttpClient {
@@ -307,7 +306,6 @@ export class HttpClient {
     return {
       baseURL: this.config.baseURL,
       wsURL: this.config.wsURL,
-      enableMock: this.config.enableMock,
       isDev: isDev(),
       mode: getEnvVar('MODE', 'unknown'),
       nodeEnv: getEnvVar('NODE_ENV', 'unknown')

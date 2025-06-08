@@ -93,7 +93,7 @@ export const ENV_CONFIG = {
   WS_URL: getEnvVar('VITE_WS_URL', 'wss://wsssicbo.wuming888.com'),
   
   // 开发配置
-  ENABLE_MOCK: getEnvBoolean('VITE_ENABLE_MOCK', isDev()), // 开发环境默认启用Mock
+  ENABLE_MOCK: getEnvBoolean('VITE_ENABLE_MOCK', false), // 开发环境默认启用Mock
   ENABLE_TEST_CONSOLE: getEnvBoolean('VITE_ENABLE_TEST_CONSOLE', isDev()),
   DEBUG_MODE: getEnvBoolean('VITE_DEBUG_MODE', isDev()),
   

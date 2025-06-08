@@ -166,7 +166,6 @@ export interface ApiConfig {
   timeout: number
   retryAttempts: number
   retryDelay: number
-  enableMock: boolean
 }
 
 // URL参数
