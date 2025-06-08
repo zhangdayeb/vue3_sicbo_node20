@@ -153,12 +153,16 @@ const emit = defineEmits<{
 
 // 三同号选项配置
 const tripleOptions = [
-  { value: 1, color: '#e74c3c' },
-  { value: 2, color: '#3498db' },
-  { value: 3, color: '#e67e22' },
-  { value: 4, color: '#9b59b6' },
-  { value: 5, color: '#27ae60' },
-  { value: 6, color: '#f39c12' }
+  { id: 334, betAmount: 0, showChip: [], flashClass: '', value: 1, color: '#e74c3c' },
+  { id: 335, betAmount: 0, showChip: [], flashClass: '', value: 2, color: '#3498db' },
+  { id: 336, betAmount: 0, showChip: [], flashClass: '', value: 3, color: '#e67e22' },
+  { id: 337, betAmount: 0, showChip: [], flashClass: '', value: 4, color: '#9b59b6' },
+  { id: 338, betAmount: 0, showChip: [], flashClass: '', value: 5, color: '#27ae60' },
+  { id: 339, betAmount: 0, showChip: [], flashClass: '', value: 6, color: '#f39c12' }
+]
+
+const triple_any_triple = [
+  { id: 340, betAmount: 0, showChip: [], flashClass: '', value: 1, color: '#e74c3c' }
 ]
 
 // 响应式数据

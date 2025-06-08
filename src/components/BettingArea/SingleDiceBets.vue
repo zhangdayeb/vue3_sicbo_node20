@@ -106,12 +106,12 @@ const emit = defineEmits<{
 
 // 骰子选项配置
 const diceOptions = [
-  { value: 1, color: '#e74c3c' },
-  { value: 2, color: '#3498db' },
-  { value: 3, color: '#e67e22' },
-  { value: 4, color: '#9b59b6' },
-  { value: 5, color: '#27ae60' },
-  { value: 6, color: '#f39c12' }
+  { id: 322, betAmount: 0, showChip: [], flashClass: '', value: 1, color: '#e74c3c' },
+  { id: 323, betAmount: 0, showChip: [], flashClass: '', value: 2, color: '#3498db' },
+  { id: 324, betAmount: 0, showChip: [], flashClass: '', value: 3, color: '#e67e22' },
+  { id: 325, betAmount: 0, showChip: [], flashClass: '', value: 4, color: '#9b59b6' },
+  { id: 326, betAmount: 0, showChip: [], flashClass: '', value: 5, color: '#27ae60' },
+  { id: 327, betAmount: 0, showChip: [], flashClass: '', value: 6, color: '#f39c12' }
 ]
 
 // 响应式数据

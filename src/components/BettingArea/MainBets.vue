@@ -69,24 +69,40 @@ const emit = defineEmits<{
 // 大小单双投注配置
 const mainBets = [
   {
+    id: 304, 
+    betAmount: 0, 
+    showChip: [], 
+    flashClass: '',
     type: 'small',
     label: '小',
     range: '4-10',
     odds: '1:1'
   },
   {
+    id: 306, 
+    betAmount: 0, 
+    showChip: [], 
+    flashClass: '',
     type: 'odd',
     label: '单',
     range: null,
     odds: '1:1'
   },
   {
+    id: 307, 
+    betAmount: 0, 
+    showChip: [], 
+    flashClass: '',
     type: 'even',
     label: '双',
     range: null,
     odds: '1:1'
   },
   {
+    id: 305, 
+    betAmount: 0, 
+    showChip: [], 
+    flashClass: '',
     type: 'big',
     label: '大',
     range: '11-17',
