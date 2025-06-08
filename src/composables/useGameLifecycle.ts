@@ -13,7 +13,7 @@ import {
   getGameTypeDescription,
   logGameParams 
 } from '@/utils/urlParams'
-import { ENV_CONFIG, isDev, validateApiConnection, logConnectionTest } from '@/utils/envUtils'
+import { ENV_CONFIG, isDev, validateApiConnection } from '@/utils/envUtils'
 import type { 
   GameParams, 
   UserInfo, 
@@ -187,11 +187,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       // 2. 验证游戏类型匹配
       if (!skipGameTypeValidation) {
         validateGameTypeMatch()
-      }
-
-      // 3. 连接测试（开发环境）
-      if (debugMode) {
-        await logConnectionTest()
       }
 
       // 4. 如果开启Mock模式，跳过真实服务初始化
@@ -394,7 +389,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         
         const wsConnected = wsService.value && 
                            wsService.value.isConnected && 
-                           wsService.value.isConnected.value === true
+                           wsService.value.isConnected === true
         
         const localConnected = lifecycleState.connectionStatus === 'connected'
         
