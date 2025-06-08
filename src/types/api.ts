@@ -54,13 +54,52 @@ export interface BetResponseData {
 
 export interface BetResponse extends ApiResponse<BetResponseData> {}
 
-// WebSocket消息类型
+// WebSocket连接状态
+export type WSConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error'
+
+// 倒计时数据
+export interface CountdownData {
+  countdown: number
+  status: 'waiting' | 'betting' | 'dealing' | 'result'
+  game_number: string
+}
+
+// 开牌数据
+export interface GameResultData {
+  dice_results: [number, number, number]
+  total: number
+  is_big: boolean
+  is_small: boolean
+  is_odd: boolean
+  is_even: boolean
+  win_array: number[]
+  game_number: string
+}
+
+// 中奖数据
+export interface WinData {
+  win_amount: number
+  game_number: string
+}
+
+// 游戏状态数据
+export interface GameStatusData {
+  status: 'maintenance' | 'waiting' | 'betting' | 'dealing' | 'result'
+  message: string
+}
+
+// 余额更新数据
+export interface BalanceUpdateData {
+  balance: number
+  spend: number
+}
+
+// WebSocket事件数据类型
 export interface WSMessage<T = any> {
   event: string
   data: T
 }
 
-// WebSocket事件数据类型
 export interface JoinTableData {
   table_id: string
   user_id: string
@@ -109,28 +148,6 @@ export interface CountdownTickData {
   status: string
 }
 
-export interface GameResultData {
-  table_id: string
-  game_number: string
-  dice_results: [number, number, number]
-  total: number
-  is_big: boolean
-  is_odd: boolean
-  special_results?: Array<{
-    type: string
-    description: string
-  }>
-  timestamp: string
-}
-
-export interface BalanceUpdateData {
-  user_id: string
-  balance: number
-  change: number
-  reason: 'bet_placed' | 'win_settlement' | 'lose_settlement'
-  game_number?: string
-}
-
 export interface HeartbeatResponseData {
   timestamp: number
   server_time: number
@@ -141,9 +158,6 @@ export interface WSErrorData {
   message: string
   details?: Record<string, any>
 }
-
-// WebSocket连接状态
-export type WSConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error'
 
 // API错误代码
 export enum ApiErrorCode {
