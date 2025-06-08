@@ -26,9 +26,9 @@ const isDev = (): boolean => {
   }
 }
 
-// 默认配置
+// 默认配置 - 修复baseURL
 const defaultConfig: ApiConfig = {
-  baseURL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com'),
+  baseURL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com'), // 移除 /api
   wsURL: getEnvVar('VITE_WS_URL', 'wss://wsssicbo.wuming888.com'),
   timeout: 10000,
   retryAttempts: 3,
@@ -107,6 +107,7 @@ export class HttpClient {
         if (isDev()) {
           console.log('🚀 HTTP请求:', {
             url: config.url,
+            fullURL: `${config.baseURL}${config.url}`, // 显示完整URL用于调试
             method: config.method?.toUpperCase(),
             params: config.params,
             data: config.data,
@@ -129,6 +130,7 @@ export class HttpClient {
         if (isDev()) {
           console.log('✅ HTTP响应:', {
             url: response.config.url,
+            fullURL: `${response.config.baseURL}${response.config.url}`,
             status: response.status,
             data: response.data
           })
@@ -165,6 +167,7 @@ export class HttpClient {
     // 记录错误日志
     console.error('❌ HTTP错误:', {
       url: config?.url,
+      fullURL: config ? `${config.baseURL}${config.url}` : '未知',
       status: error.response?.status,
       message: error.message,
       data: error.response?.data
@@ -227,7 +230,8 @@ export class HttpClient {
       setTimeout(resolve, this.config.retryDelay * config._retryCount!)
     )
 
-    console.log(`🔄 重试请求 (${config._retryCount}/${this.config.retryAttempts}):`, config.url)
+    console.log(`🔄 重试请求 (${config._retryCount}/${this.config.retryAttempts}):`, 
+      `${config.baseURL}${config.url}`)
     
     return this.client.request(config)
   }

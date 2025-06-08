@@ -89,14 +89,14 @@ export class GameApiService {
   }
 
   /**
-   * 获取用户信息
+   * 获取用户信息 - 修复接口路径
    */
   async getUserInfo(): Promise<UserInfo> {
     try {
       console.log('👤 获取用户信息...', { user_id: this.gameParams.user_id })
       
-      // 这里需要根据实际API调整，目前先使用模拟数据
-      const response = await httpClient.get<UserInfo>('/user/info', {
+      // 修复: 使用正确的 sicbo 用户信息接口路径
+      const response = await httpClient.get<UserInfo>('/sicbo/user/info', {
         user_id: this.gameParams.user_id
       })
 

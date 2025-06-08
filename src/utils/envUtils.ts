@@ -86,14 +86,14 @@ export const logEnvInfo = (): void => {
   }
 }
 
-// 环境配置对象 - 使用您提供的正确API地址
+// 环境配置对象 - 修复API地址
 export const ENV_CONFIG = {
-  // 生产环境API地址
-  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com/api'),
+  // 修复：移除 /api 后缀，让每个接口自己指定完整路径
+  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com'),
   WS_URL: getEnvVar('VITE_WS_URL', 'wss://wsssicbo.wuming888.com'),
   
   // 开发配置
-  ENABLE_MOCK: getEnvBoolean('VITE_ENABLE_MOCK', false), // 开发环境默认启用Mock
+  ENABLE_MOCK: getEnvBoolean('VITE_ENABLE_MOCK', false),
   ENABLE_TEST_CONSOLE: getEnvBoolean('VITE_ENABLE_TEST_CONSOLE', isDev()),
   DEBUG_MODE: getEnvBoolean('VITE_DEBUG_MODE', isDev()),
   
@@ -112,12 +112,12 @@ export const ENV_CONFIG = {
 export type EnvConfig = typeof ENV_CONFIG
 
 /**
- * 获取完整的API URL
+ * 获取完整的API URL - 已修复
  */
 export const getApiUrl = (path: string): string => {
-  const baseUrl = ENV_CONFIG.API_BASE_URL.replace('/api', '') // 移除末尾的/api
+  const baseUrl = ENV_CONFIG.API_BASE_URL // 不再移除任何后缀
   const cleanPath = path.startsWith('/') ? path : `/${path}`
-  return `${baseUrl}/api${cleanPath}`
+  return `${baseUrl}${cleanPath}` // 直接拼接
 }
 
 /**
@@ -133,5 +133,3 @@ export const getWsUrl = (params?: Record<string, string>): string => {
   
   return url
 }
-
-
