@@ -78,7 +78,10 @@
       <div v-if="showGameScreen" class="game-container">
         <!-- 顶部视频区域 -->
         <div class="top-section">
-          <GameTopSection />
+          <GameTopSection 
+            :table-info="lifecycleState.tableInfo"
+            :user-info="lifecycleState.userInfo" 
+          />
         </div>
         
         <!-- 底部投注区域 -->

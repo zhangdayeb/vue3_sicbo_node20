@@ -5,9 +5,9 @@
         ←
       </button>
       <div class="table-info">
-        <span class="table-name">{{ gameStore.settings.tableName }}</span>
+        <span class="table-name">{{ tableInfo.table_title }}</span>
         <div class="bet-limits">
-          限额: {{ gameStore.settings.limits.min }} - {{ gameStore.settings.limits.max }}
+          限红: {{ tableInfo.right_money_banker_player }}
         </div>
       </div>
     </div>
@@ -18,13 +18,13 @@
         <!-- 局号行 -->
         <div class="info-row">
           <span class="info-label">局号</span>
-          <span class="game-number">{{ gameStore.gameState.gameNumber || generateGameNumber() }}</span>
+          <span class="game-number">{{ tableInfo.bureau_number }}</span>
         </div>
         
         <!-- 余额行 -->
         <div class="info-row">
           <span class="info-label">余额</span>
-          <span class="balance-amount">{{ gameStore.formattedBalance }}</span>
+          <span class="balance-amount">{{ userInfo.money_balance }}</span>
           <button class="refresh-btn" @click="refreshBalance">
             🔄
           </button>
@@ -93,9 +93,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { useGameStore } from '@/stores/gameStore'
 
-const gameStore = useGameStore()
+// 接收 props
+const props = defineProps<{
+  tableInfo: any
+  userInfo: any
+}>()
+
 const showSettings = ref(false)
 const settingsDropdown = ref<HTMLElement>()
 
@@ -104,17 +108,6 @@ const settings = reactive({
   backgroundMusic: true,
   soundEffects: true
 })
-
-// 生成局号
-const generateGameNumber = () => {
-  const tableId = 'T001'
-  const now = new Date()
-  const dateStr = now.getFullYear().toString().slice(-2) + 
-                  String(now.getMonth() + 1).padStart(2, '0') + 
-                  String(now.getDate()).padStart(2, '0')
-  const sequence = String(gameStore.gameState.round).padStart(4, '0')
-  return `${tableId}${dateStr}${sequence}`
-}
 
 const goBack = () => {
   console.log('返回上级页面')
@@ -126,7 +119,6 @@ const toggleSettings = () => {
 
 const refreshBalance = () => {
   console.log('刷新余额')
-  gameStore.updateBalance(gameStore.userBalance.total)
 }
 
 // 功能跳转
