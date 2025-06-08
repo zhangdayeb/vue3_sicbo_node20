@@ -13,7 +13,7 @@ import {
   getGameTypeDescription,
   logGameParams 
 } from '@/utils/urlParams'
-import { ENV_CONFIG, isDev, validateApiConnection } from '@/utils/envUtils'
+import { ENV_CONFIG } from '@/utils/envUtils'
 import type { 
   GameParams, 
   UserInfo, 
@@ -275,9 +275,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const initializeProductionMode = async (): Promise<void> => {
     debugLog('初始化生产模式')
 
-    // 1. 验证API连接
-    await validateApiConnectionAvailability()
-
     // 2. 创建API服务
     apiService.value = createGameApiService(gameParams.value)
 
@@ -289,25 +286,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
 
     // 5. 初始化WebSocket连接
     await initializeWebSocket()
-  }
-
-  /**
-   * 验证API连接可用性
-   */
-  const validateApiConnectionAvailability = async (): Promise<void> => {
-    debugLog('验证API连接可用性')
-    
-    try {
-      const result = await validateApiConnection()
-      if (!result.isValid) {
-        throw new Error(result.error || 'API连接验证失败')
-      }
-      
-      debugLog(`API连接验证通过 (${result.latency}ms)`)
-    } catch (error) {
-      debugLog('API连接验证失败', error)
-      throw new Error('无法连接到游戏服务器，请检查网络连接')
-    }
   }
 
   /**

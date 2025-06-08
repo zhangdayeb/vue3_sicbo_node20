@@ -134,38 +134,4 @@ export const getWsUrl = (params?: Record<string, string>): string => {
   return url
 }
 
-/**
- * 验证API连接
- */
-export const validateApiConnection = async (): Promise<{
-  isValid: boolean
-  error?: string
-  latency?: number
-}> => {
-  try {
-    const startTime = Date.now()
-    
-    // 尝试连接API健康检查端点
-    const response = await fetch(`${ENV_CONFIG.API_BASE_URL}/health`, {
-      method: 'GET',
-      timeout: ENV_CONFIG.API_TIMEOUT
-    } as RequestInit)
-    
-    const latency = Date.now() - startTime
-    
-    if (response.ok) {
-      return { isValid: true, latency }
-    } else {
-      return { 
-        isValid: false, 
-        error: `API返回错误: ${response.status}`,
-        latency 
-      }
-    }
-  } catch (error: any) {
-    return { 
-      isValid: false, 
-      error: `API连接失败: ${error.message}` 
-    }
-  }
-}
+

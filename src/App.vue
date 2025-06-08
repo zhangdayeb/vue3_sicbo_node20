@@ -20,9 +20,6 @@
 import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
-console.log('当前模式:', import.meta.env.MODE)
-console.log('是否开发模式:', import.meta.env.DEV)
-console.log('是否生产模式:', import.meta.env.PROD)
 </script>
 
 <style>
