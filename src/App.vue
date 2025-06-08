@@ -76,20 +76,6 @@
 
       <!-- 游戏主界面 -->
       <div v-if="showGameScreen" class="game-container">
-        <!-- 连接状态指示器 -->
-        <div class="connection-status" :class="connectionStatusClass">
-          <div class="status-indicator"></div>
-          <span class="status-text">{{ connectionStatusText }}</span>
-        </div>
-
-        <!-- 游戏状态信息 -->
-        <div class="game-info">
-          <div class="game-phase">{{ gamePhaseText }}</div>
-          <div class="table-info" v-if="lifecycleState.tableInfo">
-            {{ lifecycleState.tableInfo.lu_zhu_name }}
-          </div>
-        </div>
-
         <!-- 顶部视频区域 -->
         <div class="top-section">
           <GameTopSection />
@@ -173,29 +159,6 @@ const initializationProgress = computed(() => {
   return Math.round((completedSteps / totalSteps) * 100)
 })
 
-// 连接状态
-const connectionStatusClass = computed(() => {
-  const status = lifecycleState.connectionStatus
-  return {
-    'connected': status === 'connected',
-    'connecting': status === 'connecting',
-    'disconnected': status === 'disconnected',
-    'reconnecting': status === 'reconnecting',
-    'error': status === 'error'
-  }
-})
-
-const connectionStatusText = computed(() => {
-  const statusMap: Record<string, string> = {
-    'connected': '🟢 已连接',
-    'connecting': '🟡 连接中',
-    'disconnected': '🔴 已断开',
-    'reconnecting': '🟡 重连中',
-    'error': '🔴 连接错误'
-  }
-  return statusMap[lifecycleState.connectionStatus] || '未知状态'
-})
-
 // 安全的消息通知函数
 const showMessage = (type: 'success' | 'error' | 'info' | 'warning', text: string) => {
   try {
@@ -252,7 +215,7 @@ const startGame = async () => {
 watch(() => lifecycleState.error, (newError, oldError) => {
   if (newError && newError !== oldError) {
     console.error('🚨 游戏错误:', newError)
-    message.error(`游戏错误: ${newError}`)
+    showMessage('error', `游戏错误: ${newError}`)
   }
 })
 
@@ -261,11 +224,11 @@ watch(() => lifecycleState.connectionStatus, (newStatus, oldStatus) => {
     console.log('🔌 连接状态变化:', oldStatus, '->', newStatus)
     
     if (newStatus === 'connected') {
-      message.success('🎉 游戏连接成功！')
+      showMessage('success', '🎉 游戏连接成功！')
     } else if (newStatus === 'disconnected') {
-      message.warning('⚠️ 游戏连接断开')
+      showMessage('warning', '⚠️ 游戏连接断开')
     } else if (newStatus === 'error') {
-      message.error('❌ 连接错误')
+      showMessage('error', '❌ 连接错误')
     }
   }
 })
@@ -273,14 +236,25 @@ watch(() => lifecycleState.connectionStatus, (newStatus, oldStatus) => {
 watch(isReady, (ready) => {
   if (ready) {
     console.log('🎮 游戏已就绪，可以开始游戏！')
-    message.success('🎲 骰宝游戏已就绪！')
+    showMessage('success', '🎲 骰宝游戏已就绪！')
   }
 })
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   console.log('🚀 App.vue 已挂载，游戏生命周期管理已启动')
   
+  // 等待下一个 tick 以确保组件完全渲染
+  await nextTick()
+  
+  // 尝试获取 message 实例
+  try {
+    // 这里我们延迟设置 message，避免在组件未完全渲染时就使用
+    const { message: messageInstance } = await import('@/utils/message')
+    message = messageInstance
+  } catch (error) {
+    console.warn('⚠️ 无法获取消息实例，将使用控制台输出:', error)
+  }
 })
 </script>
 
@@ -464,6 +438,8 @@ html, body {
   margin: 0;
   line-height: 1.4;
 }
+
+/* ========== 加载界面样式 ========== */
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -605,70 +581,7 @@ html, body {
   font-size: 1.1rem;
 }
 
-/* ========== 加载界面样式 ========== */
-.connection-status {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  z-index: 1000;
-  font-size: 0.9rem;
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-.connection-status.connected .status-indicator {
-  background: #22c55e;
-}
-
-.connection-status.connecting .status-indicator,
-.connection-status.reconnecting .status-indicator {
-  background: #fbbf24;
-}
-
-.connection-status.disconnected .status-indicator,
-.connection-status.error .status-indicator {
-  background: #ef4444;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* ========== 连接状态指示器 ========== */
-.game-info {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  z-index: 1000;
-  color: #fff;
-}
-
-.game-phase {
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #ffd700;
-  margin-bottom: 0.5rem;
-}
-
-.table-info {
-  font-size: 0.9rem;
-  color: #ccc;
-}
-
-/* ========== 游戏信息 ========== */
+/* ========== 响应式设计 ========== */
 @media (max-width: 768px) {
   html, body {
     font-size: 14px;
@@ -680,15 +593,6 @@ html, body {
 
   .loading-container {
     padding: 1rem;
-  }
-
-  .connection-status,
-  .game-info {
-    position: relative;
-    top: auto;
-    right: auto;
-    left: auto;
-    margin: 0.5rem;
   }
 }
 
