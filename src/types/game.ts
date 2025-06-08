@@ -1,4 +1,13 @@
-// 游戏相关类型定义
+// src/types/game.ts - 游戏相关类型定义
+
+import type { 
+  WSConnectionStatus, 
+  UserInfo, 
+  GameResultData, 
+  CountdownData,
+  WinData,
+  GameStatusData
+} from './api'
 
 // 游戏状态
 export interface GameState {
@@ -248,6 +257,171 @@ export interface AuditEntry {
   hash?: string
 }
 
+// ========== 游戏生命周期相关类型 ==========
+
+// 游戏生命周期状态
+export interface GameLifecycleState {
+  isInitialized: boolean
+  isLoading: boolean
+  connectionStatus: WSConnectionStatus
+  error: string | null
+  userInfo: UserInfo | null
+  tableInfo: ApiTableInfo | null  // 使用API的TableInfo类型
+  currentGame: CurrentGameInfo | null
+  lastGameResult: GameResultData | null
+  gameTypeValidation: GameTypeValidation
+  initSteps: InitializationSteps
+}
+
+// 当前游戏信息
+export interface CurrentGameInfo {
+  game_number: string
+  status: 'waiting' | 'betting' | 'dealing' | 'result'
+  countdown: number
+  round?: number
+}
+
+// 游戏类型验证
+export interface GameTypeValidation {
+  isValid: boolean
+  currentType: string
+  expectedType: string
+  error?: string
+}
+
+// 初始化步骤
+export interface InitializationSteps {
+  urlParams: boolean
+  httpApi: boolean
+  websocket: boolean
+}
+
+// 游戏生命周期选项
+export interface GameLifecycleOptions {
+  autoInitialize?: boolean
+  enableAudio?: boolean
+  skipGameTypeValidation?: boolean
+}
+
+// API桌台信息（来自后端API）
+export interface ApiTableInfo {
+  id: number
+  lu_zhu_name: string
+  num_pu: number
+  num_xue: number
+  video_near: string
+  video_far: string
+  time_start: number
+  right_money_banker_player: number
+  right_money_tie: number
+}
+
+// WebSocket事件处理器类型
+export interface GameEventHandlers {
+  onCountdown?: (data: CountdownData) => void
+  onGameResult?: (data: GameResultData) => void
+  onWinData?: (data: WinData) => void
+  onGameStatus?: (data: GameStatusData) => void
+  onBalanceUpdate?: (data: { balance: number; spend: number }) => void
+  onError?: (error: any) => void
+}
+
+// 游戏统计信息
+export interface GameStatistics {
+  totalGames: number
+  totalWins: number
+  totalLosses: number
+  winRate: number
+  totalWinAmount: number
+  totalLossAmount: number
+  netProfit: number
+  longestWinStreak: number
+  longestLossStreak: number
+  currentStreak: number
+  averageBetAmount: number
+  biggestWin: number
+  biggestLoss: number
+  gamesPlayedToday: number
+  sessionStartTime: Date
+  lastGameTime?: Date
+}
+
+// 游戏历史记录
+export interface GameHistoryRecord {
+  id: string
+  gameNumber: string
+  timestamp: Date
+  diceResults: [number, number, number]
+  total: number
+  gameResult: {
+    is_big: boolean
+    is_small: boolean
+    is_odd: boolean
+    is_even: boolean
+  }
+  userBets: Array<{
+    betType: string
+    amount: number
+    isWin: boolean
+    winAmount: number
+  }>
+  totalBetAmount: number
+  totalWinAmount: number
+  netProfit: number
+  gameStatus: 'won' | 'lost' | 'push'
+}
+
+// 游戏配置
+export interface GameConfig {
+  tableId: string
+  gameType: string
+  language: string
+  currency: string
+  timezone: string
+  autoPlay: boolean
+  soundEnabled: boolean
+  animationsEnabled: boolean
+  showStatistics: boolean
+  maxBetHistory: number
+  sessionTimeout: number
+}
+
+// 游戏错误类型
+export interface GameError {
+  code: string
+  message: string
+  type: 'network' | 'api' | 'validation' | 'system' | 'user'
+  timestamp: Date
+  context?: Record<string, any>
+  recoverable: boolean
+}
+
+// 游戏状态快照
+export interface GameStateSnapshot {
+  timestamp: Date
+  gameNumber: string
+  gameStatus: GameStatus
+  countdown: number
+  userBalance: number
+  currentBets: Record<string, number>
+  connectionStatus: WSConnectionStatus
+  tableInfo: ApiTableInfo | null
+  lastGameResult: GameResultData | null
+}
+
+// 游戏性能指标
+export interface GamePerformanceMetrics {
+  connectionLatency: number
+  apiResponseTime: number
+  wsMessageLatency: number
+  frameRate: number
+  memoryUsage: number
+  errorCount: number
+  reconnectCount: number
+  uptime: number
+  lastUpdateTime: Date
+}
+
 // 导出所有类型的联合类型
 export type AllGameTypes = 
   | GameStatus
@@ -263,3 +437,18 @@ export type AllGameTypes =
   | EnvironmentEffect
   | VideoQuality
   | CameraAngle
+
+// 导出游戏生命周期相关类型
+export type GameLifecycleTypes = 
+  | GameLifecycleState
+  | CurrentGameInfo
+  | GameTypeValidation
+  | InitializationSteps
+  | GameLifecycleOptions
+  | GameEventHandlers
+  | GameStatistics
+  | GameHistoryRecord
+  | GameConfig
+  | GameError
+  | GameStateSnapshot
+  | GamePerformanceMetrics

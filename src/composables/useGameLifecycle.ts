@@ -22,36 +22,15 @@ import type {
   WinData,
   GameStatusData
 } from '@/types/api'
-import type { TableInfo } from '@/services/gameApi'
-
-export interface GameLifecycleState {
-  isInitialized: boolean
-  isLoading: boolean
-  connectionStatus: WSConnectionStatus
-  error: string | null
-  userInfo: UserInfo | null
-  tableInfo: TableInfo | null
-  currentGame: any
-  lastGameResult: GameResultData | null
-  gameTypeValidation: {
-    isValid: boolean
-    currentType: string
-    expectedType: string
-    error?: string
-  }
-  // 新增初始化步骤状态
-  initSteps: {
-    urlParams: boolean
-    httpApi: boolean
-    websocket: boolean
-  }
-}
-
-export interface GameLifecycleOptions {
-  autoInitialize?: boolean
-  enableAudio?: boolean
-  skipGameTypeValidation?: boolean
-}
+import type { 
+  GameLifecycleState,
+  GameLifecycleOptions,
+  CurrentGameInfo,
+  GameTypeValidation,
+  InitializationSteps,
+  ApiTableInfo,
+  GameEventHandlers
+} from '@/types/game'
 
 export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   const {
@@ -113,7 +92,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       'dealing': '开牌中',
       'result': '结果公布'
     }
-    return phaseMap[lifecycleState.currentGame?.status] || '未知状态'
+    return phaseMap[lifecycleState.currentGame?.status || 'waiting'] || '未知状态'
   })
 
   const setError = (error: string | Error) => {
@@ -280,7 +259,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         
         const wsConnected = wsService.value && 
                            wsService.value.isConnected && 
-                           wsService.value.isConnected === true
+                           wsService.value.isConnected.value === true
         
         const localConnected = lifecycleState.connectionStatus === 'connected'
         
@@ -307,17 +286,26 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
 
     wsService.value.on<CountdownData>('countdown', (data) => {
       console.log('⏰ 倒计时更新:', data)
-      lifecycleState.currentGame = {
-        ...lifecycleState.currentGame,
-        countdown: data.countdown,
-        status: data.status,
-        game_number: data.game_number
+      
+      // 更新当前游戏信息
+      if (!lifecycleState.currentGame) {
+        lifecycleState.currentGame = {
+          game_number: data.game_number,
+          status: data.status,
+          countdown: data.countdown
+        }
+      } else {
+        lifecycleState.currentGame.countdown = data.countdown
+        lifecycleState.currentGame.status = data.status
+        lifecycleState.currentGame.game_number = data.game_number
       }
       
+      // 更新游戏Store
       gameStore.updateGameNumber(data.game_number)
       gameStore.updateGameStatus(data.status)
       gameStore.updateCountdown(data.countdown)
       
+      // 播放倒计时音效
       if (enableAudio && data.countdown <= 5 && data.countdown > 0) {
         playSound('countdown-tick')
       }
@@ -350,7 +338,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       }
     })
 
-    wsService.value.on('balance_update', (data) => {
+    wsService.value.on('balance_update', (data: { balance: number; spend: number }) => {
       console.log('💳 余额更新:', data)
       if (lifecycleState.userInfo) {
         lifecycleState.userInfo.balance = data.balance
@@ -358,9 +346,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       }
     })
 
-    wsService.value.on('error', (data) => {
+    wsService.value.on('error', (data: any) => {
       console.error('🚨 WebSocket业务错误:', data)
-      setError(`WebSocket错误: ${data.message}`)
+      setError(`WebSocket错误: ${data.message || '未知错误'}`)
     })
   }
 
@@ -499,18 +487,33 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       throw new Error('当前无法投注')
     }
 
+    if (!apiService.value) {
+      throw new Error('API服务未初始化')
+    }
+
     try {
-      const result = await apiService.value!.placeBets(bets.map(bet => ({
+      const result = await apiService.value.placeBets(bets.map(bet => ({
         money: bet.amount,
         rate_id: parseInt(bet.bet_type)
       })))
       
-      if (lifecycleState.userInfo) {
+      // 类型安全的余额更新
+      if (lifecycleState.userInfo && typeof result.money_balance === 'number') {
         lifecycleState.userInfo.balance = result.money_balance
         bettingStore.updateBalance(result.money_balance)
       }
       
-      return result
+      // 返回标准格式的数据
+      const betResponseData: BetResponseData = {
+        money_balance: result.money_balance || 0,
+        money_spend: result.money_spend || 0,
+        bets: Array.isArray(result.bets) ? result.bets : bets.map(bet => ({
+          money: bet.amount,
+          rate_id: parseInt(bet.bet_type)
+        }))
+      }
+      
+      return betResponseData
     } catch (error) {
       throw error
     }

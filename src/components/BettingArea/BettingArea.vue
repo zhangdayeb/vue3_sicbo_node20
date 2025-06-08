@@ -1,26 +1,7 @@
 <template>
   <div class="betting-area">
-    <!-- 欢迎页面覆盖层 -->
-    <div v-if="showWelcome" class="welcome-overlay">
-      <div class="welcome-card">
-        <div class="welcome-header">
-          <h2 class="welcome-title">🎲 欢迎来到骰宝游戏</h2>
-          <p class="welcome-subtitle">点击开始按钮进入游戏并启用音效</p>
-        </div>
-        
-        <button class="welcome-button" @click="startGame">
-          <span class="button-text">开始游戏</span>
-          <span class="button-icon">🚀</span>
-        </button>
-        
-        <p class="welcome-note">
-          首次点击将启用音频上下文，确保最佳游戏体验
-        </p>
-      </div>
-    </div>
-
     <!-- 主游戏区域 -->
-    <div v-show="!showWelcome" class="game-area">
+    <div class="game-area">
       <!-- 滚动内容区域 -->
       <div class="betting-content">
         <!-- 统一的投注容器 -->
@@ -101,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useBettingStore } from '@/stores/bettingStore'
 import { useAudio } from '@/composables/useAudio'
 // 投注区域组件
@@ -123,12 +104,8 @@ const {
   playChipSelectSound, 
   playChipPlaceSound, 
   playBetConfirmSound, 
-  playErrorSound,
-  unlockAudioContext 
+  playErrorSound
 } = useAudio()
-
-// 欢迎页面状态
-const showWelcome = ref(true)
 
 // 计算属性 - 从 bettingStore 获取状态
 const selectedChip = computed(() => bettingStore.selectedChip)
@@ -149,29 +126,6 @@ const createSimpleBeep = (frequency: number = 800, duration: number = 100) => {
   } catch (error) {
     console.log('音效播放失败，使用静默模式')
   }
-}
-
-// 启动游戏
-const startGame = async () => {
-  try {
-    // 尝试解锁音频上下文
-    await unlockAudioContext()
-    console.log('音频上下文已解锁')
-  } catch (error) {
-    console.log('音频解锁失败，使用静默模式:', error)
-  }
-  
-  // 隐藏欢迎页面
-  showWelcome.value = false
-  
-  // 播放欢迎音效或触觉反馈
-  try {
-    playChipSelectSound()
-  } catch (error) {
-    createSimpleBeep(1000, 200)
-  }
-  
-  console.log('🎮 游戏已启动')
 }
 
 // 方法
@@ -277,7 +231,7 @@ onMounted(() => {
   // 初始化 bettingStore
   bettingStore.init()
   
-  console.log('📊 等待用户点击开始游戏...')
+  console.log('📊 投注区域已就绪')
 })
 </script>
 
@@ -289,132 +243,6 @@ onMounted(() => {
   background: #0d2818;
   color: white;
   position: relative;
-}
-
-/* 欢迎页面样式 */
-.welcome-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, 
-    rgba(13, 40, 24, 0.98) 0%, 
-    rgba(0, 0, 0, 0.95) 100%);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.welcome-card {
-  background: linear-gradient(135deg, 
-    rgba(45, 90, 66, 0.9) 0%, 
-    rgba(13, 40, 24, 0.9) 100%);
-  border: 2px solid #4a9f6e;
-  border-radius: 20px;
-  padding: 40px 30px;
-  text-align: center;
-  max-width: 400px;
-  width: 100%;
-  box-shadow: 
-    0 10px 30px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(74, 159, 110, 0.2);
-  animation: welcomeSlideIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-@keyframes welcomeSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateY(50px) scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.welcome-header {
-  margin-bottom: 30px;
-}
-
-.welcome-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #ffd700;
-  margin: 0 0 12px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.welcome-subtitle {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.welcome-button {
-  background: linear-gradient(135deg, #4a9f6e, #27ae60);
-  border: 2px solid #5bb77c;
-  color: white;
-  padding: 16px 32px;
-  border-radius: 12px;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin: 20px auto;
-  box-shadow: 
-    0 4px 15px rgba(74, 159, 110, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.welcome-button:hover {
-  background: linear-gradient(135deg, #5bb77c, #2ecc71);
-  border-color: #6bc985;
-  transform: translateY(-2px);
-  box-shadow: 
-    0 6px 20px rgba(74, 159, 110, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.welcome-button:active {
-  transform: translateY(0);
-  box-shadow: 
-    0 2px 10px rgba(74, 159, 110, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-
-.button-text {
-  font-size: 18px;
-}
-
-.button-icon {
-  font-size: 20px;
-  animation: rocketFloat 2s ease-in-out infinite;
-}
-
-@keyframes rocketFloat {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-.welcome-note {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-  line-height: 1.4;
 }
 
 /* 游戏区域样式 */
@@ -462,24 +290,6 @@ onMounted(() => {
 
 /* 响应式适配 */
 @media (max-width: 375px) {
-  .welcome-card {
-    padding: 30px 20px;
-    margin: 0 15px;
-  }
-  
-  .welcome-title {
-    font-size: 20px;
-  }
-  
-  .welcome-button {
-    padding: 14px 28px;
-    font-size: 16px;
-  }
-  
-  .button-text {
-    font-size: 16px;
-  }
-  
   .betting-container {
     margin: 0 8px;
     padding: 10px;
@@ -496,10 +306,6 @@ onMounted(() => {
 }
 
 @media (max-height: 667px) {
-  .welcome-card {
-    padding: 25px 20px;
-  }
-  
   .betting-content {
     padding-bottom: 110px;
     padding-top: 12px;
@@ -512,11 +318,6 @@ onMounted(() => {
 
 /* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
-  .welcome-card {
-    padding: 20px;
-    max-width: 350px;
-  }
-  
   .bottom-fixed-area {
     position: relative;
   }
