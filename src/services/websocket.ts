@@ -44,7 +44,7 @@ export class GameWebSocketService {
    * 构建WebSocket连接URL
    */
   private buildWSURL(): string {
-    const baseURL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001/ws'
+    const baseURL = import.meta.env.VITE_WS_URL || 'wss://wsssicbo.wuming888.com'
     const params = new URLSearchParams({
       table_id: this.gameParams.table_id,
       user_id: this.gameParams.user_id,

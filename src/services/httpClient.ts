@@ -28,8 +28,8 @@ const isDev = (): boolean => {
 
 // 默认配置
 const defaultConfig: ApiConfig = {
-  baseURL: getEnvVar('VITE_API_BASE_URL', 'http://localhost:3001/api'),
-  wsURL: getEnvVar('VITE_WS_URL', 'ws://localhost:3001/ws'),
+  baseURL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com'),
+  wsURL: getEnvVar('VITE_WS_URL', 'wss://wsssicbo.wuming888.com'),
   timeout: 10000,
   retryAttempts: 3,
   retryDelay: 1000,
