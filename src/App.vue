@@ -20,6 +20,7 @@
 import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
+
 </script>
 
 <style>

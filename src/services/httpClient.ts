@@ -38,11 +38,35 @@ const defaultConfig: ApiConfig = {
 export class HttpClient {
   private client: AxiosInstance
   private config: ApiConfig
+  private authToken: string | null = null // 存储token
 
   constructor(config: Partial<ApiConfig> = {}) {
     this.config = { ...defaultConfig, ...config }
     this.client = this.createAxiosInstance()
     this.setupInterceptors()
+  }
+
+  /**
+   * 设置认证Token
+   */
+  setAuthToken(token: string): void {
+    this.authToken = token
+    console.log('🔑 Token已设置')
+  }
+
+  /**
+   * 清除认证Token
+   */
+  clearAuthToken(): void {
+    this.authToken = null
+    console.log('🔑 Token已清除')
+  }
+
+  /**
+   * 获取当前Token
+   */
+  getAuthToken(): string | null {
+    return this.authToken
   }
 
   /**
@@ -66,6 +90,11 @@ export class HttpClient {
     // 请求拦截器
     this.client.interceptors.request.use(
       (config) => {
+        // 自动添加x-csrf-token
+        if (this.authToken && !config.headers['x-csrf-token']) {
+          config.headers['x-csrf-token'] = this.authToken
+        }
+
         // 添加时间戳防止缓存
         if (config.method === 'get') {
           config.params = {
@@ -80,7 +109,8 @@ export class HttpClient {
             url: config.url,
             method: config.method?.toUpperCase(),
             params: config.params,
-            data: config.data
+            data: config.data,
+            hasToken: !!config.headers['x-csrf-token']
           })
         }
 
@@ -94,7 +124,7 @@ export class HttpClient {
 
     // 响应拦截器
     this.client.interceptors.response.use(
-      (response: AxiosResponse<ApiResponse>) => {
+      (response: AxiosResponse<any>) => {
         // 记录响应日志（开发环境）
         if (isDev()) {
           console.log('✅ HTTP响应:', {
@@ -104,12 +134,18 @@ export class HttpClient {
           })
         }
 
-        // 检查业务层面的错误
-        if (response.data && !response.data.success) {
-          const error = new Error(response.data.message || '请求失败')
-          ;(error as any).code = response.data.error?.code || 'BUSINESS_ERROR'
-          ;(error as any).details = response.data.error?.details
-          throw error
+        // 检查业务层面的错误 - 适配骰宝API格式
+        if (response.data) {
+          // 骰宝API成功响应格式: { code: 200, message: "ok！", data: {...} }
+          if (response.data.code === 200 || response.data.code === 1) {
+            // 成功响应，直接返回
+            return response
+          } else if (response.data.code === 0) {
+            // 业务失败
+            const error = new Error(response.data.message || '操作失败')
+            ;(error as any).code = 'BUSINESS_ERROR'
+            throw error
+          }
         }
 
         return response
@@ -133,6 +169,12 @@ export class HttpClient {
       message: error.message,
       data: error.response?.data
     })
+
+    // 401错误 - token无效，清除token
+    if (error.response?.status === 401) {
+      console.warn('🔑 Token无效，已清除')
+      this.clearAuthToken()
+    }
 
     // 网络错误或超时，尝试重试
     if (this.shouldRetry(error) && this.canRetry(config)) {
@@ -240,32 +282,34 @@ export class HttpClient {
    * GET请求
    */
   async get<T = any>(url: string, params?: Record<string, any>): Promise<T> {
-    const response = await this.client.get<ApiResponse<T>>(url, { params })
-    return response.data.data as T
+    const response = await this.client.get(url, { params })
+    // 骰宝API返回格式: { code: 200, data: {...} }
+    return response.data?.data || response.data
   }
 
   /**
    * POST请求
    */
   async post<T = any>(url: string, data?: any): Promise<T> {
-    const response = await this.client.post<ApiResponse<T>>(url, data)
-    return response.data.data as T
+    const response = await this.client.post(url, data)
+    // 骰宝API返回格式: { code: 200, data: {...} }
+    return response.data?.data || response.data
   }
 
   /**
    * PUT请求
    */
   async put<T = any>(url: string, data?: any): Promise<T> {
-    const response = await this.client.put<ApiResponse<T>>(url, data)
-    return response.data.data as T
+    const response = await this.client.put(url, data)
+    return response.data?.data || response.data
   }
 
   /**
    * DELETE请求
    */
   async delete<T = any>(url: string, params?: Record<string, any>): Promise<T> {
-    const response = await this.client.delete<ApiResponse<T>>(url, { params })
-    return response.data.data as T
+    const response = await this.client.delete(url, { params })
+    return response.data?.data || response.data
   }
 
   /**
@@ -298,30 +342,15 @@ export class HttpClient {
   getConfig(): ApiConfig {
     return { ...this.config }
   }
-
-  /**
-   * 获取当前环境信息（用于调试）
-   */
-  getEnvInfo(): Record<string, any> {
-    return {
-      baseURL: this.config.baseURL,
-      wsURL: this.config.wsURL,
-      isDev: isDev(),
-      mode: getEnvVar('MODE', 'unknown'),
-      nodeEnv: getEnvVar('NODE_ENV', 'unknown')
-    }
-  }
 }
 
 // 创建默认实例
 export const httpClient = new HttpClient()
 
-// 导出默认实例的方法
-export const { get, post, put, delete: del } = httpClient
+// 导出常用方法
+export const setAuthToken = (token: string) => httpClient.setAuthToken(token)
+export const clearAuthToken = () => httpClient.clearAuthToken()
+export const getAuthToken = () => httpClient.getAuthToken()
 
-// 导出环境信息查看函数
-export const logEnvInfo = (): void => {
-  console.group('🌍 环境变量信息')
-  console.log('📊 HTTP客户端配置:', httpClient.getEnvInfo())
-  console.groupEnd()
-}
+// 导出请求方法
+export const { get, post, put, delete: del } = httpClient

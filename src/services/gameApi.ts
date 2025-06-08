@@ -1,162 +1,213 @@
 // src/services/gameApi.ts
-import { httpClient } from './httpClient'
-import type { 
-  GameParams, 
-  UserInfo, 
-  BetSubmission, 
-  BetResponseData 
-} from '@/types/api'
+import { httpClient, setAuthToken } from './httpClient'
+import type { GameParams } from '@/types/api'
+
+// 台桌信息接口
+export interface TableInfo {
+  id: number
+  lu_zhu_name: string
+  num_pu: number
+  num_xue: number
+  video_near: string
+  video_far: string
+  time_start: number
+  right_money_banker_player: number
+  right_money_tie: number
+}
+
+// 用户信息接口
+export interface UserInfo {
+  user_id: string
+  balance: number
+  currency: string
+}
+
+// 投注请求接口
+export interface BetRequest {
+  money: number
+  rate_id: number
+}
+
+// 投注响应接口
+export interface BetResponse {
+  money_balance: number
+  money_spend: number
+  bets: BetRequest[]
+}
 
 export class GameApiService {
   private gameParams: GameParams
 
   constructor(params: GameParams) {
     this.gameParams = params
+    
+    // 设置全局token，后续所有请求自动携带
+    setAuthToken(params.token)
+    
+    console.log('🎮 GameApi 初始化:', {
+      table_id: params.table_id,
+      game_type: params.game_type,
+      user_id: params.user_id,
+      token_set: !!params.token
+    })
   }
 
   /**
-   * 获取用户信息和余额
+   * 获取台桌信息
+   */
+  async getTableInfo(): Promise<TableInfo> {
+    try {
+      console.log('📡 获取台桌信息...', { tableId: this.gameParams.table_id })
+      
+      const response = await httpClient.get<TableInfo>('/sicbo/get_table/table_info', {
+        tableId: this.gameParams.table_id,
+        gameType: this.gameParams.game_type
+      })
+
+      console.log('✅ 台桌信息获取成功:', response)
+      return response
+      
+    } catch (error) {
+      console.warn('⚠️ 台桌信息获取失败，使用默认配置:', error)
+      
+      // 返回默认台桌信息
+      const defaultTableInfo: TableInfo = {
+        id: parseInt(this.gameParams.table_id),
+        lu_zhu_name: `${this.gameParams.table_id}桌`,
+        num_pu: 1,
+        num_xue: 1,
+        video_near: `https://video.xinghao998.top/index.html?tableVideo=sicbo_${this.gameParams.table_id}`,
+        video_far: `https://video.xinghao998.top/index.html?tableVideo=sicbo_${this.gameParams.table_id}_wide`,
+        time_start: 45,
+        right_money_banker_player: 50000,
+        right_money_tie: 10000
+      }
+      
+      console.log('🔄 使用默认台桌信息:', defaultTableInfo)
+      return defaultTableInfo
+    }
+  }
+
+  /**
+   * 获取用户信息
    */
   async getUserInfo(): Promise<UserInfo> {
     try {
-      console.log('📡 获取用户信息...')
+      console.log('👤 获取用户信息...', { user_id: this.gameParams.user_id })
       
-      const userInfo = await httpClient.get<UserInfo>('/user/info', {
-        user_id: this.gameParams.user_id,
-        token: this.gameParams.token
+      // 这里需要根据实际API调整，目前先使用模拟数据
+      const response = await httpClient.get<UserInfo>('/user/info', {
+        user_id: this.gameParams.user_id
       })
 
-      console.log('✅ 用户信息获取成功:', userInfo)
-      return userInfo
+      console.log('✅ 用户信息获取成功:', response)
+      return response
+      
     } catch (error) {
-      console.error('❌ 获取用户信息失败:', error)
-      throw new Error('获取用户信息失败，请刷新页面重试')
+      console.warn('⚠️ 用户信息获取失败，使用默认配置:', error)
+      
+      // 返回默认用户信息
+      const defaultUserInfo: UserInfo = {
+        user_id: this.gameParams.user_id,
+        balance: 10000,
+        currency: 'CNY'
+      }
+      
+      console.log('🔄 使用默认用户信息:', defaultUserInfo)
+      return defaultUserInfo
     }
   }
 
   /**
-   * 提交投注
+   * 提交投注 - 现在无需手动添加token
    */
-  async placeBets(bets: Array<{ bet_type: string; amount: number }>): Promise<BetResponseData> {
+  async placeBets(bets: BetRequest[]): Promise<BetResponse> {
     try {
       console.log('🎯 提交投注...', bets)
       
-      // 构造投注请求
-      const betSubmission: BetSubmission = {
-        table_id: this.gameParams.table_id,
-        game_number: '', // 会由前端在调用时设置当前局号
-        user_id: this.gameParams.user_id,
-        bets: bets,
-        token: this.gameParams.token
+      const requestData = {
+        table_id: parseInt(this.gameParams.table_id),
+        game_type: parseInt(this.gameParams.game_type),
+        is_exempt: 0,
+        bet: bets
       }
 
-      const result = await httpClient.post<BetResponseData>('/game/bet', betSubmission)
+      // token会由httpClient自动添加到headers中
+      const response = await httpClient.post<BetResponse>('/sicbo/bet/order', requestData)
 
-      console.log('✅ 投注提交成功:', result)
-      return result
+      console.log('✅ 投注提交成功:', response)
+      return response
+      
     } catch (error: any) {
       console.error('❌ 投注提交失败:', error)
       
-      // 根据错误类型返回不同的错误信息
-      if (error.code === 'INSUFFICIENT_BALANCE') {
-        throw new Error('余额不足，请充值后再试')
-      } else if (error.code === 'BETTING_CLOSED') {
-        throw new Error('投注已截止，请等待下一局')
-      } else if (error.code === 'INVALID_BET_TYPE') {
-        throw new Error('无效的投注类型')
-      } else if (error.code === 'BET_AMOUNT_INVALID') {
-        throw new Error('投注金额无效')
-      } else if (error.code === 'INVALID_TOKEN') {
-        throw new Error('登录状态已过期，请重新进入')
+      // 根据错误类型抛出具体错误
+      if (error.message?.includes('balance')) {
+        throw new Error('余额不足')
+      } else if (error.message?.includes('token') || error.code === 'UNAUTHORIZED') {
+        throw new Error('登录状态已过期')
+      } else if (error.message?.includes('bet')) {
+        throw new Error('投注参数无效')
       } else {
-        throw new Error(error.message || '投注失败，请重试')
+        throw new Error('投注失败，请重试')
       }
     }
   }
 
   /**
-   * 获取桌台信息（可选）
+   * 获取当前投注记录
    */
-  async getTableInfo(): Promise<{
-    table_id: string
-    table_name: string
-    min_bet: number
-    max_bet: number
-    status: 'active' | 'maintenance'
-  }> {
+  async getCurrentBets(): Promise<any> {
     try {
-      console.log('🎲 获取桌台信息...')
+      console.log('📋 获取当前投注记录...')
       
-      const tableInfo = await httpClient.get('/table/info', {
-        table_id: this.gameParams.table_id,
-        token: this.gameParams.token
+      const response = await httpClient.post('/sicbo/current/record', {
+        id: parseInt(this.gameParams.table_id)
       })
 
-      console.log('✅ 桌台信息获取成功:', tableInfo)
-      return tableInfo
-    } catch (error) {
-      console.error('❌ 获取桌台信息失败:', error)
+      console.log('✅ 投注记录获取成功:', response)
+      return response
       
-      // 返回默认桌台信息
-      return {
-        table_id: this.gameParams.table_id,
-        table_name: `骰宝${this.gameParams.table_id}号桌`,
-        min_bet: 10,
-        max_bet: 50000,
-        status: 'active'
-      }
+    } catch (error) {
+      console.error('❌ 获取投注记录失败:', error)
+      return { is_exempt: 0, record_list: [] }
     }
   }
 
   /**
-   * 验证Token有效性（可选）
+   * 获取露珠数据
    */
-  async validateToken(): Promise<boolean> {
+  async getRoadmapData(): Promise<any> {
     try {
-      console.log('🔐 验证Token有效性...')
+      console.log('🛣️ 获取露珠数据...')
       
-      await httpClient.get('/auth/validate', {
-        user_id: this.gameParams.user_id,
-        token: this.gameParams.token
+      const response = await httpClient.get('/sicbo/get_table/get_data', {
+        tableId: this.gameParams.table_id,
+        xue: 1,
+        gameType: this.gameParams.game_type
       })
 
-      console.log('✅ Token验证成功')
-      return true
+      console.log('✅ 露珠数据获取成功:', response)
+      return response
+      
     } catch (error) {
-      console.error('❌ Token验证失败:', error)
-      return false
+      console.error('❌ 获取露珠数据失败:', error)
+      return {}
     }
   }
 
   /**
-   * 获取投注限额（可选）
+   * 更新游戏参数
    */
-  async getBetLimits(): Promise<Record<string, { min: number; max: number }>> {
-    try {
-      console.log('📊 获取投注限额...')
-      
-      const limits = await httpClient.get('/game/limits', {
-        table_id: this.gameParams.table_id,
-        user_id: this.gameParams.user_id,
-        token: this.gameParams.token
-      })
-
-      console.log('✅ 投注限额获取成功:', limits)
-      return limits
-    } catch (error) {
-      console.error('❌ 获取投注限额失败:', error)
-      
-      // 返回默认限额
-      return {
-        'small': { min: 10, max: 50000 },
-        'big': { min: 10, max: 50000 },
-        'odd': { min: 10, max: 50000 },
-        'even': { min: 10, max: 50000 },
-        'total-4': { min: 1, max: 1000 },
-        'total-17': { min: 1, max: 1000 },
-        'any-triple': { min: 1, max: 3000 }
-      }
+  updateGameParams(newParams: Partial<GameParams>): void {
+    this.gameParams = { ...this.gameParams, ...newParams }
+    
+    // 如果token变更，更新全局token
+    if (newParams.token) {
+      setAuthToken(newParams.token)
     }
+    
+    console.log('🔄 游戏参数已更新:', this.gameParams)
   }
 
   /**
@@ -165,61 +216,19 @@ export class GameApiService {
   getGameParams(): GameParams {
     return { ...this.gameParams }
   }
-
-  /**
-   * 更新游戏参数
-   */
-  updateGameParams(newParams: Partial<GameParams>): void {
-    this.gameParams = { ...this.gameParams, ...newParams }
-  }
-
-  /**
-   * 检查网络连接状态
-   */
-  async checkConnection(): Promise<boolean> {
-    try {
-      const startTime = Date.now()
-      await httpClient.get('/health', {
-        token: this.gameParams.token
-      })
-      const latency = Date.now() - startTime
-      
-      console.log(`🌐 网络连接正常，延迟: ${latency}ms`)
-      return true
-    } catch (error) {
-      console.error('❌ 网络连接检查失败:', error)
-      return false
-    }
-  }
-
-  /**
-   * 获取服务器时间（用于时间同步）
-   */
-  async getServerTime(): Promise<Date> {
-    try {
-      const response = await httpClient.get<{ timestamp: number }>('/time', {
-        token: this.gameParams.token
-      })
-      
-      return new Date(response.timestamp)
-    } catch (error) {
-      console.error('❌ 获取服务器时间失败:', error)
-      // 返回本地时间
-      return new Date()
-    }
-  }
 }
 
-// 创建API服务实例的工厂函数
+// 创建API服务实例
 export const createGameApiService = (params: GameParams): GameApiService => {
   return new GameApiService(params)
 }
 
-// 全局API服务实例（在初始化后设置）
+// 全局API服务实例
 let globalApiService: GameApiService | null = null
 
 export const setGlobalApiService = (service: GameApiService): void => {
   globalApiService = service
+  console.log('🌐 全局API服务已设置')
 }
 
 export const getGlobalApiService = (): GameApiService => {
@@ -229,15 +238,33 @@ export const getGlobalApiService = (): GameApiService => {
   return globalApiService
 }
 
-// 快捷方法（使用全局实例）
-export const getUserInfo = (): Promise<UserInfo> => {
-  return getGlobalApiService().getUserInfo()
-}
-
-export const placeBets = (bets: Array<{ bet_type: string; amount: number }>): Promise<BetResponseData> => {
-  return getGlobalApiService().placeBets(bets)
-}
-
-export const checkConnection = (): Promise<boolean> => {
-  return getGlobalApiService().checkConnection()
+// 快捷方法
+export const initializeGameApi = async (params: GameParams) => {
+  console.log('🚀 初始化游戏API服务...')
+  
+  const apiService = createGameApiService(params)
+  setGlobalApiService(apiService)
+  
+  try {
+    // 获取基础信息
+    const [tableInfo, userInfo] = await Promise.all([
+      apiService.getTableInfo(),
+      apiService.getUserInfo()
+    ])
+    
+    console.log('✅ 游戏API初始化完成:', {
+      tableInfo,
+      userInfo
+    })
+    
+    return {
+      apiService,
+      tableInfo,
+      userInfo
+    }
+    
+  } catch (error) {
+    console.error('❌ 游戏API初始化失败:', error)
+    throw error
+  }
 }

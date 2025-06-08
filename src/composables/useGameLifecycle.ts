@@ -1,14 +1,15 @@
 // src/composables/useGameLifecycle.ts
 import { ref, computed, reactive, onMounted, onUnmounted, readonly } from 'vue'
 import { useWebSocket } from './useWebSocket'
-import { createGameApiService, GameApiService } from '@/services/gameApi'
+import { initializeGameApi, GameApiService } from '@/services/gameApi'
 import { useBettingStore } from '@/stores/bettingStore'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudio } from './useAudio'
 import { 
   parseGameParams, 
   validateGameParams, 
-  validateCurrentGameType
+  validateCurrentGameType,
+  logGameParams
 } from '@/utils/urlParams'
 import { ENV_CONFIG } from '@/utils/envUtils'
 import type { 
@@ -21,6 +22,7 @@ import type {
   WinData,
   GameStatusData
 } from '@/types/api'
+import type { TableInfo } from '@/services/gameApi'
 
 export interface GameLifecycleState {
   isInitialized: boolean
@@ -28,7 +30,7 @@ export interface GameLifecycleState {
   connectionStatus: WSConnectionStatus
   error: string | null
   userInfo: UserInfo | null
-  tableInfo: any
+  tableInfo: TableInfo | null
   currentGame: any
   lastGameResult: GameResultData | null
   gameTypeValidation: {
@@ -36,6 +38,12 @@ export interface GameLifecycleState {
     currentType: string
     expectedType: string
     error?: string
+  }
+  // 新增初始化步骤状态
+  initSteps: {
+    urlParams: boolean
+    httpApi: boolean
+    websocket: boolean
   }
 }
 
@@ -73,6 +81,11 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       isValid: true,
       currentType: '',
       expectedType: '9'
+    },
+    initSteps: {
+      urlParams: false,
+      httpApi: false,
+      websocket: false
     }
   })
 
@@ -80,7 +93,10 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     lifecycleState.isInitialized && 
     lifecycleState.connectionStatus === 'connected' &&
     !lifecycleState.error &&
-    lifecycleState.gameTypeValidation.isValid
+    lifecycleState.gameTypeValidation.isValid &&
+    lifecycleState.initSteps.urlParams &&
+    lifecycleState.initSteps.httpApi &&
+    lifecycleState.initSteps.websocket
   )
 
   const canPlaceBets = computed(() => 
@@ -109,103 +125,149 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     lifecycleState.error = null
   }
 
-  const initialize = async (): Promise<void> => {
+  /**
+   * 🎯 阶段1: URL参数获取与验证
+   */
+  const initializeUrlParams = () => {
+    console.log('\n📋 阶段1: URL参数解析与验证')
+    console.log('=' .repeat(50))
+    
     try {
-      lifecycleState.isLoading = true
-      clearError()
-
-      await parseAndValidateParams()
-
-      if (!skipGameTypeValidation) {
-        validateGameTypeMatch()
-      }
-
-      await initializeProductionMode()
-      initializeGameStores()
-
-      if (enableAudio) {
-        await initializeAudio()
-      }
-
-      lifecycleState.isInitialized = true
-
-    } catch (error: any) {
-      setError(error)
-      throw error
-    } finally {
-      lifecycleState.isLoading = false
-    }
-  }
-
-  const parseAndValidateParams = async (): Promise<void> => {
-    gameParams.value = parseGameParams()
-    
-    const validation = validateGameParams(gameParams.value)
-    if (!validation.isValid) {
-      const errorMsg = `URL参数无效: ${[...validation.missingParams, ...validation.errors].join(', ')}`
-      throw new Error(errorMsg)
-    }
-  }
-
-  const validateGameTypeMatch = (): void => {
-    const validation = validateCurrentGameType()
-    lifecycleState.gameTypeValidation = validation
-    
-    if (!validation.isValid) {
-      const errorMsg = `游戏类型不匹配: 期望骰宝游戏(ID:9)`
+      // 解析URL参数
+      const params = parseGameParams()
+      console.log('📡 解析URL参数:', params)
       
-      if (ENV_CONFIG.IS_PROD) {
-        throw new Error(errorMsg)
+      // 验证参数
+      const validation = validateGameParams(params)
+      console.log('🔍 参数验证结果:', validation.isValid ? '✅ 通过' : '❌ 失败')
+      
+      if (!validation.isValid) {
+        console.warn('❌ 缺少参数:', validation.missingParams)
+        console.error('🚫 参数错误:', validation.errors)
+        throw new Error(`URL参数无效: ${[...validation.missingParams, ...validation.errors].join(', ')}`)
       }
+      
+      // 游戏类型验证
+      if (!skipGameTypeValidation) {
+        const gameTypeValidation = validateCurrentGameType()
+        lifecycleState.gameTypeValidation = gameTypeValidation
+        console.log('🎲 游戏类型验证:', gameTypeValidation.isValid ? '✅ 骰宝匹配' : '❌ 类型不匹配')
+        
+        if (!gameTypeValidation.isValid) {
+          console.warn('⚠️ 游戏类型警告:', gameTypeValidation.error)
+          if (ENV_CONFIG.IS_PROD) {
+            throw new Error(gameTypeValidation.error)
+          }
+        }
+      }
+      
+      // 打印详细日志
+      logGameParams()
+      
+      gameParams.value = params
+      lifecycleState.initSteps.urlParams = true
+      
+      console.log('✅ 阶段1完成: URL参数解析成功')
+      return { params, validation }
+      
+    } catch (error: any) {
+      console.error('❌ 阶段1失败:', error.message)
+      throw error
     }
   }
 
-  const initializeProductionMode = async (): Promise<void> => {
-    apiService.value = createGameApiService(gameParams.value)
-    await fetchUserInfo()
-    await fetchTableInfo()
-    await initializeWebSocket()
-  }
-
-  const fetchUserInfo = async (): Promise<void> => {
+  /**
+   * 🌐 阶段2: HTTP台桌信息获取
+   */
+  const initializeHttpApi = async () => {
+    console.log('\n🌐 阶段2: HTTP API初始化')
+    console.log('=' .repeat(50))
+    
     try {
-      const userInfo = await apiService.value!.getUserInfo()
-      lifecycleState.userInfo = userInfo
-    } catch (error) {
-      throw new Error('获取用户信息失败，请检查账户状态或网络连接')
+      console.log('🚀 初始化游戏API服务...')
+      console.log('📊 请求参数:', {
+        table_id: gameParams.value.table_id,
+        game_type: gameParams.value.game_type,
+        user_id: gameParams.value.user_id,
+        token_length: gameParams.value.token.length
+      })
+      
+      // 使用重写的API服务
+      const apiResult = await initializeGameApi(gameParams.value)
+      
+      apiService.value = apiResult.apiService
+      lifecycleState.tableInfo = apiResult.tableInfo
+      lifecycleState.userInfo = apiResult.userInfo
+      lifecycleState.initSteps.httpApi = true
+      
+      console.log('✅ 阶段2完成: HTTP API初始化成功')
+      console.log('🏢 台桌信息:', lifecycleState.tableInfo)
+      console.log('👤 用户信息:', lifecycleState.userInfo)
+      
+      return apiResult
+      
+    } catch (error: any) {
+      console.error('❌ 阶段2失败:', error.message)
+      throw error
     }
   }
 
-  const fetchTableInfo = async (): Promise<void> => {
+  /**
+   * 🔌 阶段3: WebSocket连接初始化
+   */
+  const initializeWebSocketConnection = async () => {
+    console.log('\n🔌 阶段3: WebSocket连接初始化')
+    console.log('=' .repeat(50))
+    
     try {
-      const tableInfo = await apiService.value!.getTableInfo()
-      lifecycleState.tableInfo = tableInfo
-    } catch (error) {
-      lifecycleState.tableInfo = {
-        table_name: `骰宝${gameParams.value.table_id}号桌`,
-        min_bet: 10,
-        max_bet: 50000
-      }
+      console.log('📡 WebSocket连接配置:', {
+        wsURL: ENV_CONFIG.WS_URL,
+        table_id: gameParams.value.table_id,
+        game_type: gameParams.value.game_type,
+        user_id: gameParams.value.user_id
+      })
+      
+      // 创建WebSocket服务
+      wsService.value = useWebSocket(gameParams.value, {
+        autoConnect: true,
+        onConnected: () => {
+          console.log('🎉 WebSocket连接成功')
+          lifecycleState.connectionStatus = 'connected'
+          lifecycleState.initSteps.websocket = true
+        },
+        onDisconnected: () => {
+          console.log('📡 WebSocket连接断开')
+          lifecycleState.connectionStatus = 'disconnected'
+          lifecycleState.initSteps.websocket = false
+        },
+        onError: (error) => {
+          console.error('🚨 WebSocket错误:', error)
+          lifecycleState.connectionStatus = 'error'
+          lifecycleState.initSteps.websocket = false
+        }
+      })
+
+      // 设置WebSocket事件监听
+      setupWebSocketEventListeners()
+
+      // 等待连接建立
+      console.log('⏳ 等待WebSocket连接建立...')
+      await waitForWebSocketConnection()
+      
+      console.log('✅ 阶段3完成: WebSocket连接成功')
+      return wsService.value
+      
+    } catch (error: any) {
+      console.error('❌ 阶段3失败:', error.message)
+      throw error
     }
   }
 
-  const initializeWebSocket = async (): Promise<void> => {
-    wsService.value = useWebSocket(gameParams.value, {
-      autoConnect: true,
-      onConnected: () => {
-        lifecycleState.connectionStatus = 'connected'
-      },
-      onDisconnected: () => {
-        lifecycleState.connectionStatus = 'disconnected'
-      },
-      onError: (error) => {
-        lifecycleState.connectionStatus = 'error'
-      }
-    })
-
-    setupWebSocketEventListeners()
-
-    await new Promise<void>((resolve, reject) => {
+  /**
+   * 等待WebSocket连接
+   */
+  const waitForWebSocketConnection = async (): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('WebSocket连接超时'))
       }, 10000)
@@ -237,10 +299,14 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     })
   }
 
+  /**
+   * 设置WebSocket事件监听
+   */
   const setupWebSocketEventListeners = (): void => {
     if (!wsService.value) return
 
     wsService.value.on<CountdownData>('countdown', (data) => {
+      console.log('⏰ 倒计时更新:', data)
       lifecycleState.currentGame = {
         ...lifecycleState.currentGame,
         countdown: data.countdown,
@@ -258,17 +324,20 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     })
 
     wsService.value.on<GameResultData>('game_result', (data) => {
+      console.log('🎲 开牌结果:', data)
       lifecycleState.lastGameResult = data
       handleGameResult(data)
     })
 
     wsService.value.on<WinData>('win_data', (data) => {
+      console.log('💰 中奖数据:', data)
       if (enableAudio && data.win_amount > 0) {
         playWinSound('medium')
       }
     })
 
     wsService.value.on<GameStatusData>('game_status', (data) => {
+      console.log('🎮 游戏状态:', data)
       if (enableAudio) {
         switch (data.status) {
           case 'betting':
@@ -282,6 +351,7 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     })
 
     wsService.value.on('balance_update', (data) => {
+      console.log('💳 余额更新:', data)
       if (lifecycleState.userInfo) {
         lifecycleState.userInfo.balance = data.balance
         bettingStore.updateBalance(data.balance)
@@ -289,8 +359,69 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     })
 
     wsService.value.on('error', (data) => {
+      console.error('🚨 WebSocket业务错误:', data)
       setError(`WebSocket错误: ${data.message}`)
     })
+  }
+
+  /**
+   * 🚀 完整初始化流程
+   */
+  const initialize = async (): Promise<void> => {
+    try {
+      lifecycleState.isLoading = true
+      clearError()
+
+      console.log('🚀 开始游戏生命周期初始化...')
+      console.log('🕐 初始化时间:', new Date().toLocaleString())
+      console.log('🌍 当前环境:', ENV_CONFIG.MODE)
+      
+      // 重置初始化步骤状态
+      lifecycleState.initSteps = {
+        urlParams: false,
+        httpApi: false,
+        websocket: false
+      }
+
+      // 阶段1: URL参数解析与验证
+      const { params } = initializeUrlParams()
+
+      // 阶段2: HTTP API初始化
+      await initializeHttpApi()
+
+      // 阶段3: WebSocket连接
+      await initializeWebSocketConnection()
+
+      // 初始化游戏Store
+      initializeGameStores()
+
+      // 初始化音频系统
+      if (enableAudio) {
+        await initializeAudio()
+      }
+
+      lifecycleState.isInitialized = true
+
+      console.log('\n🎉 游戏生命周期初始化完成!')
+      console.log('=' .repeat(50))
+      console.log('📊 最终状态:', {
+        isReady: isReady.value,
+        urlParams: lifecycleState.initSteps.urlParams,
+        httpApi: lifecycleState.initSteps.httpApi,
+        websocket: lifecycleState.initSteps.websocket,
+        tableInfo: !!lifecycleState.tableInfo,
+        userInfo: !!lifecycleState.userInfo,
+        wsConnected: lifecycleState.connectionStatus === 'connected'
+      })
+
+    } catch (error: any) {
+      console.error('\n❌ 游戏生命周期初始化失败!')
+      console.error('错误详情:', error)
+      setError(error)
+      throw error
+    } finally {
+      lifecycleState.isLoading = false
+    }
   }
 
   const handleGameResult = (gameResult: GameResultData): void => {
@@ -343,9 +474,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     }
 
     if (lifecycleState.tableInfo) {
-      gameStore.settings.tableName = lifecycleState.tableInfo.table_name
-      gameStore.settings.limits.min = lifecycleState.tableInfo.min_bet
-      gameStore.settings.limits.max = lifecycleState.tableInfo.max_bet
+      gameStore.settings.tableName = lifecycleState.tableInfo.lu_zhu_name
+      gameStore.settings.limits.min = 10
+      gameStore.settings.limits.max = lifecycleState.tableInfo.right_money_banker_player
     }
 
     if (lifecycleState.currentGame) {
@@ -369,11 +500,14 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     }
 
     try {
-      const result = await apiService.value!.placeBets(bets)
+      const result = await apiService.value!.placeBets(bets.map(bet => ({
+        money: bet.amount,
+        rate_id: parseInt(bet.bet_type)
+      })))
       
       if (lifecycleState.userInfo) {
-        lifecycleState.userInfo.balance = result.new_balance
-        bettingStore.updateBalance(result.new_balance)
+        lifecycleState.userInfo.balance = result.money_balance
+        bettingStore.updateBalance(result.money_balance)
       }
       
       return result
@@ -404,6 +538,11 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     
     lifecycleState.isInitialized = false
     lifecycleState.connectionStatus = 'disconnected'
+    lifecycleState.initSteps = {
+      urlParams: false,
+      httpApi: false,
+      websocket: false
+    }
   }
 
   if (autoInitialize) {
@@ -426,7 +565,14 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     canPlaceBets,
     gamePhaseText,
     
+    // 完整初始化方法
     initialize,
+    
+    // 分步初始化方法（可选单独调用）
+    initializeUrlParams,
+    initializeHttpApi,
+    initializeWebSocketConnection,
+    
     submitBets,
     reconnect,
     clearError,

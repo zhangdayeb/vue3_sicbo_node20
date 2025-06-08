@@ -3,7 +3,7 @@ import type { GameParams } from '@/types/api'
 
 /**
  * 解析URL中的游戏参数
- * 示例URL: http://localhost:8080/bjlLh?table_id=3&game_type=3&user_id=8&token=9eb5fcdac259fd6cedacad3e04bacf2ed7M3m261WOCWcaAKFFa2Nu
+ * 示例URL: http://localhost:3000/?table_id=5&game_type=9&user_id=8&token=9eb5fcdac259fd6cedacad3e04bacf2ed7M3m261WOCWcaAKFFa2Nu
  */
 export const parseGameParams = (): GameParams => {
   const urlParams = new URLSearchParams(window.location.search)
