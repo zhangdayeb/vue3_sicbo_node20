@@ -252,7 +252,6 @@ interface Props {
   currentBets: Record<string, number>
   lastBets: Record<string, number>
   balance: number
-  canBet: boolean
 }
 
 const props = defineProps<Props>()
@@ -290,7 +289,7 @@ const lastBetAmount = computed(() => {
 })
 
 const canCancel = computed(() => {
-  return (props.totalBetAmount > 0 || hasLastConfirmedBets.value) && props.canBet
+  return (props.totalBetAmount > 0 || hasLastConfirmedBets.value) 
 })
 
 const hasLastConfirmedBets = computed(() => {
@@ -298,11 +297,11 @@ const hasLastConfirmedBets = computed(() => {
 })
 
 const canRebet = computed(() => {
-  return lastBetAmount.value > 0 && props.balance >= lastBetAmount.value && props.canBet
+  return lastBetAmount.value > 0 && props.balance >= lastBetAmount.value 
 })
 
 const canConfirm = computed(() => {
-  return props.totalBetAmount > 0 && props.canBet && !isSubmitting.value
+  return props.totalBetAmount > 0 && !isSubmitting.value
 })
 
 // 方法
