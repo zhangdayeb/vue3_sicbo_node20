@@ -58,7 +58,7 @@
           <template #icon>
             <n-icon><CheckmarkIcon /></n-icon>
           </template>
-          {{ isSubmitting ? '提交中...' : '确认' }}
+          {{ getConfirmButtonText() }}
           <n-badge
             v-if="totalBetAmount > 0"
             :value="formatAmount(totalBetAmount)"
@@ -67,6 +67,18 @@
           />
         </n-button>
       </n-button-group>
+      
+      <!-- 🔥 新增：投注状态提示 -->
+      <div v-if="showStatusHint" class="betting-status-hint">
+        <n-space align="center" :size="8">
+          <n-icon size="14" :color="statusHintColor">
+            <component :is="statusHintIcon" />
+          </n-icon>
+          <n-text :style="{ color: statusHintColor, fontSize: '12px', fontWeight: '600' }">
+            {{ statusHintText }}
+          </n-text>
+        </n-space>
+      </div>
     </n-config-provider>
   </div>
 </template>
@@ -79,13 +91,19 @@ import {
   NButton, 
   NIcon, 
   NBadge,
+  NSpace,
+  NText,
   useMessage
 } from 'naive-ui'
 import {
   TrashOutline as TrashIcon,
   RefreshOutline as RefreshIcon,
-  CheckmarkCircleOutline as CheckmarkIcon
+  CheckmarkCircleOutline as CheckmarkIcon,
+  CheckmarkDoneOutline as ConfirmedIcon,
+  TimeOutline as WaitingIcon,
+  FlashOutline as ActiveIcon
 } from '@vicons/ionicons5'
+import { useBettingStore } from '@/stores/bettingStore'
 import { getGlobalApiService } from '@/services/gameApi'
 import type { BetRequest, BetResponse } from '@/services/gameApi'
 
@@ -181,11 +199,38 @@ const emit = defineEmits<{
   'confirm-bets': []
 }>()
 
+// 🔥 使用 BettingStore
+const bettingStore = useBettingStore()
+
 // 使用 Naive UI 消息组件
 const message = useMessage()
 
 // 响应式数据
 const isSubmitting = ref(false)
+
+// 🔥 新增：状态提示相关计算属性
+const showStatusHint = computed(() => {
+  return bettingStore.bettingPhase === 'confirmed' || bettingStore.hasConfirmedBets
+})
+
+const statusHintText = computed(() => {
+  const confirmedAmount = bettingStore.confirmedBetAmount
+  const confirmedCount = bettingStore.confirmedBetCount
+  
+  if (bettingStore.bettingPhase === 'confirmed' && confirmedAmount > 0) {
+    return `已确认 ${confirmedCount} 项投注 ¥${formatAmount(confirmedAmount)}，可继续加注`
+  }
+  
+  return '投注已确认，等待开牌'
+})
+
+const statusHintColor = computed(() => {
+  return bettingStore.bettingPhase === 'confirmed' ? '#00bcd4' : '#ffd700'
+})
+
+const statusHintIcon = computed(() => {
+  return bettingStore.bettingPhase === 'confirmed' ? ConfirmedIcon : WaitingIcon
+})
 
 // 计算属性
 const betCount = computed(() => {
@@ -209,8 +254,21 @@ const canRebet = computed(() => {
 })
 
 const canConfirm = computed(() => {
-  return props.totalBetAmount > 0 && !isSubmitting.value
+  return props.totalBetAmount > 0 && !isSubmitting.value && bettingStore.canPlaceBet
 })
+
+// 🔥 新增：获取确认按钮文本
+const getConfirmButtonText = (): string => {
+  if (isSubmitting.value) {
+    return '提交中...'
+  }
+  
+  if (bettingStore.bettingPhase === 'confirmed' && props.totalBetAmount > 0) {
+    return '追加投注'
+  }
+  
+  return '确认投注'
+}
 
 // 方法
 const formatAmount = (amount: number): string => {
@@ -309,7 +367,7 @@ const prepareBetRequests = (currentBets: Record<string, number>): BetRequest[] =
   return betRequests
 }
 
-// 真实投注提交
+// 🔥 修改：真实投注提交 - 不立即清场
 const submitRealBets = async (): Promise<void> => {
   try {
     isSubmitting.value = true
@@ -322,19 +380,50 @@ const submitRealBets = async (): Promise<void> => {
       return
     }
     
+    console.log('🎯 提交投注请求:', {
+      bets: betRequests,
+      currentPhase: bettingStore.bettingPhase,
+      totalAmount: props.totalBetAmount
+    })
+    
     // 调用API
     const apiService = getGlobalApiService()
     const result: BetResponse = await apiService.placeBets(betRequests)
     
-    // 处理成功结果
-    message.success(`投注成功！消费: ¥${result.money_spend}`)
+    console.log('✅ 投注API成功响应:', result)
     
-    // 触发原有的确认事件（清空本地投注）
-    emit('confirm-bets')
+    // 🔥 关键修改：投注成功后确认到 confirmedBets，不清场
+    const isFirstBet = bettingStore.bettingPhase === 'betting'
+    const actionText = isFirstBet ? '投注成功' : '追加成功'
+    
+    // 确认当前投注到已确认投注，清空当前投注以便继续投注
+    bettingStore.confirmCurrentBets()
+    
+    // 更新余额（如果API返回了余额）
+    if (result.money_balance !== undefined) {
+      bettingStore.updateBalance(result.money_balance)
+    }
+    
+    // 显示成功消息
+    message.success(`${actionText}！消费: ¥${result.money_spend}，可继续加注`)
+    
+    console.log('🎉 投注处理完成', {
+      actionText,
+      spend: result.money_spend,
+      newBalance: result.money_balance,
+      bettingPhase: bettingStore.bettingPhase,
+      confirmedBets: bettingStore.confirmedBets,
+      currentBets: bettingStore.currentBets
+    })
+    
+    // 🔥 注意：这里不调用 emit('confirm-bets')，因为我们不想清场
+    // 投注确认后，用户可以继续投注，直到开牌结果到达才清场
     
   } catch (error: any) {
+    console.error('❌ 投注提交失败:', error)
+    
     // 直接使用后台返回的错误信息
-    const errorMessage = error.response?.data?.message || error.message || '请求失败'
+    const errorMessage = error.response?.data?.message || error.message || '投注提交失败'
     message.error(errorMessage)
     
   } finally {
@@ -346,23 +435,38 @@ const handleCancel = () => {
   if (!canCancel.value) return
   
   if (props.totalBetAmount > 0) {
+    // 取消当前投注
     emit('cancel-current-bets')
+    console.log('🗑️ 取消当前投注')
   } else if (hasLastConfirmedBets.value) {
+    // 清除投注区域
     emit('clear-field')
+    console.log('🧹 清除投注区域')
   }
 }
 
 const handleClearAll = () => {
+  // 🔥 清除所有投注（包括已确认的）
+  bettingStore.clearAllBets()
   emit('clear-all-field')
+  console.log('🧹 完全清场 - 清除所有投注')
+  message.info('已清除所有投注')
 }
 
 const handleRebet = () => {
   if (!canRebet.value) return
   emit('rebet')
+  console.log('🔄 重复投注')
 }
 
 const handleConfirm = () => {
   if (!canConfirm.value) return
+  
+  console.log('🎯 用户点击确认投注', {
+    currentBets: props.currentBets,
+    totalAmount: props.totalBetAmount,
+    bettingPhase: bettingStore.bettingPhase
+  })
   
   // 直接提交投注，无需确认对话框
   submitRealBets()
@@ -415,10 +519,37 @@ const handleConfirm = () => {
   z-index: 10;
 }
 
+/* 🔥 新增：投注状态提示样式 */
+.betting-status-hint {
+  background: linear-gradient(135deg, rgba(0, 188, 212, 0.15), rgba(0, 150, 136, 0.1));
+  border: 1px solid rgba(0, 188, 212, 0.3);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  backdrop-filter: blur(5px);
+  animation: statusHintSlideIn 0.3s ease-out;
+}
+
+@keyframes statusHintSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 375px) {
   .control-button {
     height: 44px;
     font-size: 11px;
+  }
+  
+  .betting-status-hint {
+    padding: 4px 8px;
+    margin-top: 4px;
   }
 }
 
@@ -431,6 +562,11 @@ const handleConfirm = () => {
   .control-buttons {
     padding: 6px;
   }
+  
+  .betting-status-hint {
+    padding: 3px 6px;
+    margin-top: 3px;
+  }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
@@ -441,6 +577,10 @@ const handleConfirm = () => {
   
   .control-buttons {
     padding: 6px;
+  }
+  
+  .betting-status-hint {
+    display: none; /* 横屏时隐藏状态提示以节省空间 */
   }
 }
 
