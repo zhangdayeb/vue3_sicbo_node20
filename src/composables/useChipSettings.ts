@@ -122,15 +122,15 @@ export const useChipSettings = () => {
     return enabledChips.value.filter(chip => chip.value <= maxChipValue)
   }
 
-  // 获取筹码图片路径
+  // 🔥 修改1：获取筹码图片路径
   const getChipImagePath = (chip: ChipConfig, type: 'selected' | 'all'): string => {
     const prefix = type === 'selected' ? 'S_' : 'B_'
-    return `/src/assets/images/chips/${prefix}${chip.filename}.png`
+    return `/images/chips/${prefix}${chip.filename}.png` // 🔥 原来是复杂的 new URL() 方式
   }
 
-  // 获取设置图标路径
+  // 🔥 修改2：获取设置图标路径
   const getSettingsIconPath = (): string => {
-    return '/src/assets/images/chips/chip.png'
+    return '/images/chips/chip.png' // 🔥 原来是 new URL('../assets/images/chips/chip.png', import.meta.url).href
   }
 
   // 应用预设

@@ -59,28 +59,28 @@ export const useAudio = () => {
     // UI 音效
     {
       id: 'click',
-      url: new URL('@/assets/audio/chip-select.mp3', import.meta.url).href,
+      url: '/audio/chip-select.mp3', // 🔥 修改：原来是 new URL('@/assets/audio/chip-select.mp3', import.meta.url).href
       category: 'sfx',
       volume: 0.6,
       preload: true
     },
     {
       id: 'hover',
-      url: new URL('@/assets/audio/chip-select.mp3', import.meta.url).href,
+      url: '/audio/chip-select.mp3', // 🔥 修改2
       category: 'sfx',
       volume: 0.4,
       preload: true
     },
     {
       id: 'error',
-      url: new URL('@/assets/audio/error.mp3', import.meta.url).href,
+      url: '/audio/error.mp3', // 🔥 修改3
       category: 'sfx',
       volume: 0.8,
       preload: true
     },
     {
       id: 'success',
-      url: new URL('@/assets/audio/bet-confirm.mp3', import.meta.url).href,
+      url: '/audio/bet-confirm.mp3', // 🔥 修改4
       category: 'sfx',
       volume: 0.7,
       preload: true
@@ -89,14 +89,14 @@ export const useAudio = () => {
     // 筹码音效
     {
       id: 'chip-select',
-      url: new URL('@/assets/audio/chip-select.mp3', import.meta.url).href,
+      url: '/audio/chip-select.mp3', // 🔥 修改5
       category: 'sfx',
       volume: 0.7,
       preload: true
     },
     {
       id: 'chip-place',
-      url: new URL('@/assets/audio/chip-place.mp3', import.meta.url).href,
+      url: '/audio/chip-place.mp3', // 🔥 修改6
       category: 'sfx',
       volume: 0.8,
       preload: true
@@ -105,21 +105,21 @@ export const useAudio = () => {
     // 游戏音效
     {
       id: 'bet-confirm',
-      url: new URL('@/assets/audio/bet-confirm.mp3', import.meta.url).href,
+      url: '/audio/bet-confirm.mp3', // 🔥 修改7
       category: 'sfx',
       volume: 0.9,
       preload: true
     },
     {
       id: 'dice-shake',
-      url: new URL('@/assets/audio/dice-shake.mp3', import.meta.url).href,
+      url: '/audio/dice-shake.mp3', // 🔥 修改8
       category: 'sfx',
       volume: 0.8,
       preload: true
     },
     {
       id: 'dice-roll',
-      url: new URL('@/assets/audio/dice-roll.mp3', import.meta.url).href,
+      url: '/audio/dice-roll.mp3', // 🔥 修改9
       category: 'sfx',
       volume: 0.7,
       preload: true
@@ -128,14 +128,14 @@ export const useAudio = () => {
     // 中奖音效
     {
       id: 'win-small',
-      url: new URL('@/assets/audio/win-small.mp3', import.meta.url).href,
+      url: '/audio/win-small.mp3', // 🔥 修改10
       category: 'sfx',
       volume: 0.9,
       preload: true
     },
     {
       id: 'win',
-      url: new URL('@/assets/audio/win.mp3', import.meta.url).href,
+      url: '/audio/win.mp3', // 🔥 修改11
       category: 'sfx',
       volume: 1.0,
       preload: true

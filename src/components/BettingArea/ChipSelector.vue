@@ -26,7 +26,7 @@
             @click="openSettings"
           >
             <img 
-              src="/src/assets/images/chips/chip.png" 
+              src="/images/chips/chip.png" 
               alt="设置"
               class="chip-image settings-icon"
             />
@@ -400,7 +400,7 @@ const getChipImage = (value: number, type: 'selected' | 'all'): string => {
   if (!chip) return ''
   
   const prefix = type === 'selected' ? 'S_' : 'B_'
-  return `/src/assets/images/chips/${prefix}${chip.filename}.png`
+  return `/images/chips/${prefix}${chip.filename}.png`
 }
 
 const selectChip = (value: number): void => {

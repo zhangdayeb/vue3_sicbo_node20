@@ -198,16 +198,16 @@ const startAnimation = async (newResults?: number[]) => {
   // 阶段2: 显示骰子（延迟300ms）
   setTimeout(() => {
     showDice.value = true
-    // 播放展示音效
-    playSound('./src/assets/audio/dice-roll.mp3')
+    // 🔥 修改1：播放展示音效
+    playSound('/audio/dice-roll.mp3') // 原来是 './src/assets/audio/dice-roll.mp3'
     emit('phase-change', 'showing')
   }, 300)
   
   // 阶段3: 显示结果面板（延迟600ms）
   setTimeout(() => {
     showResult.value = true
-    // 播放结果音效
-    playSound('./src/assets/audio/win.mp3')
+    // 🔥 修改2：播放结果音效
+    playSound('/audio/win.mp3') // 原来是 './src/assets/audio/win.mp3'
   }, 600)
   
   // 阶段4: 完成动画
