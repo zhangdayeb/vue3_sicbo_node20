@@ -50,6 +50,7 @@
           type="success"
           size="large"
           :disabled="!canConfirm"
+          :loading="isSubmitting"
           @click="handleConfirm"
           class="control-button confirm-button"
           :class="{ 'pulsing': canConfirm && totalBetAmount > 0 }"
@@ -57,7 +58,7 @@
           <template #icon>
             <n-icon><CheckmarkIcon /></n-icon>
           </template>
-          确认
+          {{ isSubmitting ? '提交中...' : '确认' }}
           <n-badge
             v-if="totalBetAmount > 0"
             :value="formatAmount(totalBetAmount)"
@@ -159,8 +160,7 @@ import {
   NAlert,
   NModal,
   NBadge,
-  useMessage,
-  useDialog
+  useMessage
 } from 'naive-ui'
 import {
   TrashOutline as TrashIcon,
@@ -170,6 +170,8 @@ import {
   InformationCircleOutline as InfoIcon,
   AlertCircleOutline as AlertIcon
 } from '@vicons/ionicons5'
+import { getGlobalApiService } from '@/services/gameApi'
+import type { BetRequest, BetResponse } from '@/services/gameApi'
 
 // 游戏主题配置
 const gameTheme = {
@@ -276,6 +278,7 @@ const confirmDetails = ref<Array<{label: string, value: string}> | null>(null)
 const pendingAction = ref<(() => void) | null>(null)
 const dialogType = ref<'info' | 'success' | 'warning' | 'error'>('info')
 const actionType = ref<'cancel' | 'clear' | 'clearAll' | 'rebet' | 'confirm'>('confirm')
+const isSubmitting = ref(false)
 
 // 计算属性
 const betCount = computed(() => {
@@ -299,7 +302,7 @@ const canRebet = computed(() => {
 })
 
 const canConfirm = computed(() => {
-  return props.totalBetAmount > 0 && props.canBet
+  return props.totalBetAmount > 0 && props.canBet && !isSubmitting.value
 })
 
 // 方法
@@ -310,6 +313,138 @@ const formatAmount = (amount: number): string => {
     return (amount / 1000).toFixed(1) + 'K'
   }
   return amount.toString()
+}
+
+// 投注数据转换
+const prepareBetRequests = (currentBets: Record<string, number>): BetRequest[] => {
+  const betRequests: BetRequest[] = []
+  
+  // 投注类型到API rate_id的映射
+  const betTypeToRateId: Record<string, number> = {
+    // 大小单双
+    'small': 304,
+    'big': 305, 
+    'odd': 306,
+    'even': 307,
+    
+    // 点数投注
+    'total-4': 308,
+    'total-5': 309,
+    'total-6': 310,
+    'total-7': 311,
+    'total-8': 312,
+    'total-9': 313,
+    'total-10': 314,
+    'total-11': 315,
+    'total-12': 316,
+    'total-13': 317,
+    'total-14': 318,
+    'total-15': 319,
+    'total-16': 320,
+    'total-17': 321,
+    
+    // 单骰投注
+    'single-1': 322,
+    'single-2': 323,
+    'single-3': 324,
+    'single-4': 325,
+    'single-5': 326,
+    'single-6': 327,
+    
+    // 对子投注
+    'pair-1': 328,
+    'pair-2': 329,
+    'pair-3': 330,
+    'pair-4': 331,
+    'pair-5': 332,
+    'pair-6': 333,
+    
+    // 三同号投注
+    'triple-1': 334,
+    'triple-2': 335,
+    'triple-3': 336,
+    'triple-4': 337,
+    'triple-5': 338,
+    'triple-6': 339,
+    
+    // 全围
+    'any-triple': 340,
+    
+    // 组合投注
+    'combo-1-2': 341,
+    'combo-1-3': 342,
+    'combo-1-4': 343,
+    'combo-1-5': 344,
+    'combo-1-6': 345,
+    'combo-2-3': 346,
+    'combo-2-4': 347,
+    'combo-2-5': 348,
+    'combo-2-6': 349,
+    'combo-3-4': 350,
+    'combo-3-5': 351,
+    'combo-3-6': 352,
+    'combo-4-5': 353,
+    'combo-4-6': 354,
+    'combo-5-6': 355
+  }
+  
+  // 转换每个投注
+  Object.entries(currentBets).forEach(([betType, amount]) => {
+    const rateId = betTypeToRateId[betType]
+    if (rateId && amount > 0) {
+      betRequests.push({
+        money: amount,
+        rate_id: rateId
+      })
+    }
+  })
+  
+  return betRequests
+}
+
+// 真实投注提交
+const submitRealBets = async (): Promise<void> => {
+  try {
+    isSubmitting.value = true
+    
+    // 准备投注数据
+    const betRequests = prepareBetRequests(props.currentBets)
+    
+    if (betRequests.length === 0) {
+      throw new Error('没有有效的投注数据')
+    }
+    
+    // 调用API
+    const apiService = getGlobalApiService()
+    const result: BetResponse = await apiService.placeBets(betRequests)
+    
+    // 处理成功结果
+    message.success(`投注成功！消费: ¥${result.money_spend}`)
+    
+    // 触发原有的确认事件（清空本地投注）
+    emit('confirm-bets')
+    
+  } catch (error: any) {
+    let errorMessage = '投注失败，请重试'
+    
+    // 根据错误类型提供具体提示
+    if (error.message?.includes('balance') || error.message?.includes('余额')) {
+      errorMessage = '余额不足，请充值后重试'
+    } else if (error.message?.includes('token') || error.code === 'UNAUTHORIZED') {
+      errorMessage = '登录已过期，请重新登录'
+    } else if (error.message?.includes('betting') || error.message?.includes('投注')) {
+      errorMessage = '当前不在投注时间'
+    } else if (error.message?.includes('network') || error.code === 'NETWORK_ERROR') {
+      errorMessage = '网络连接失败，请检查网络'
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    message.error(errorMessage)
+    console.error('投注API调用失败:', error)
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 const getDialogType = (action: string) => {
@@ -463,7 +598,7 @@ const handleConfirm = () => {
       { label: '投注金额', value: `¥${props.totalBetAmount.toLocaleString()}` },
       { label: '投注后余额', value: `¥${(props.balance - props.totalBetAmount).toLocaleString()}` }
     ],
-    () => emit('confirm-bets')
+    () => submitRealBets()
   )
 }
 
@@ -487,16 +622,20 @@ const confirmAction = () => {
   if (pendingAction.value) {
     pendingAction.value()
     
-    // 显示成功消息
-    const actionNames = {
-      cancel: '已取消投注',
-      clear: '已清场',
-      clearAll: '已完全清场',
-      rebet: '已重复投注',
-      confirm: '投注已确认'
+    // 显示成功消息（除了确认投注，因为它有自己的处理）
+    if (actionType.value !== 'confirm') {
+      const actionNames = {
+        cancel: '已取消投注',
+        clear: '已清场',
+        clearAll: '已完全清场',
+        rebet: '已重复投注'
+      }
+      
+      const actionName = actionNames[actionType.value as keyof typeof actionNames]
+      if (actionName) {
+        message.success(actionName)
+      }
     }
-    
-    message.success(actionNames[actionType.value] || '操作完成')
   }
   cancelConfirm()
   return true
@@ -510,22 +649,6 @@ const cancelConfirm = () => {
   confirmDetails.value = null
   pendingAction.value = null
   return true
-}
-
-// 长按处理 (右键菜单替代)
-let longPressTimer: number | null = null
-
-const startLongPress = () => {
-  longPressTimer = window.setTimeout(() => {
-    handleClearAll()
-  }, 1000)
-}
-
-const endLongPress = () => {
-  if (longPressTimer) {
-    clearTimeout(longPressTimer)
-    longPressTimer = null
-  }
 }
 </script>
 
