@@ -12,7 +12,6 @@ const getEnvVar = (key: string, defaultValue: string = ''): string => {
   try {
     return import.meta.env[key] || defaultValue
   } catch (error) {
-    console.warn(`无法读取环境变量 ${key}, 使用默认值: ${defaultValue}`)
     return defaultValue
   }
 }
@@ -26,9 +25,9 @@ const isDev = (): boolean => {
   }
 }
 
-// 默认配置 - 修复baseURL
+// 默认配置
 const defaultConfig: ApiConfig = {
-  baseURL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com'), // 移除 /api
+  baseURL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com'),
   wsURL: getEnvVar('VITE_WS_URL', 'wss://wsssicbo.wuming888.com'),
   timeout: 10000,
   retryAttempts: 3,
@@ -38,7 +37,7 @@ const defaultConfig: ApiConfig = {
 export class HttpClient {
   private client: AxiosInstance
   private config: ApiConfig
-  private authToken: string | null = null // 存储token
+  private authToken: string | null = null
 
   constructor(config: Partial<ApiConfig> = {}) {
     this.config = { ...defaultConfig, ...config }
@@ -46,32 +45,18 @@ export class HttpClient {
     this.setupInterceptors()
   }
 
-  /**
-   * 设置认证Token
-   */
   setAuthToken(token: string): void {
     this.authToken = token
-    console.log('🔑 Token已设置')
   }
 
-  /**
-   * 清除认证Token
-   */
   clearAuthToken(): void {
     this.authToken = null
-    console.log('🔑 Token已清除')
   }
 
-  /**
-   * 获取当前Token
-   */
   getAuthToken(): string | null {
     return this.authToken
   }
 
-  /**
-   * 创建Axios实例
-   */
   private createAxiosInstance(): AxiosInstance {
     return axios.create({
       baseURL: this.config.baseURL,
@@ -83,9 +68,6 @@ export class HttpClient {
     })
   }
 
-  /**
-   * 设置请求和响应拦截器
-   */
   private setupInterceptors(): void {
     // 请求拦截器
     this.client.interceptors.request.use(
@@ -103,22 +85,9 @@ export class HttpClient {
           }
         }
 
-        // 记录请求日志（开发环境）
-        if (isDev()) {
-          console.log('🚀 HTTP请求:', {
-            url: config.url,
-            fullURL: `${config.baseURL}${config.url}`, // 显示完整URL用于调试
-            method: config.method?.toUpperCase(),
-            params: config.params,
-            data: config.data,
-            hasToken: !!config.headers['x-csrf-token']
-          })
-        }
-
         return config
       },
       (error) => {
-        console.error('❌ 请求拦截器错误:', error)
         return Promise.reject(error)
       }
     )
@@ -126,27 +95,21 @@ export class HttpClient {
     // 响应拦截器
     this.client.interceptors.response.use(
       (response: AxiosResponse<any>) => {
-        // 记录响应日志（开发环境）
-        if (isDev()) {
-          console.log('✅ HTTP响应:', {
-            url: response.config.url,
-            fullURL: `${response.config.baseURL}${response.config.url}`,
-            status: response.status,
-            data: response.data
-          })
-        }
-
         // 检查业务层面的错误 - 适配骰宝API格式
         if (response.data) {
-          // 骰宝API成功响应格式: { code: 200, message: "ok！", data: {...} }
-          if (response.data.code === 200 || response.data.code === 1) {
-            // 成功响应，直接返回
-            return response
-          } else if (response.data.code === 0) {
-            // 业务失败
-            const error = new Error(response.data.message || '操作失败')
-            ;(error as any).code = 'BUSINESS_ERROR'
-            throw error
+          // 检查是否有 code 字段
+          if (typeof response.data.code !== 'undefined') {
+            // 成功响应：code 为 200 或 1
+            if (response.data.code === 200 || response.data.code === 1) {
+              return response
+            } 
+            // 业务失败：code 不是成功状态
+            else {
+              const error = new Error(response.data.message || '操作失败')
+              ;(error as any).code = 'BUSINESS_ERROR'
+              ;(error as any).response = response
+              throw error
+            }
           }
         }
 
@@ -158,24 +121,11 @@ export class HttpClient {
     )
   }
 
-  /**
-   * 处理响应错误
-   */
   private async handleResponseError(error: AxiosError): Promise<never> {
     const config = error.config as AxiosRequestConfig & { _retryCount?: number }
     
-    // 记录错误日志
-    console.error('❌ HTTP错误:', {
-      url: config?.url,
-      fullURL: config ? `${config.baseURL}${config.url}` : '未知',
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data
-    })
-
     // 401错误 - token无效，清除token
     if (error.response?.status === 401) {
-      console.warn('🔑 Token无效，已清除')
       this.clearAuthToken()
     }
 
@@ -192,14 +142,12 @@ export class HttpClient {
     const formattedError = new Error(errorMessage)
     ;(formattedError as any).code = this.getErrorCode(statusCode)
     ;(formattedError as any).statusCode = statusCode
+    ;(formattedError as any).response = error.response
     ;(formattedError as any).originalError = error
 
     throw formattedError
   }
 
-  /**
-   * 判断是否应该重试
-   */
   private shouldRetry(error: AxiosError): boolean {
     // 网络错误
     if (!error.response) return true
@@ -209,9 +157,6 @@ export class HttpClient {
     return status >= 500 && status < 600
   }
 
-  /**
-   * 判断是否可以重试
-   */
   private canRetry(config?: AxiosRequestConfig & { _retryCount?: number }): boolean {
     if (!config) return false
     
@@ -219,9 +164,6 @@ export class HttpClient {
     return retryCount < this.config.retryAttempts
   }
 
-  /**
-   * 重试请求
-   */
   private async retryRequest(config: AxiosRequestConfig & { _retryCount?: number }): Promise<never> {
     config._retryCount = (config._retryCount || 0) + 1
     
@@ -229,16 +171,10 @@ export class HttpClient {
     await new Promise(resolve => 
       setTimeout(resolve, this.config.retryDelay * config._retryCount!)
     )
-
-    console.log(`🔄 重试请求 (${config._retryCount}/${this.config.retryAttempts}):`, 
-      `${config.baseURL}${config.url}`)
     
     return this.client.request(config)
   }
 
-  /**
-   * 获取错误消息
-   */
   private getErrorMessage(statusCode?: number, error?: AxiosError): string {
     if (!statusCode) {
       return '网络连接失败，请检查网络状态'
@@ -260,9 +196,6 @@ export class HttpClient {
     return errorMessages[statusCode] || `请求失败 (${statusCode})`
   }
 
-  /**
-   * 获取错误代码
-   */
   private getErrorCode(statusCode?: number): string {
     if (!statusCode) return 'NETWORK_ERROR'
 
@@ -282,67 +215,42 @@ export class HttpClient {
     return errorCodes[statusCode] || 'HTTP_ERROR'
   }
 
-  /**
-   * GET请求
-   */
   async get<T = any>(url: string, params?: Record<string, any>): Promise<T> {
     const response = await this.client.get(url, { params })
-    // 骰宝API返回格式: { code: 200, data: {...} }
     return response.data?.data || response.data
   }
 
-  /**
-   * POST请求
-   */
   async post<T = any>(url: string, data?: any): Promise<T> {
     const response = await this.client.post(url, data)
-    // 骰宝API返回格式: { code: 200, data: {...} }
     return response.data?.data || response.data
   }
 
-  /**
-   * PUT请求
-   */
   async put<T = any>(url: string, data?: any): Promise<T> {
     const response = await this.client.put(url, data)
     return response.data?.data || response.data
   }
 
-  /**
-   * DELETE请求
-   */
   async delete<T = any>(url: string, params?: Record<string, any>): Promise<T> {
     const response = await this.client.delete(url, { params })
     return response.data?.data || response.data
   }
 
-  /**
-   * 获取原始Axios实例（用于特殊需求）
-   */
   getAxiosInstance(): AxiosInstance {
     return this.client
   }
 
-  /**
-   * 更新配置
-   */
   updateConfig(newConfig: Partial<ApiConfig>): void {
     this.config = { ...this.config, ...newConfig }
     
-    // 更新baseURL
     if (newConfig.baseURL) {
       this.client.defaults.baseURL = newConfig.baseURL
     }
     
-    // 更新超时时间
     if (newConfig.timeout) {
       this.client.defaults.timeout = newConfig.timeout
     }
   }
 
-  /**
-   * 获取当前配置
-   */
   getConfig(): ApiConfig {
     return { ...this.config }
   }

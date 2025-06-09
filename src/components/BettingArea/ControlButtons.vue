@@ -67,82 +67,6 @@
           />
         </n-button>
       </n-button-group>
-
-      <!-- 确认对话框 -->
-      <n-modal
-        v-model:show="showConfirmDialog"
-        preset="dialog"
-        :type="dialogType"
-        :title="confirmTitle"
-        :positive-text="confirmButtonText"
-        :negative-text="'取消'"
-        :mask-closable="true"
-        :close-on-esc="true"
-        :on-positive-click="confirmAction"
-        :on-negative-click="cancelConfirm"
-        class="confirm-dialog"
-      >
-        <template #header>
-          <n-space align="center">
-            <n-icon size="20" :color="getDialogIconColor()">
-              <component :is="getDialogIcon()" />
-            </n-icon>
-            <span>{{ confirmTitle }}</span>
-          </n-space>
-        </template>
-
-        <div class="dialog-content">
-          <p class="dialog-message">{{ confirmMessage }}</p>
-          
-          <!-- 详细信息卡片 -->
-          <n-card 
-            v-if="confirmDetails" 
-            size="small" 
-            class="details-card"
-            :bordered="false"
-          >
-            <template #header>
-              <n-space align="center" size="small">
-                <n-icon size="16" :color="getDialogIconColor()">
-                  <InfoIcon />
-                </n-icon>
-                <n-text depth="2">详细信息</n-text>
-              </n-space>
-            </template>
-            
-            <n-space vertical size="small">
-              <div 
-                v-for="detail in confirmDetails" 
-                :key="detail.label" 
-                class="detail-row"
-              >
-                <n-space justify="space-between" align="center">
-                  <n-text depth="2">{{ detail.label }}:</n-text>
-                  <n-text 
-                    strong 
-                    :type="getDetailValueType(detail.label)"
-                    class="detail-value"
-                  >
-                    {{ detail.value }}
-                  </n-text>
-                </n-space>
-              </div>
-            </n-space>
-          </n-card>
-          
-          <!-- 风险提示 -->
-          <n-alert 
-            v-if="shouldShowRiskWarning()" 
-            type="warning" 
-            size="small"
-            class="risk-warning"
-            :show-icon="true"
-          >
-            <template #header>风险提示</template>
-            {{ getRiskWarningText() }}
-          </n-alert>
-        </div>
-      </n-modal>
     </n-config-provider>
   </div>
 </template>
@@ -153,22 +77,14 @@ import {
   NConfigProvider,
   NButtonGroup,
   NButton, 
-  NCard, 
-  NSpace, 
-  NText, 
   NIcon, 
-  NAlert,
-  NModal,
   NBadge,
   useMessage
 } from 'naive-ui'
 import {
   TrashOutline as TrashIcon,
   RefreshOutline as RefreshIcon,
-  CheckmarkCircleOutline as CheckmarkIcon,
-  WarningOutline as WarningIcon,
-  InformationCircleOutline as InfoIcon,
-  AlertCircleOutline as AlertIcon
+  CheckmarkCircleOutline as CheckmarkIcon
 } from '@vicons/ionicons5'
 import { getGlobalApiService } from '@/services/gameApi'
 import type { BetRequest, BetResponse } from '@/services/gameApi'
@@ -269,14 +185,6 @@ const emit = defineEmits<{
 const message = useMessage()
 
 // 响应式数据
-const showConfirmDialog = ref(false)
-const confirmTitle = ref('')
-const confirmMessage = ref('')
-const confirmButtonText = ref('')
-const confirmDetails = ref<Array<{label: string, value: string}> | null>(null)
-const pendingAction = ref<(() => void) | null>(null)
-const dialogType = ref<'info' | 'success' | 'warning' | 'error'>('info')
-const actionType = ref<'cancel' | 'clear' | 'clearAll' | 'rebet' | 'confirm'>('confirm')
 const isSubmitting = ref(false)
 
 // 计算属性
@@ -410,7 +318,8 @@ const submitRealBets = async (): Promise<void> => {
     const betRequests = prepareBetRequests(props.currentBets)
     
     if (betRequests.length === 0) {
-      throw new Error('没有有效的投注数据')
+      message.error('没有有效的投注数据')
+      return
     }
     
     // 调用API
@@ -424,230 +333,39 @@ const submitRealBets = async (): Promise<void> => {
     emit('confirm-bets')
     
   } catch (error: any) {
-    let errorMessage = '投注失败，请重试'
-    
-    // 根据错误类型提供具体提示
-    if (error.message?.includes('balance') || error.message?.includes('余额')) {
-      errorMessage = '余额不足，请充值后重试'
-    } else if (error.message?.includes('token') || error.code === 'UNAUTHORIZED') {
-      errorMessage = '登录已过期，请重新登录'
-    } else if (error.message?.includes('betting') || error.message?.includes('投注')) {
-      errorMessage = '当前不在投注时间'
-    } else if (error.message?.includes('network') || error.code === 'NETWORK_ERROR') {
-      errorMessage = '网络连接失败，请检查网络'
-    } else if (error.message) {
-      errorMessage = error.message
-    }
-    
+    // 直接使用后台返回的错误信息
+    const errorMessage = error.response?.data?.message || error.message || '请求失败'
     message.error(errorMessage)
-    console.error('投注API调用失败:', error)
+    
   } finally {
     isSubmitting.value = false
   }
-}
-
-const getDialogType = (action: string) => {
-  switch (action) {
-    case 'cancel':
-    case 'clear':
-    case 'clearAll':
-      return 'warning'
-    case 'rebet':
-      return 'info'
-    case 'confirm':
-      return 'success'
-    default:
-      return 'info'
-  }
-}
-
-const getDialogIcon = () => {
-  switch (actionType.value) {
-    case 'cancel':
-    case 'clear':
-    case 'clearAll':
-      return TrashIcon
-    case 'rebet':
-      return RefreshIcon
-    case 'confirm':
-      return CheckmarkIcon
-    default:
-      return InfoIcon
-  }
-}
-
-const getDialogIconColor = () => {
-  switch (actionType.value) {
-    case 'cancel':
-    case 'clear':
-    case 'clearAll':
-      return '#f39c12'
-    case 'rebet':
-      return '#00bcd4'
-    case 'confirm':
-      return '#27ae60'
-    default:
-      return '#00bcd4'
-  }
-}
-
-const getDetailValueType = (label: string) => {
-  if (label.includes('金额') || label.includes('余额')) {
-    return 'success'
-  }
-  if (label.includes('项目') || label.includes('投注')) {
-    return 'info'
-  }
-  return 'default'
-}
-
-const shouldShowRiskWarning = () => {
-  if (actionType.value === 'confirm' && props.totalBetAmount > props.balance * 0.5) {
-    return true
-  }
-  if (actionType.value === 'rebet' && lastBetAmount.value > props.balance * 0.3) {
-    return true
-  }
-  return false
-}
-
-const getRiskWarningText = () => {
-  if (actionType.value === 'confirm') {
-    return '投注金额较大，请谨慎操作。建议合理控制投注风险。'
-  }
-  if (actionType.value === 'rebet') {
-    return '重复投注金额较大，请确认您的投注策略。'
-  }
-  return ''
 }
 
 const handleCancel = () => {
   if (!canCancel.value) return
   
   if (props.totalBetAmount > 0) {
-    actionType.value = 'cancel'
-    showConfirmation(
-      '取消投注',
-      '确定要取消当前投注吗？将恢复到上次确认的状态。',
-      '取消投注',
-      [
-        { label: '当前投注', value: `${betCount.value} 项` },
-        { label: '投注金额', value: `¥${props.totalBetAmount.toLocaleString()}` }
-      ],
-      () => emit('cancel-current-bets')
-    )
+    emit('cancel-current-bets')
   } else if (hasLastConfirmedBets.value) {
-    actionType.value = 'clear'
-    showConfirmation(
-      '清场操作',
-      '确定要清场吗？将清除所有筹码展示。',
-      '确认清场',
-      [
-        { label: '操作类型', value: '清场' },
-        { label: '影响范围', value: '所有筹码展示' }
-      ],
-      () => emit('clear-field')
-    )
+    emit('clear-field')
   }
 }
 
 const handleClearAll = () => {
-  actionType.value = 'clearAll'
-  showConfirmation(
-    '完全清场',
-    '确定要完全清场吗？这将清除所有投注记录和筹码展示。',
-    '完全清场',
-    [
-      { label: '操作类型', value: '完全清场' },
-      { label: '影响范围', value: '所有记录和展示' }
-    ],
-    () => emit('clear-all-field')
-  )
+  emit('clear-all-field')
 }
 
 const handleRebet = () => {
   if (!canRebet.value) return
-  
-  const lastBetCount = Object.keys(props.lastBets).filter(key => props.lastBets[key] > 0).length
-  
-  actionType.value = 'rebet'
-  showConfirmation(
-    '重复投注',
-    '确定要重复上次的投注吗？',
-    '重复投注',
-    [
-      { label: '上次投注', value: `${lastBetCount} 项` },
-      { label: '投注金额', value: `¥${lastBetAmount.value.toLocaleString()}` },
-      { label: '投注后余额', value: `¥${(props.balance - lastBetAmount.value).toLocaleString()}` }
-    ],
-    () => emit('rebet')
-  )
+  emit('rebet')
 }
 
 const handleConfirm = () => {
   if (!canConfirm.value) return
   
-  actionType.value = 'confirm'
-  showConfirmation(
-    '确认投注',
-    '确定要提交当前投注吗？投注一旦确认将无法撤销。',
-    '确认投注',
-    [
-      { label: '投注项目', value: `${betCount.value} 项` },
-      { label: '投注金额', value: `¥${props.totalBetAmount.toLocaleString()}` },
-      { label: '投注后余额', value: `¥${(props.balance - props.totalBetAmount).toLocaleString()}` }
-    ],
-    () => submitRealBets()
-  )
-}
-
-const showConfirmation = (
-  title: string,
-  messageText: string,
-  buttonText: string,
-  details: Array<{label: string, value: string}> | null,
-  action: () => void
-) => {
-  confirmTitle.value = title
-  confirmMessage.value = messageText
-  confirmButtonText.value = buttonText
-  confirmDetails.value = details
-  pendingAction.value = action
-  dialogType.value = getDialogType(actionType.value)
-  showConfirmDialog.value = true
-}
-
-const confirmAction = () => {
-  if (pendingAction.value) {
-    pendingAction.value()
-    
-    // 显示成功消息（除了确认投注，因为它有自己的处理）
-    if (actionType.value !== 'confirm') {
-      const actionNames = {
-        cancel: '已取消投注',
-        clear: '已清场',
-        clearAll: '已完全清场',
-        rebet: '已重复投注'
-      }
-      
-      const actionName = actionNames[actionType.value as keyof typeof actionNames]
-      if (actionName) {
-        message.success(actionName)
-      }
-    }
-  }
-  cancelConfirm()
-  return true
-}
-
-const cancelConfirm = () => {
-  showConfirmDialog.value = false
-  confirmTitle.value = ''
-  confirmMessage.value = ''
-  confirmButtonText.value = ''
-  confirmDetails.value = null
-  pendingAction.value = null
-  return true
+  // 直接提交投注，无需确认对话框
+  submitRealBets()
 }
 </script>
 
@@ -656,7 +374,6 @@ const cancelConfirm = () => {
   background: rgba(0, 0, 0, 0.95);
   border-top: 1px solid #2d5a42;
   padding: 8px;
-  /* iOS Safari安全区域适配 */
   padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
@@ -678,7 +395,6 @@ const cancelConfirm = () => {
   transform: scale(0.98);
 }
 
-/* 确认按钮脉冲动画 */
 .confirm-button.pulsing {
   animation: confirmPulse 2s infinite;
 }
@@ -692,7 +408,6 @@ const cancelConfirm = () => {
   }
 }
 
-/* 徽章样式 */
 .button-badge {
   position: absolute;
   top: -4px;
@@ -700,39 +415,6 @@ const cancelConfirm = () => {
   z-index: 10;
 }
 
-/* 对话框内容样式 */
-.dialog-content {
-  padding: 8px 0;
-}
-
-.dialog-message {
-  margin: 0 0 16px 0;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.details-card {
-  margin: 16px 0;
-  background: rgba(45, 90, 66, 0.3) !important;
-  border: 1px solid rgba(255, 215, 0, 0.2) !important;
-}
-
-.detail-row {
-  padding: 4px 0;
-}
-
-.detail-value {
-  font-family: 'Monaco', 'Menlo', monospace;
-  letter-spacing: 0.5px;
-}
-
-.risk-warning {
-  margin-top: 16px;
-  background: rgba(243, 156, 18, 0.1) !important;
-  border: 1px solid rgba(243, 156, 18, 0.3) !important;
-}
-
-/* 响应式适配 */
 @media (max-width: 375px) {
   .control-button {
     height: 44px;
@@ -751,7 +433,6 @@ const cancelConfirm = () => {
   }
 }
 
-/* 横屏适配 */
 @media (orientation: landscape) and (max-height: 500px) {
   .control-button {
     height: 40px;
@@ -763,7 +444,6 @@ const cancelConfirm = () => {
   }
 }
 
-/* 深度样式覆盖 */
 :deep(.n-button-group .n-button) {
   border-radius: 6px !important;
 }
@@ -780,17 +460,6 @@ const cancelConfirm = () => {
 
 :deep(.n-button-group .n-button:not(:first-child):not(:last-child)) {
   border-radius: 0 !important;
-}
-
-:deep(.n-modal .n-dialog) {
-  background: rgba(13, 40, 24, 0.98) !important;
-  border: 2px solid #2d5a42 !important;
-  backdrop-filter: blur(12px);
-}
-
-:deep(.n-modal .n-dialog .n-dialog__title) {
-  color: #ffd700 !important;
-  font-weight: 700 !important;
 }
 
 :deep(.n-badge .n-badge-sup) {
