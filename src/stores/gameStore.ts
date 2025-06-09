@@ -9,7 +9,7 @@ export const useGameStore = defineStore('game', {
     isConnected: boolean
   } => ({
     gameState: {
-      videoUrl: 'https://video.xinghao998.top/index.html?tableVideo=bjl_y1',
+      videoUrl: '',
       gameNumber: '',
       status: 'waiting',
       countdown: 0,
@@ -34,12 +34,11 @@ export const useGameStore = defineStore('game', {
     isGameActive: (state) => {
       return ['betting', 'dealing'].includes(state.gameState.status)
     },
-    // 生成完整的局号
     fullGameNumber: (state) => {
       if (state.gameState.gameNumber) {
         return state.gameState.gameNumber
       }
-      const tableId = 'T001' // 桌台ID
+      const tableId = 'T001'
       const now = new Date()
       const dateStr = now.getFullYear().toString().slice(-2) + 
                       String(now.getMonth() + 1).padStart(2, '0') + 
@@ -69,9 +68,12 @@ export const useGameStore = defineStore('game', {
       this.gameState.round++
     },
 
-    // 生成新的局号
+    updateVideoUrl(videoUrl: string) {
+      this.gameState.videoUrl = videoUrl
+    },
+
     generateNewGameNumber() {
-      const tableId = 'T001' // 桌台ID，可以从配置获取
+      const tableId = 'T001'
       const now = new Date()
       const dateStr = now.getFullYear().toString().slice(-2) + 
                       String(now.getMonth() + 1).padStart(2, '0') + 
@@ -82,15 +84,13 @@ export const useGameStore = defineStore('game', {
       return newGameNumber
     },
 
-    // 开始新的一局
     startNewRound() {
       this.gameState.round++
       this.generateNewGameNumber()
       this.updateGameStatus('betting')
-      this.updateCountdown(30) // 默认30秒投注时间
+      this.updateCountdown(30)
     },
 
-    // 与Cocos通信
     notifyCocos(event: string, data: any) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent(`vue-to-cocos-${event}`, {

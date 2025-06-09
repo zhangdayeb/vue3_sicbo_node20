@@ -1,8 +1,8 @@
-// src/composables/useGameLifecycle.ts
 import { ref, reactive, computed, readonly } from 'vue'
 import { useWebSocket } from './useWebSocket'
 import { initializeGameApi } from '@/services/gameApi'
 import { useBettingStore } from '@/stores/bettingStore'
+import { useGameStore } from '@/stores/gameStore'
 import { useAudio } from './useAudio'
 import { parseGameParams, validateGameParams, validateCurrentGameType } from '@/utils/urlParams'
 import { setGlobalWSService } from '@/services/websocket'
@@ -10,9 +10,7 @@ import { ENV_CONFIG } from '@/utils/envUtils'
 import type { GameParams } from '@/types/api'
 import type { GameLifecycleOptions } from '@/types/game'
 
-// 生命周期实例接口
 interface GameLifecycleInstance {
-  // 状态数据
   tableInfo: any
   userInfo: any
   connectionStatus: string
@@ -25,10 +23,8 @@ interface GameLifecycleInstance {
     websocket: boolean
   }
   
-  // WebSocket服务
   wsService: any
   
-  // 方法
   initialize: () => Promise<void>
   reconnect: () => Promise<void>
   clearError: () => void
@@ -37,10 +33,8 @@ interface GameLifecycleInstance {
   updateTableInfo: (newTableInfo: any) => void
 }
 
-// 全局实例存储
 let globalLifecycleInstance: GameLifecycleInstance | null = null
 
-// 创建生命周期实例
 export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLifecycleInstance => {
   const {
     autoInitialize = false,
@@ -49,9 +43,9 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
   } = options
 
   const bettingStore = useBettingStore()
+  const gameStore = useGameStore()
   const { unlockAudioContext } = useAudio()
 
-  // 响应式状态
   const state = reactive({
     tableInfo: null as any,
     userInfo: null as any,
@@ -77,17 +71,14 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     state.error = null
   }
 
-  // 更新用户信息
   const updateUserInfo = (newUserInfo: any) => {
     state.userInfo = newUserInfo
   }
 
-  // 更新台桌信息
   const updateTableInfo = (newTableInfo: any) => {
     state.tableInfo = newTableInfo
   }
 
-  // URL参数解析与验证
   const initializeUrlParams = () => {
     const params = parseGameParams()
     const validation = validateGameParams(params)
@@ -108,7 +99,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     state.initSteps.urlParams = true
   }
 
-  // HTTP API初始化
   const initializeHttpApi = async () => {
     const apiResult = await initializeGameApi(gameParams.value)
     
@@ -116,10 +106,13 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     state.userInfo = apiResult.userInfo
     state.initSteps.httpApi = true
     
+    if (apiResult.tableInfo?.video_far) {
+      gameStore.updateVideoUrl(apiResult.tableInfo.video_far)
+    }
+    
     return apiResult
   }
 
-  // WebSocket连接初始化
   const initializeWebSocketConnection = async () => {
     wsService.value = useWebSocket(gameParams.value, {
       autoConnect: true,
@@ -137,7 +130,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
       }
     })
 
-    // 设置全局WebSocket服务
     if (wsService.value.wsService.value) {
       setGlobalWSService(wsService.value.wsService.value)
     }
@@ -145,7 +137,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     await waitForWebSocketConnection()
   }
 
-  // 等待WebSocket连接
   const waitForWebSocketConnection = async (): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -168,7 +159,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     })
   }
 
-  // 初始化游戏stores
   const initializeGameStores = (): void => {
     bettingStore.init()
     if (state.userInfo) {
@@ -176,7 +166,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     }
   }
 
-  // 初始化音频系统
   const initializeAudio = async (): Promise<void> => {
     if (enableAudio) {
       try {
@@ -187,7 +176,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     }
   }
 
-  // 完整初始化流程
   const initialize = async (): Promise<void> => {
     try {
       state.isLoading = true
@@ -216,7 +204,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     }
   }
 
-  // 重连
   const reconnect = async (): Promise<void> => {
     try {
       state.connectionStatus = 'reconnecting'
@@ -232,7 +219,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     }
   }
 
-  // 清理资源
   const cleanup = (): void => {
     if (wsService.value && typeof wsService.value.disconnect === 'function') {
       wsService.value.disconnect()
@@ -247,9 +233,7 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     }
   }
 
-  // 返回实例对象
   const instance: GameLifecycleInstance = {
-    // 状态数据 - 直接暴露响应式状态
     get tableInfo() { return state.tableInfo },
     get userInfo() { return state.userInfo },
     get connectionStatus() { return state.connectionStatus },
@@ -258,10 +242,8 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     get error() { return state.error },
     get initSteps() { return state.initSteps },
     
-    // WebSocket服务
     get wsService() { return wsService.value },
     
-    // 方法
     initialize,
     reconnect,
     clearError,
@@ -273,7 +255,6 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
   return instance
 }
 
-// 获取已创建的生命周期实例
 export const getGameLifecycle = (): GameLifecycleInstance => {
   if (!globalLifecycleInstance) {
     throw new Error('游戏生命周期未初始化，请先在 App.vue 中调用 useGameLifecycle() 进行初始化')
@@ -281,12 +262,9 @@ export const getGameLifecycle = (): GameLifecycleInstance => {
   return globalLifecycleInstance
 }
 
-// 主要的 composable 函数 - 自动获取或创建
 export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
-  // 如果已有实例，直接返回
   if (globalLifecycleInstance) {
     return {
-      // 只读状态
       lifecycleState: readonly({
         tableInfo: computed(() => globalLifecycleInstance!.tableInfo),
         userInfo: computed(() => globalLifecycleInstance!.userInfo),
@@ -297,7 +275,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         initSteps: computed(() => globalLifecycleInstance!.initSteps)
       }),
       
-      // 计算属性
       isReady: computed(() => 
         globalLifecycleInstance!.isInitialized && 
         globalLifecycleInstance!.connectionStatus === 'connected' &&
@@ -307,7 +284,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
         globalLifecycleInstance!.initSteps.websocket
       ),
       
-      // 方法
       initialize: globalLifecycleInstance.initialize,
       reconnect: globalLifecycleInstance.reconnect,
       clearError: globalLifecycleInstance.clearError,
@@ -315,11 +291,9 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     }
   }
   
-  // 第一次调用时创建实例
   globalLifecycleInstance = createGameLifecycle(options)
   
   return {
-    // 只读状态
     lifecycleState: readonly({
       tableInfo: computed(() => globalLifecycleInstance!.tableInfo),
       userInfo: computed(() => globalLifecycleInstance!.userInfo),
@@ -330,7 +304,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       initSteps: computed(() => globalLifecycleInstance!.initSteps)
     }),
     
-    // 计算属性
     isReady: computed(() => 
       globalLifecycleInstance!.isInitialized && 
       globalLifecycleInstance!.connectionStatus === 'connected' &&
@@ -340,7 +313,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       globalLifecycleInstance!.initSteps.websocket
     ),
     
-    // 方法
     initialize: globalLifecycleInstance.initialize,
     reconnect: globalLifecycleInstance.reconnect,
     clearError: globalLifecycleInstance.clearError,
@@ -348,7 +320,6 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
   }
 }
 
-// 重置实例（用于测试或特殊场景）
 export const resetGameLifecycle = (): void => {
   if (globalLifecycleInstance) {
     globalLifecycleInstance.cleanup()
