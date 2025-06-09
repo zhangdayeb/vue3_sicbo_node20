@@ -165,6 +165,7 @@ const endPressAnimation = () => {
 }
 </script>
 
+
 <style scoped>
 .main-bets-section {
   padding: 8px;
