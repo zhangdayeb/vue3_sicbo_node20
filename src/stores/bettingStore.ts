@@ -143,7 +143,7 @@ export const useBettingStore = defineStore('betting', () => {
     return confirmedBetAmount.value + totalBetAmount.value
   })
   
-  // 🔥 修改：显示用的投注数据（合并已确认和当前）
+  // 🔥 简化：显示用的投注数据（显示累计总投注）
   const displayBets = computed(() => {
     const merged: Record<string, { current: number; confirmed: number; total: number }> = {}
     

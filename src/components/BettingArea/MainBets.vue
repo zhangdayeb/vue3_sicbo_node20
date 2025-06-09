@@ -7,8 +7,9 @@
         :key="bet.type"
         class="main-bet-wrapper"
         :class="{ 
-          'selected': isSelected(bet.type),
-          'has-bet': getBetAmount(bet.type) > 0
+          'selected': getTotalBetAmount(bet.type) > 0,
+          'has-bet': getTotalBetAmount(bet.type) > 0,
+          'disabled': !canPlaceBet
         }"
         :data-bet-type="bet.type"
         @click="handleBetClick(bet)"
@@ -18,12 +19,12 @@
         @mouseup="endPressAnimation"
         @mouseleave="endPressAnimation"
       >
-        <!-- 投注金额显示 - 右上角 -->
+        <!-- 投注金额显示 - 右上角（显示总投注金额） -->
         <div 
-          v-if="getBetAmount(bet.type) > 0" 
+          v-if="getTotalBetAmount(bet.type) > 0" 
           class="bet-amount-corner"
         >
-          {{ formatBetAmount(getBetAmount(bet.type)) }}
+          {{ formatBetAmount(getTotalBetAmount(bet.type)) }}
         </div>
         
         <!-- 按钮内容 -->
@@ -39,7 +40,7 @@
         </div>
 
         <!-- 按钮边框装饰 -->
-        <div class="bet-border-glow" v-if="isSelected(bet.type)"></div>
+        <div class="bet-border-glow" v-if="getTotalBetAmount(bet.type) > 0"></div>
       </div>
     </div>
   </div>
@@ -52,12 +53,14 @@ import { computed, ref } from 'vue'
 interface Props {
   selectedChip: number
   currentBets: Record<string, number>
+  confirmedBets: Record<string, number>
+  displayBets: Record<string, { current: number; confirmed: number; total: number }>
   canPlaceBet?: boolean
   enableHapticFeedback?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  canPlaceBet: true, // 默认总是可以投注
+  canPlaceBet: true,
   enableHapticFeedback: true
 })
 
@@ -69,28 +72,24 @@ const emit = defineEmits<{
 // 大小单双投注配置
 const mainBets = [
   {
-    flashClass: '',
     type: 'small',
     label: '小',
     range: '4-10',
     odds: '1:1'
   },
   {
-    flashClass: '',
     type: 'odd',
     label: '单',
     range: null,
     odds: '1:1'
   },
   {
-    flashClass: '',
     type: 'even',
     label: '双',
     range: null,
     odds: '1:1'
   },
   {
-    flashClass: '',
     type: 'big',
     label: '大',
     range: '11-17',
@@ -101,18 +100,11 @@ const mainBets = [
 // 响应式数据
 const pressAnimationActive = ref(false)
 
-// 计算属性
-const isSelected = computed(() => {
+// 计算属性 - 获取总投注金额
+const getTotalBetAmount = computed(() => {
   return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount > 0
-  }
-})
-
-const getBetAmount = computed(() => {
-  return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount
+    const display = props.displayBets[betType]
+    return display ? display.total : 0
   }
 })
 
@@ -127,15 +119,12 @@ const formatBetAmount = (amount: number): string => {
 }
 
 const handleBetClick = (bet: any) => {
-  console.log('🎯 MainBets 投注点击:', {
-    betType: bet.type,
-    selectedChip: props.selectedChip,
-    canPlaceBet: props.canPlaceBet
-  })
+  // 检查投注能力
+  if (!props.canPlaceBet) {
+    return
+  }
 
-  // 🔥 完全移除所有限制，直接投注
   if (!props.selectedChip || props.selectedChip <= 0) {
-    console.warn('❌ 请先选择筹码')
     return
   }
 
@@ -145,7 +134,6 @@ const handleBetClick = (bet: any) => {
   }
 
   // 发射投注事件
-  console.log('✅ 发射投注事件:', bet.type)
   emit('place-bet', bet.type)
 }
 
@@ -168,7 +156,6 @@ const endPressAnimation = () => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  /* 确保网格容器不会裁剪子元素 */
   overflow: visible;
   padding: 6px;
 }
@@ -192,12 +179,8 @@ const endPressAnimation = () => {
   font-weight: 600;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  
-  /* 提高文字对比度 */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  
-  /* 确保不会裁剪投注金额 */
   overflow: visible;
 }
 
@@ -211,8 +194,6 @@ const endPressAnimation = () => {
   color: #333;
   border-color: #ffed4e;
   box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-  
-  /* 选中状态的文字阴影调整 */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
@@ -221,9 +202,13 @@ const endPressAnimation = () => {
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
 
-/* 移除 disabled 样式，因为现在总是可以投注 */
+.main-bet-wrapper.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(30%);
+}
 
-/* 右上角投注金额显示 */
+/* 投注金额显示 */
 .bet-amount-corner {
   position: absolute;
   top: 2px;
@@ -245,28 +230,18 @@ const endPressAnimation = () => {
     0 0 0 1px rgba(255, 71, 87, 0.9),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
   z-index: 30;
-  
-  /* 强化文字对比度 */
   text-shadow: 
     0 1px 0 rgba(0, 0, 0, 1),
     0 1px 3px rgba(0, 0, 0, 0.9);
-  
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   letter-spacing: 0.2px;
-  
-  /* 入场动画 */
   animation: betAmountAppear 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  
-  /* 强制显示并确保在最顶层 */
   opacity: 1 !important;
   visibility: visible !important;
   transform: translateZ(15px);
-  
-  /* 防止被其他元素遮挡 */
   pointer-events: none;
 }
 
-/* 强化动画确保可见性 */
 @keyframes betAmountAppear {
   0% {
     opacity: 0;
@@ -293,27 +268,22 @@ const endPressAnimation = () => {
   gap: 4px;
 }
 
-/* 投注标签 - 修复：让它继承父元素的白色 */
+/* 投注标签 */
 .bet-label {
   font-size: 20px;
   font-weight: 900;
   margin-bottom: 2px;
   line-height: 1;
-  /* 不设置 color，让它继承父元素的 color: white */
-  
-  /* 增强文字清晰度 */
   text-shadow: 
     0 1px 0 rgba(0, 0, 0, 0.9),
     0 2px 4px rgba(0, 0, 0, 0.7);
-  
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Arial Black', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 选中状态的标签颜色 */
 .main-bet-wrapper.selected .bet-label {
-  color: #1a1a1a; /* 选中时才设置深色 */
+  color: #1a1a1a;
   text-shadow: 
     0 1px 0 rgba(255, 255, 255, 0.9),
     0 1px 3px rgba(255, 215, 0, 0.8);
@@ -323,7 +293,7 @@ const endPressAnimation = () => {
 .bet-range {
   font-size: 11px;
   margin-bottom: 2px;
-  color: rgba(255, 255, 255, 0.9); /* 稍微淡一点的白色 */
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
@@ -337,7 +307,7 @@ const endPressAnimation = () => {
 /* 赔率显示 */
 .bet-odds {
   font-size: 10px;
-  color: #90ee90; /* 保持绿色 */
+  color: #90ee90;
   font-weight: 800;
   text-shadow: 
     0 1px 0 rgba(0, 0, 0, 1),
@@ -381,7 +351,6 @@ const endPressAnimation = () => {
   .main-bet-wrapper {
     padding: 10px 4px;
     min-height: 65px;
-    /* 确保投注金额有足够空间 */
     margin: 4px 2px;
   }
   
@@ -409,7 +378,6 @@ const endPressAnimation = () => {
   
   .main-bets-grid {
     gap: 6px;
-    /* 增加网格间距给投注金额更多空间 */
     padding: 4px;
   }
   

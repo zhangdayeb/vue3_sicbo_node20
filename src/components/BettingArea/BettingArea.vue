@@ -12,7 +12,9 @@
             <MainBets 
               :selectedChip="selectedChip"
               :currentBets="currentBets"
-              :canPlaceBet="true"
+              :confirmedBets="confirmedBets"
+              :displayBets="displayBets"
+              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -20,7 +22,9 @@
             <NumberBets 
               :selectedChip="selectedChip"
               :currentBets="currentBets"
-              :canPlaceBet="true"
+              :confirmedBets="confirmedBets"
+              :displayBets="displayBets"
+              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -28,7 +32,9 @@
             <SingleDiceBets
               :selectedChip="selectedChip"
               :currentBets="currentBets"
-              :canPlaceBet="true"
+              :confirmedBets="confirmedBets"
+              :displayBets="displayBets"
+              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -36,8 +42,10 @@
             <PairBets
               :selectedChip="selectedChip"
               :currentBets="currentBets"
+              :confirmedBets="confirmedBets"
+              :displayBets="displayBets"
               :balance="balance"
-              :canPlaceBet="true"
+              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -45,7 +53,9 @@
             <TripleBets
               :selectedChip="selectedChip"
               :currentBets="currentBets"
-              :canPlaceBet="true"
+              :confirmedBets="confirmedBets"
+              :displayBets="displayBets"
+              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -53,8 +63,10 @@
             <ComboBets
               :selectedChip="selectedChip"
               :currentBets="currentBets"
+              :confirmedBets="confirmedBets"
+              :displayBets="displayBets"
               :balance="balance"
-              :canPlaceBet="true"
+              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
           </div>
@@ -75,16 +87,16 @@
           :currentBets="currentBets"
           :lastBets="lastBets"
           :balance="balance"
-          @cancel-current-bets="clearBets"
-          @clear-field="clearBets"
-          @clear-all-field="clearAllBets"
+          @cancel-current-bets="clearCurrentBets"
+          @clear-field="clearField"
+          @clear-all-field="clearAllField"
           @rebet="rebet"
           @confirm-bets="confirmBets"
         />
       </div>
     </div>
 
-    <!-- 调试信息 - 可选显示 -->
+    <!-- 简化的调试信息 -->
     <div v-if="showDebugInfo" class="debug-info">
       <div class="debug-item">
         <span>连接:</span>
@@ -93,8 +105,12 @@
         </span>
       </div>
       <div class="debug-item">
-        <span>阶段:</span>
+        <span>游戏:</span>
         <span>{{ gamePhase }}</span>
+      </div>
+      <div class="debug-item">
+        <span>投注:</span>
+        <span :class="`phase-${bettingStore.bettingPhase}`">{{ bettingStore.bettingPhase }}</span>
       </div>
       <div class="debug-item">
         <span>倒计时:</span>
@@ -105,8 +121,12 @@
         <span>¥{{ balance.toLocaleString() }}</span>
       </div>
       <div class="debug-item">
-        <span>投注:</span>
+        <span>当前:</span>
         <span>¥{{ totalBetAmount.toLocaleString() }}</span>
+      </div>
+      <div class="debug-item">
+        <span>已确认:</span>
+        <span class="confirmed-amount">¥{{ bettingStore.confirmedBetAmount.toLocaleString() }}</span>
       </div>
     </div>
   </div>
@@ -134,7 +154,7 @@ import ControlButtons from './ControlButtons.vue'
 import type { BetType } from '@/types/betting'
 import type { CountdownData, GameResultData, WinData } from '@/types/api'
 
-// 🎮 Store 和 Composables
+// Store 和 Composables
 const bettingStore = useBettingStore()
 const { 
   playChipSelectSound, 
@@ -144,7 +164,7 @@ const {
   playWinSound
 } = useAudio()
 
-// 🌐 WebSocket 事件监听
+// WebSocket 事件监听
 const {
   onCountdown,
   onGameResult,
@@ -155,109 +175,77 @@ const {
   getConnectionStatus
 } = useWebSocketEvents()
 
-// 📊 游戏数据
+// 游戏数据
 const {
   userInfo,
   isInitialized
 } = useGameData()
 
-// 📱 本地状态
+// 本地状态
 const countdown = ref(0)
 const currentGameNumber = ref('')
 const gamePhase = ref<'waiting' | 'betting' | 'dealing' | 'result'>('waiting')
-const showDebugInfo = ref(true) // 开启调试信息显示
+const showDebugInfo = ref(true)
 
-// 🧮 计算属性 - 从 bettingStore 获取状态
+// 计算属性 - 从 bettingStore 获取状态
 const selectedChip = computed(() => bettingStore.selectedChip)
 const currentBets = computed(() => bettingStore.currentBets)
+const confirmedBets = computed(() => bettingStore.confirmedBets)
+const displayBets = computed(() => bettingStore.displayBets)
 const lastBets = computed(() => bettingStore.lastBets)
 const balance = computed(() => {
-  // 优先使用 WebSocket 获取的用户信息中的余额
   if (userInfo.value?.balance !== undefined) {
     return userInfo.value.balance
   }
-  // 兜底使用 bettingStore 的余额
   return bettingStore.balance
 })
 const totalBetAmount = computed(() => bettingStore.totalBetAmount)
+const canPlaceBet = computed(() => bettingStore.canPlaceBet)
 
-// 🎵 简单的音效回退函数
+// 简单的音效回退函数
 const createSimpleBeep = (frequency: number = 800, duration: number = 100) => {
   try {
-    // 如果音频上下文不可用，提供触觉反馈
     if ('vibrate' in navigator) {
       navigator.vibrate(duration / 2)
     }
   } catch (error) {
-    console.log('音效播放失败，使用静默模式')
+    // 静默处理
   }
 }
 
-// 🎯 方法 - 筹码选择（完全开放）
+// 方法 - 筹码选择
 const selectChip = (value: number): void => {
-  console.log('🪙 选择筹码:', value)
-  
-  // 直接选择筹码，不做任何限制
-  bettingStore.selectedChip = value
+  bettingStore.selectChip(value)
   
   try {
     playChipSelectSound()
   } catch (error) {
     createSimpleBeep(600, 80)
   }
-  
-  console.log('✅ 筹码已选择:', value)
 }
 
-// 🎯 方法 - 处理投注（完全开放）
+// 方法 - 处理投注
 const handlePlaceBet = async (betType: string): Promise<void> => {
-  console.log('🎯 投注请求 [完全开放模式]:', { 
-    betType, 
-    chip: selectedChip.value,
-    gamePhase: gamePhase.value,
-    balance: balance.value,
-    totalBet: totalBetAmount.value
-  })
+  const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
   
-  // 🔥 最小化检查：只要有筹码就可以投注
-  if (!selectedChip.value || selectedChip.value <= 0) {
-    console.warn('❌ 请先选择筹码')
+  if (success) {
+    try {
+      playChipPlaceSound()
+    } catch (error) {
+      createSimpleBeep(800, 120)
+    }
+  } else {
     try {
       playErrorSound()
     } catch (error) {
       createSimpleBeep(300, 300)
     }
-    return
   }
-  
-  // 🔥 直接更新 currentBets，完全跳过所有业务验证
-  const currentAmount = bettingStore.currentBets[betType] || 0
-  const newAmount = currentAmount + selectedChip.value
-  
-  // 直接设置新的投注金额
-  bettingStore.currentBets[betType] = newAmount
-  
-  // 立即播放成功音效
-  try {
-    playChipPlaceSound()
-  } catch (error) {
-    createSimpleBeep(800, 120)
-  }
-  
-  console.log('✅ 投注已添加 [跳过所有验证]:', { 
-    betType, 
-    oldAmount: currentAmount,
-    addAmount: selectedChip.value,
-    newAmount: newAmount,
-    totalBets: Object.keys(bettingStore.currentBets).length,
-    totalAmount: totalBetAmount.value 
-  })
 }
 
-// 🎯 方法 - 清除投注（UI操作）
-const clearBets = (): void => {
-  console.log('🧹 清除投注')
-  bettingStore.currentBets = {}
+// 方法 - 清除当前投注
+const clearCurrentBets = (): void => {
+  bettingStore.clearBets()
   try {
     playChipSelectSound()
   } catch (error) {
@@ -265,10 +253,9 @@ const clearBets = (): void => {
   }
 }
 
-const clearAllBets = (): void => {
-  console.log('🧹 清除所有投注')
-  bettingStore.currentBets = {}
-  bettingStore.lastBets = {}
+// 方法 - 清除投注区域
+const clearField = (): void => {
+  bettingStore.clearBets()
   try {
     playChipSelectSound()
   } catch (error) {
@@ -276,93 +263,82 @@ const clearAllBets = (): void => {
   }
 }
 
-// 🎯 方法 - 重复投注（UI操作）
+// 方法 - 完全清场
+const clearAllField = (): void => {
+  try {
+    playChipSelectSound()
+  } catch (error) {
+    createSimpleBeep(600, 80)
+  }
+}
+
+// 方法 - 重复投注
 const rebet = (): void => {
-  console.log('🔄 重复投注')
+  const success = bettingStore.rebet()
   
-  if (Object.keys(lastBets.value).length === 0) {
-    console.warn('❌ 没有可重复的投注')
+  if (success) {
+    try {
+      playChipPlaceSound()
+    } catch (error) {
+      createSimpleBeep(800, 120)
+    }
+  } else {
     try {
       playErrorSound()
     } catch (error) {
       createSimpleBeep(300, 300)
     }
-    return
   }
-  
-  // 直接复制上次投注
-  bettingStore.currentBets = { ...lastBets.value }
-  
-  try {
-    playChipPlaceSound()
-  } catch (error) {
-    createSimpleBeep(800, 120)
-  }
-  
-  console.log('✅ 重复投注完成:', bettingStore.currentBets)
 }
 
-// 🎯 方法 - 确认投注（真实业务由后端控制）
+// 方法 - 确认投注（兼容性保留）
 const confirmBets = async (): Promise<void> => {
-  console.log('📤 确认投注 - 将由ControlButtons组件处理后端提交')
-  
-  // 播放确认音效
   try {
     playBetConfirmSound()
   } catch (error) {
     createSimpleBeep(1000, 200)
   }
-  
-  // 注意：真实的投注提交逻辑在ControlButtons.vue中
-  // 这里只是UI反馈，后端成功/失败会通过WebSocket事件返回
 }
 
-// 🌐 WebSocket 事件处理器
+// WebSocket 事件处理器
 
 // 倒计时事件处理
 onCountdown((data: CountdownData) => {
-  console.log('🕐 收到倒计时:', data)
-  
   countdown.value = data.countdown
   currentGameNumber.value = data.game_number
   
-  // 更新游戏阶段（仅用于显示，不影响投注功能）
+  // 更新游戏阶段
   const newPhase = data.status
   if (newPhase !== gamePhase.value) {
-    console.log('🎮 游戏阶段变化:', gamePhase.value, '->', newPhase)
     gamePhase.value = newPhase
+    bettingStore.updateGamePhase(newPhase)
     
-    // 更新 bettingStore 的游戏阶段（主要用于显示）
-    bettingStore.gamePhase = newPhase
-    
-    // 阶段变化音效
     if (newPhase === 'betting') {
-      console.log('💰 投注阶段开始（前端已完全开放投注）')
+      // 如果是新一轮投注开始，重置投注阶段
+      if (bettingStore.bettingPhase === 'result') {
+        bettingStore.updateBettingPhase('betting')
+      }
     } else if (newPhase === 'dealing') {
-      console.log('🎲 开牌阶段开始')
+      bettingStore.updateBettingPhase('dealing')
     }
   }
 })
 
-// 游戏结果事件处理
+// 游戏结果事件处理 - 现在才清场
 onGameResult((data: GameResultData) => {
-  console.log('🎲 收到游戏结果:', data)
-  
   currentGameNumber.value = data.game_number
   gamePhase.value = 'result'
   
-  // 更新 bettingStore 的游戏阶段
-  bettingStore.gamePhase = 'result'
+  // 重要：现在才清除投注显示
+  bettingStore.handleGameResult(data)
   
-  console.log('🎯 骰子结果:', data.dice_results, '总和:', data.total)
+  // TODO: 这里可以触发开牌动画
+  // startDiceAnimation(data)
 })
 
 // 中奖数据事件处理
 onWinData((data: WinData) => {
-  console.log('🎉 收到中奖数据:', data)
-  
   if (data.win_amount > 0) {
-    // 播放中奖音效
     try {
       if (data.win_amount >= 1000) {
         playWinSound('big')
@@ -372,43 +348,30 @@ onWinData((data: WinData) => {
     } catch (error) {
       createSimpleBeep(1200, 300)
     }
-    
-    console.log('💰 中奖金额:', data.win_amount)
   }
 })
 
-// 余额更新事件处理（后端控制的真实余额）
+// 余额更新事件处理 - 不再自动清场
 onBalanceUpdate((data: { balance: number; spend: number }) => {
-  console.log('💳 余额更新:', data)
-  
   // 更新 bettingStore 的余额
-  bettingStore.balance = data.balance
+  bettingStore.updateBalance(data.balance)
   
-  // 如果有花费，说明投注成功
+  // 如果有花费，说明投注成功，但不清场
   if (data.spend > 0) {
-    console.log('💸 投注消费:', data.spend, '剩余余额:', data.balance)
-    
-    // 投注成功后，将当前投注保存为上次投注，然后清空当前投注
-    bettingStore.lastBets = { ...bettingStore.currentBets }
-    bettingStore.currentBets = {}
+    // 投注成功，等待开牌结果
   }
 })
 
 // 游戏状态事件处理
 onGameStatus((data) => {
-  console.log('🎮 游戏状态:', data)
-  
   if (data.status === 'maintenance') {
-    console.log('🔧 游戏维护中')
     gamePhase.value = 'waiting'
-    bettingStore.gamePhase = 'waiting'
+    bettingStore.updateBettingPhase('waiting')
   }
 })
 
 // 错误事件处理
 onError((error) => {
-  console.error('🚨 WebSocket 错误:', error)
-  
   try {
     playErrorSound()
   } catch (e) {
@@ -416,27 +379,17 @@ onError((error) => {
   }
 })
 
-// 🚀 生命周期
+// 生命周期
 onMounted(() => {
-  console.log('🚀 BettingArea 组件已挂载 [完全开放投注模式]')
-  
   // 确保有默认筹码
   if (!bettingStore.selectedChip || bettingStore.selectedChip <= 0) {
     bettingStore.selectedChip = 10
-    console.log('🪙 设置默认筹码: 10')
   }
   
   // 如果已有用户信息，同步余额
   if (userInfo.value?.balance !== undefined) {
-    bettingStore.balance = userInfo.value.balance
+    bettingStore.updateBalance(userInfo.value.balance)
   }
-  
-  console.log('📊 投注区域已就绪 [UI完全开放，后端控制业务]', {
-    selectedChip: bettingStore.selectedChip,
-    balance: balance.value,
-    connected: getConnectionStatus(),
-    canBet: true // 强制为true
-  })
 })
 </script>
 
@@ -493,7 +446,7 @@ onMounted(() => {
   padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
-/* 调试信息样式 */
+/* 简化的调试信息样式 */
 .debug-info {
   position: fixed;
   top: 10px;
@@ -504,7 +457,7 @@ onMounted(() => {
   padding: 8px 12px;
   font-size: 12px;
   z-index: 9999;
-  max-width: 200px;
+  max-width: 220px;
 }
 
 .debug-item {
@@ -528,6 +481,12 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* 已确认金额的特殊样式 */
+.confirmed-amount {
+  color: #00bcd4 !important;
+  text-shadow: 0 0 4px rgba(0, 188, 212, 0.6);
+}
+
 /* 连接状态样式 */
 .status-connected {
   color: #22c55e !important;
@@ -543,6 +502,28 @@ onMounted(() => {
 
 .status-error {
   color: #dc2626 !important;
+}
+
+/* 投注阶段状态样式 */
+.phase-betting {
+  color: #4ade80 !important;
+}
+
+.phase-confirmed {
+  color: #00bcd4 !important;
+  text-shadow: 0 0 4px rgba(0, 188, 212, 0.6);
+}
+
+.phase-dealing {
+  color: #f59e0b !important;
+}
+
+.phase-result {
+  color: #a855f7 !important;
+}
+
+.phase-waiting {
+  color: #6b7280 !important;
 }
 
 /* 响应式适配 */
@@ -566,6 +547,7 @@ onMounted(() => {
     right: 5px;
     padding: 6px 8px;
     font-size: 11px;
+    max-width: 200px;
   }
 }
 
