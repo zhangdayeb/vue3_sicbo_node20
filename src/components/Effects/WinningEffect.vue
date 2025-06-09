@@ -43,7 +43,7 @@
         </div>
       </div>
       
-      <!-- 中奖金额显示 */
+      <!-- 中奖金额显示 -->
       <div class="win-amount-display" :class="{ 'show': showWinAmount }">
         <div class="win-text">恭喜中奖！</div>
         <div class="win-amount">
@@ -53,7 +53,7 @@
         <div class="win-subtitle">{{ winDescription }}</div>
       </div>
       
-      <!-- 光环效果 */
+      <!-- 光环效果 -->
       <div class="light-ring-container">
         <div 
           v-for="ring in lightRings"
@@ -66,7 +66,7 @@
         ></div>
       </div>
       
-      <!-- 星星闪烁效果 */
+      <!-- 星星闪烁效果 -->
       <div class="stars-container">
         <div 
           v-for="star in stars"
@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, defineExpose } from 'vue'
 
 // Props
 interface Props {
@@ -126,6 +126,8 @@ const emit = defineEmits<{
 const isVisible = ref(false)
 const showFlash = ref(false)
 const showWinAmount = ref(false)
+const currentWinAmount = ref(0)
+const currentWinType = ref<'normal' | 'big' | 'super' | 'jackpot'>('normal')
 const coins = ref<Array<{id: number, x: number, delay: number, duration: number}>>([])
 const fireworks = ref<Array<{id: number, x: number, y: number, delay: number}>>([])
 const lightRings = ref<Array<{id: number, delay: number, duration: number}>>([])
@@ -134,7 +136,7 @@ const confettiPieces = ref<Array<{id: number, x: number, color: string, delay: n
 
 // 计算属性
 const formattedWinAmount = computed(() => {
-  return props.winAmount.toLocaleString()
+  return currentWinAmount.value.toLocaleString()
 })
 
 const winDescription = computed(() => {
@@ -144,13 +146,15 @@ const winDescription = computed(() => {
     'super': '超级大奖！',
     'jackpot': '超级头奖！'
   }
-  return descriptions[props.winType]
+  return descriptions[currentWinType.value]
 })
 
 // 方法
 const generateCoins = () => {
   coins.value = []
-  const coinCount = props.winType === 'jackpot' ? 30 : props.winType === 'super' ? 20 : props.winType === 'big' ? 15 : 10
+  const coinCount = currentWinType.value === 'jackpot' ? 30 : 
+                    currentWinType.value === 'super' ? 20 : 
+                    currentWinType.value === 'big' ? 15 : 10
   
   for (let i = 0; i < coinCount; i++) {
     coins.value.push({
@@ -164,7 +168,9 @@ const generateCoins = () => {
 
 const generateFireworks = () => {
   fireworks.value = []
-  const fireworkCount = props.winType === 'jackpot' ? 8 : props.winType === 'super' ? 6 : props.winType === 'big' ? 4 : 2
+  const fireworkCount = currentWinType.value === 'jackpot' ? 8 : 
+                        currentWinType.value === 'super' ? 6 : 
+                        currentWinType.value === 'big' ? 4 : 2
   
   for (let i = 0; i < fireworkCount; i++) {
     fireworks.value.push({
@@ -178,7 +184,9 @@ const generateFireworks = () => {
 
 const generateLightRings = () => {
   lightRings.value = []
-  const ringCount = props.winType === 'jackpot' ? 5 : props.winType === 'super' ? 4 : props.winType === 'big' ? 3 : 2
+  const ringCount = currentWinType.value === 'jackpot' ? 5 : 
+                    currentWinType.value === 'super' ? 4 : 
+                    currentWinType.value === 'big' ? 3 : 2
   
   for (let i = 0; i < ringCount; i++) {
     lightRings.value.push({
@@ -191,7 +199,9 @@ const generateLightRings = () => {
 
 const generateStars = () => {
   stars.value = []
-  const starCount = props.winType === 'jackpot' ? 25 : props.winType === 'super' ? 20 : props.winType === 'big' ? 15 : 10
+  const starCount = currentWinType.value === 'jackpot' ? 25 : 
+                    currentWinType.value === 'super' ? 20 : 
+                    currentWinType.value === 'big' ? 15 : 10
   
   for (let i = 0; i < starCount; i++) {
     stars.value.push({
@@ -206,7 +216,9 @@ const generateStars = () => {
 
 const generateConfetti = () => {
   confettiPieces.value = []
-  const confettiCount = props.winType === 'jackpot' ? 40 : props.winType === 'super' ? 30 : props.winType === 'big' ? 20 : 15
+  const confettiCount = currentWinType.value === 'jackpot' ? 40 : 
+                        currentWinType.value === 'super' ? 30 : 
+                        currentWinType.value === 'big' ? 20 : 15
   const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
   
   for (let i = 0; i < confettiCount; i++) {
@@ -220,7 +232,32 @@ const generateConfetti = () => {
   }
 }
 
-const startEffect = () => {
+// 🔥 修复：主要的中奖特效启动方法
+const startEffect = (winAmount?: number, winType?: 'normal' | 'big' | 'super' | 'jackpot') => {
+  console.log('🎉 WinningEffect 启动中奖特效:', {
+    winAmount: winAmount || props.winAmount,
+    winType: winType || props.winType,
+    propsWinAmount: props.winAmount,
+    propsWinType: props.winType,
+    propsShow: props.show
+  })
+  
+  // 使用传入的参数或 props 中的参数
+  currentWinAmount.value = winAmount || props.winAmount
+  currentWinType.value = winType || props.winType
+  
+  // 验证金额
+  if (currentWinAmount.value <= 0) {
+    console.error('🎉 中奖金额无效:', currentWinAmount.value)
+    return
+  }
+  
+  console.log('🎉 开始播放中奖动画:', {
+    amount: currentWinAmount.value,
+    type: currentWinType.value
+  })
+  
+  // 显示组件
   isVisible.value = true
   
   // 生成所有特效元素
@@ -242,9 +279,9 @@ const startEffect = () => {
   
   // 触发屏幕震动（如果支持）
   if (navigator.vibrate) {
-    const vibrationPattern = props.winType === 'jackpot' ? [200, 100, 200, 100, 200] :
-                           props.winType === 'super' ? [150, 100, 150] :
-                           props.winType === 'big' ? [100, 50, 100] : [100]
+    const vibrationPattern = currentWinType.value === 'jackpot' ? [200, 100, 200, 100, 200] :
+                           currentWinType.value === 'super' ? [150, 100, 150] :
+                           currentWinType.value === 'big' ? [100, 50, 100] : [100]
     navigator.vibrate(vibrationPattern)
   }
   
@@ -255,6 +292,8 @@ const startEffect = () => {
 }
 
 const endEffect = () => {
+  console.log('🎉 结束中奖特效')
+  
   isVisible.value = false
   showFlash.value = false
   showWinAmount.value = false
@@ -269,8 +308,16 @@ const endEffect = () => {
   emit('finished')
 }
 
+// 🔥 新增：简化的启动方法
+const startAnimation = (options?: { winAmount?: number; winType?: 'normal' | 'big' | 'super' | 'jackpot' }) => {
+  const amount = options?.winAmount || props.winAmount || 1000
+  const type = options?.winType || props.winType || 'normal'
+  startEffect(amount, type)
+}
+
 // 监听显示状态变化
 watch(() => props.show, (newVal) => {
+  console.log('🎉 监听到 show 属性变化:', newVal)
   if (newVal) {
     startEffect()
   } else {
@@ -278,10 +325,47 @@ watch(() => props.show, (newVal) => {
   }
 })
 
+// 监听金额和类型变化
+watch(() => [props.winAmount, props.winType], ([newAmount, newType]) => {
+  console.log('🎉 监听到金额/类型变化:', { newAmount, newType })
+  if (props.show && newAmount > 0) {
+    startEffect(newAmount as number, newType as 'normal' | 'big' | 'super' | 'jackpot')
+  }
+})
+
+// 🔥 暴露方法给父组件
+defineExpose({
+  startEffect,
+  startAnimation,
+  endEffect,
+  isVisible,
+  currentWinAmount,
+  currentWinType
+})
+
 // 组件销毁时清理
 onUnmounted(() => {
   endEffect()
 })
+
+// 🔥 开发模式调试
+if (import.meta.env.DEV) {
+  // 暴露到全局用于调试
+  ;(window as any).debugWinEffect = {
+    startEffect,
+    startAnimation,
+    endEffect,
+    isVisible,
+    currentWinAmount,
+    currentWinType,
+    showFlash,
+    showWinAmount
+  }
+  
+  onMounted(() => {
+    console.log('🎉 WinningEffect 组件已挂载，调试对象已暴露到 window.debugWinEffect')
+  })
+}
 </script>
 
 <style scoped>

@@ -1,4 +1,4 @@
-<!-- src/components/BettingArea/BettingArea.vue -->
+<!-- src/components/BettingArea/BettingArea.vue - 修复版本 -->
 <template>
   <div class="betting-area">
     <!-- 主游戏区域 -->
@@ -116,7 +116,7 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import { useBettingStore } from '@/stores/bettingStore'
 import { useAudio } from '@/composables/useAudio'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
@@ -142,6 +142,8 @@ import WinningEffect from '@/components/Effects/WinningEffect.vue'
 import type { BetType } from '@/types/betting'
 import type { CountdownData, GameStatusData } from '@/types/api'
 
+// 🔥 开发模式检测
+const isDev = import.meta.env.DEV
 
 // Store 和 Composables
 const bettingStore = useBettingStore()
@@ -154,7 +156,9 @@ const {
 
 // 游戏结果处理
 const {
-  setEffectRefs
+  setEffectRefs,
+  testDiceEffect,
+  testWinEffect
 } = useGameResults()
 
 // WebSocket 事件监听
@@ -170,8 +174,7 @@ const {
   userInfo
 } = useGameData()
 
-// 特效组件引用
-// ✅ 正确定义特效组件引用类型
+// 🔥 修复：特效组件引用
 const diceEffectRef = ref<ComponentPublicInstance | null>(null)
 const winEffectRef = ref<ComponentPublicInstance | null>(null)
 
@@ -320,8 +323,36 @@ onError((error) => {
   }
 })
 
+// 🔥 修复：特效组件引用设置
+const setupEffectRefs = async () => {
+  await nextTick() // 确保组件已渲染
+  
+  console.log('🎯 设置特效组件引用:', {
+    diceRef: diceEffectRef.value,
+    winRef: winEffectRef.value,
+    diceType: typeof diceEffectRef.value,
+    winType: typeof winEffectRef.value
+  })
+  
+  // 传递组件引用
+  setEffectRefs(diceEffectRef.value, winEffectRef.value)
+  
+  // 🔥 开发模式下添加调试信息
+  if (isDev) {
+    console.log('🐛 特效组件详细信息:')
+    console.log('- 开牌特效组件:', diceEffectRef.value)
+    console.log('- 中奖特效组件:', winEffectRef.value)
+    
+    // 暴露到全局用于调试
+    ;(window as any).debugEffectRefs = {
+      dice: diceEffectRef.value,
+      win: winEffectRef.value
+    }
+  }
+}
+
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   // 确保有默认筹码
   if (!bettingStore.selectedChip || bettingStore.selectedChip <= 0) {
     bettingStore.selectedChip = 10
@@ -332,10 +363,10 @@ onMounted(() => {
     bettingStore.updateBalance(userInfo.value.balance)
   }
 
-  // 设置特效组件引用
-  setTimeout(() => {
-    setEffectRefs(diceEffectRef.value, winEffectRef.value)
-  }, 100)
+  // 🔥 修复：延迟设置特效组件引用，确保组件完全加载
+  setTimeout(async () => {
+    await setupEffectRefs()
+  }, 500) // 增加延迟时间
 })
 </script>
 
@@ -347,6 +378,35 @@ onMounted(() => {
   background: #0d2818;
   color: white;
   position: relative;
+}
+
+/* 🔥 新增：调试按钮样式 */
+.debug-effects {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 10000;
+  display: flex;
+  gap: 8px;
+}
+
+.debug-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.debug-btn:hover {
+  background: #c0392b;
+}
+
+.debug-btn:active {
+  transform: scale(0.95);
 }
 
 /* 游戏区域样式 */

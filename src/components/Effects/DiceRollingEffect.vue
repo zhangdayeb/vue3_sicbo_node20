@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, defineExpose } from 'vue'
 
 // Props
 interface Props {
@@ -159,14 +159,33 @@ const playSound = (audioUrl?: string) => {
   }
 }
 
-const startAnimation = async () => {
-  if (props.results.length !== 3) {
-    console.error('Dice results must contain exactly 3 numbers')
+// 🔥 修复：主要动画启动方法
+const startAnimation = async (newResults?: number[]) => {
+  console.log('🎲 DiceRollingEffect 启动动画:', {
+    newResults,
+    propsResults: props.results,
+    propsShow: props.show
+  })
+  
+  // 使用传入的结果或 props 中的结果
+  const resultsToUse = newResults || props.results
+  
+  if (!resultsToUse || resultsToUse.length !== 3) {
+    console.error('🎲 骰子结果必须包含3个数字:', resultsToUse)
+    return
+  }
+  
+  // 验证骰子结果的有效性
+  const validResults = resultsToUse.every(num => num >= 1 && num <= 6)
+  if (!validResults) {
+    console.error('🎲 骰子结果数值无效（必须是1-6）:', resultsToUse)
     return
   }
   
   // 设置结果
-  diceResults.value = [...props.results]
+  diceResults.value = [...resultsToUse]
+  
+  console.log('🎲 开始播放开牌动画:', diceResults.value)
   
   // 显示组件
   isVisible.value = true
@@ -201,6 +220,8 @@ const startAnimation = async () => {
 }
 
 const endAnimation = () => {
+  console.log('🎲 结束开牌动画')
+  
   isVisible.value = false
   showBackdrop.value = false
   showDice.value = false
@@ -209,8 +230,9 @@ const endAnimation = () => {
   emit('animation-complete')
 }
 
-// 监听显示状态变化
+// 🔥 修复：响应式地监听 props 变化
 watch(() => props.show, (newVal) => {
+  console.log('🎲 监听到 show 属性变化:', newVal)
   if (newVal) {
     startAnimation()
   } else {
@@ -218,10 +240,39 @@ watch(() => props.show, (newVal) => {
   }
 })
 
+watch(() => props.results, (newResults) => {
+  console.log('🎲 监听到 results 属性变化:', newResults)
+  if (props.show && newResults && newResults.length === 3) {
+    startAnimation(newResults)
+  }
+})
+
+// 🔥 暴露方法给父组件
+defineExpose({
+  startAnimation,
+  endAnimation,
+  isVisible,
+  diceResults
+})
+
 // 组件销毁时清理
 onUnmounted(() => {
   endAnimation()
 })
+
+// 🔥 开发模式调试
+if (import.meta.env.DEV) {
+  // 暴露到全局用于调试
+  ;(window as any).debugDiceEffect = {
+    startAnimation,
+    endAnimation,
+    isVisible,
+    diceResults,
+    showBackdrop,
+    showDice,
+    showResult
+  }
+}
 </script>
 
 <style scoped>
