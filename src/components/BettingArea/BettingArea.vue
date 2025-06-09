@@ -97,8 +97,20 @@
     </div>
 
     <!-- 特效组件 -->
-    <DiceRollingEffect ref="diceEffectRef" />
-    <WinningEffect ref="winEffectRef" />
+    <WinningEffect 
+      ref="winEffectRef"
+      :show="false"
+      :winAmount="0"
+      :winType="'normal'"
+      :duration="3000"
+    />
+    <DiceRollingEffect 
+      ref="diceEffectRef"
+      :show="false"
+      :results="[1, 1, 1]"
+      :duration="3000"
+      :enableSound="true"
+    />
   </div>
 </template>
 
