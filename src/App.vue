@@ -254,8 +254,12 @@ onMounted(async () => {
 })
 </script>
 
+
+
+
+
 <style>
-/* 保持原有样式不变 */
+/* 全局重置 - 保持原样但添加颜色继承 */
 * {
   margin: 0;
   padding: 0;
@@ -269,6 +273,7 @@ html, body {
   padding: 0;
   overflow: hidden;
   background: #000;
+  color: #ffffff; /* 🔥 新增：设置全局白色文字 */
 }
 
 #app {
@@ -280,6 +285,7 @@ html, body {
   display: flex;
   flex-direction: column;
   background: #000;
+  color: inherit; /* 🔥 新增：继承全局颜色 */
 }
 
 .game-container {
@@ -287,6 +293,7 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  color: inherit; /* 🔥 新增：继承颜色 */
 }
 
 .top-section {
@@ -301,6 +308,21 @@ html, body {
   overflow: hidden;
   background: #0d2818;
   min-height: 0;
+  position: relative; /* 🔥 新增：为投注金额定位提供参考 */
+  z-index: 1; /* 🔥 新增：确保投注区域有独立层级空间 */
+  color: inherit; /* 🔥 新增：继承颜色 */
+}
+
+/* 🔥 新增：确保投注相关元素不被覆盖 */
+.bottom-section * {
+  color: inherit;
+}
+
+/* 🔥 新增：为投注金额徽章预留高层级空间 */
+.bottom-section .bet-amount-corner,
+.bottom-section [class*="bet-amount"],
+.bottom-section [class*="amount-corner"] {
+  z-index: 250 !important; /* 高于所有其他层级 */
 }
 
 /* ========== 欢迎界面样式 ========== */
