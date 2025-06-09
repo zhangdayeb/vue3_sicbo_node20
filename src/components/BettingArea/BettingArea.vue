@@ -1,3 +1,4 @@
+<!-- src/components/BettingArea/BettingArea.vue -->
 <template>
   <div class="betting-area">
     <!-- 主游戏区域 -->
@@ -11,6 +12,7 @@
             <MainBets 
               :selectedChip="selectedChip"
               :currentBets="currentBets"
+              :canPlaceBet="true"
               @place-bet="handlePlaceBet"
             />
 
@@ -18,6 +20,7 @@
             <NumberBets 
               :selectedChip="selectedChip"
               :currentBets="currentBets"
+              :canPlaceBet="true"
               @place-bet="handlePlaceBet"
             />
 
@@ -25,6 +28,7 @@
             <SingleDiceBets
               :selectedChip="selectedChip"
               :currentBets="currentBets"
+              :canPlaceBet="true"
               @place-bet="handlePlaceBet"
             />
 
@@ -33,6 +37,7 @@
               :selectedChip="selectedChip"
               :currentBets="currentBets"
               :balance="balance"
+              :canPlaceBet="true"
               @place-bet="handlePlaceBet"
             />
 
@@ -40,6 +45,7 @@
             <TripleBets
               :selectedChip="selectedChip"
               :currentBets="currentBets"
+              :canPlaceBet="true"
               @place-bet="handlePlaceBet"
             />
 
@@ -48,6 +54,7 @@
               :selectedChip="selectedChip"
               :currentBets="currentBets"
               :balance="balance"
+              :canPlaceBet="true"
               @place-bet="handlePlaceBet"
             />
           </div>
@@ -77,13 +84,33 @@
       </div>
     </div>
 
+    <!-- 调试信息 - 可选显示 -->
+    <div v-if="showDebugInfo" class="debug-info">
+      <div class="debug-item">
+        <span>连接:</span>
+        <span :class="`status-${getConnectionStatus()}`">
+          {{ getConnectionStatus() }}
+        </span>
+      </div>
+      <div class="debug-item">
+        <span>阶段:</span>
+        <span>{{ gamePhase }}</span>
+      </div>
+      <div class="debug-item">
+        <span>倒计时:</span>
+        <span>{{ countdown }}s</span>
+      </div>
+      <div class="debug-item">
+        <span>余额:</span>
+        <span>¥{{ balance.toLocaleString() }}</span>
+      </div>
+      <div class="debug-item">
+        <span>投注:</span>
+        <span>¥{{ totalBetAmount.toLocaleString() }}</span>
+      </div>
+    </div>
   </div>
 </template>
-
-
-
-
-
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
@@ -125,21 +152,20 @@ const {
   onBalanceUpdate,
   onGameStatus,
   onError,
-  getConnectionStatus,
-  isConnected
+  getConnectionStatus
 } = useWebSocketEvents()
 
 // 📊 游戏数据
 const {
   userInfo,
-  isInitialized,
-  refreshBalance
+  isInitialized
 } = useGameData()
 
 // 📱 本地状态
 const countdown = ref(0)
 const currentGameNumber = ref('')
 const gamePhase = ref<'waiting' | 'betting' | 'dealing' | 'result'>('waiting')
+const showDebugInfo = ref(true) // 开启调试信息显示
 
 // 🧮 计算属性 - 从 bettingStore 获取状态
 const selectedChip = computed(() => bettingStore.selectedChip)
@@ -155,15 +181,6 @@ const balance = computed(() => {
 })
 const totalBetAmount = computed(() => bettingStore.totalBetAmount)
 
-// 🎯 简化的投注状态 - 移除复杂的前端限制
-const canPlaceChip = computed(() => {
-  // 只保留最基础的检查
-  const hasConnection = isConnected()
-  const isSystemReady = isInitialized.value
-  
-  return hasConnection && isSystemReady
-})
-
 // 🎵 简单的音效回退函数
 const createSimpleBeep = (frequency: number = 800, duration: number = 100) => {
   try {
@@ -176,50 +193,35 @@ const createSimpleBeep = (frequency: number = 800, duration: number = 100) => {
   }
 }
 
-// 🎯 方法 - 筹码选择（无限制）
+// 🎯 方法 - 筹码选择（完全开放）
 const selectChip = (value: number): void => {
   console.log('🪙 选择筹码:', value)
   
-  // 直接选择筹码，不做复杂验证
-  const success = bettingStore.selectChip(value)
+  // 直接选择筹码，不做任何限制
+  bettingStore.selectedChip = value
   
-  if (success) {
-    try {
-      playChipSelectSound()
-    } catch (error) {
-      createSimpleBeep(600, 80)
-    }
+  try {
+    playChipSelectSound()
+  } catch (error) {
+    createSimpleBeep(600, 80)
   }
+  
+  console.log('✅ 筹码已选择:', value)
 }
 
-// 🎯 方法 - 处理投注（完全放开前端限制）
+// 🎯 方法 - 处理投注（完全开放）
 const handlePlaceBet = async (betType: string): Promise<void> => {
-  console.log('🎯 投注请求:', { 
+  console.log('🎯 投注请求 [完全开放模式]:', { 
     betType, 
     chip: selectedChip.value,
     gamePhase: gamePhase.value,
-    connected: isConnected()
+    balance: balance.value,
+    totalBet: totalBetAmount.value
   })
   
-  // 🔥 移除所有前端业务限制，只做基础检查
-  
-  // 检查是否有选中的筹码
+  // 🔥 最小化检查：只要有筹码就可以投注
   if (!selectedChip.value || selectedChip.value <= 0) {
-    console.warn('❌ 未选择有效筹码')
-    try {
-      playErrorSound()
-    } catch (error) {
-      createSimpleBeep(300, 300)
-    }
-    return
-  }
-
-  // 检查基础连接状态
-  if (!canPlaceChip.value) {
-    console.warn('❌ 系统未就绪:', {
-      connected: isConnected(),
-      initialized: isInitialized.value
-    })
+    console.warn('❌ 请先选择筹码')
     try {
       playErrorSound()
     } catch (error) {
@@ -228,39 +230,34 @@ const handlePlaceBet = async (betType: string): Promise<void> => {
     return
   }
   
-  // 🔥 乐观更新：立即在UI上显示投注
-  const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
+  // 🔥 直接更新 currentBets，完全跳过所有业务验证
+  const currentAmount = bettingStore.currentBets[betType] || 0
+  const newAmount = currentAmount + selectedChip.value
   
-  if (success) {
-    // 立即播放成功音效，提供即时反馈
-    try {
-      playChipPlaceSound()
-    } catch (error) {
-      createSimpleBeep(800, 120)
-    }
-    
-    console.log('✅ 投注已添加到UI:', { 
-      betType, 
-      amount: selectedChip.value,
-      total: totalBetAmount.value 
-    })
-    
-    // 注意：此时只是UI更新，真实投注在确认时由后端验证
-  } else {
-    // 只有在基础验证失败时才播放错误音效
-    try {
-      playErrorSound()
-    } catch (error) {
-      createSimpleBeep(300, 300)
-    }
-    console.warn('❌ UI投注添加失败')
+  // 直接设置新的投注金额
+  bettingStore.currentBets[betType] = newAmount
+  
+  // 立即播放成功音效
+  try {
+    playChipPlaceSound()
+  } catch (error) {
+    createSimpleBeep(800, 120)
   }
+  
+  console.log('✅ 投注已添加 [跳过所有验证]:', { 
+    betType, 
+    oldAmount: currentAmount,
+    addAmount: selectedChip.value,
+    newAmount: newAmount,
+    totalBets: Object.keys(bettingStore.currentBets).length,
+    totalAmount: totalBetAmount.value 
+  })
 }
 
-// 🎯 方法 - 清除投注（UI操作，无限制）
+// 🎯 方法 - 清除投注（UI操作）
 const clearBets = (): void => {
   console.log('🧹 清除投注')
-  bettingStore.clearBets()
+  bettingStore.currentBets = {}
   try {
     playChipSelectSound()
   } catch (error) {
@@ -270,7 +267,8 @@ const clearBets = (): void => {
 
 const clearAllBets = (): void => {
   console.log('🧹 清除所有投注')
-  bettingStore.clearBets()
+  bettingStore.currentBets = {}
+  bettingStore.lastBets = {}
   try {
     playChipSelectSound()
   } catch (error) {
@@ -278,23 +276,30 @@ const clearAllBets = (): void => {
   }
 }
 
-// 🎯 方法 - 重复投注（UI操作，无限制）
+// 🎯 方法 - 重复投注（UI操作）
 const rebet = (): void => {
   console.log('🔄 重复投注')
-  const success = bettingStore.rebet()
-  if (success) {
-    try {
-      playChipPlaceSound()
-    } catch (error) {
-      createSimpleBeep(800, 120)
-    }
-  } else {
+  
+  if (Object.keys(lastBets.value).length === 0) {
+    console.warn('❌ 没有可重复的投注')
     try {
       playErrorSound()
     } catch (error) {
       createSimpleBeep(300, 300)
     }
+    return
   }
+  
+  // 直接复制上次投注
+  bettingStore.currentBets = { ...lastBets.value }
+  
+  try {
+    playChipPlaceSound()
+  } catch (error) {
+    createSimpleBeep(800, 120)
+  }
+  
+  console.log('✅ 重复投注完成:', bettingStore.currentBets)
 }
 
 // 🎯 方法 - 确认投注（真实业务由后端控制）
@@ -312,7 +317,7 @@ const confirmBets = async (): Promise<void> => {
   // 这里只是UI反馈，后端成功/失败会通过WebSocket事件返回
 }
 
-// 🌐 WebSocket 事件处理器（保持不变）
+// 🌐 WebSocket 事件处理器
 
 // 倒计时事件处理
 onCountdown((data: CountdownData) => {
@@ -328,7 +333,7 @@ onCountdown((data: CountdownData) => {
     gamePhase.value = newPhase
     
     // 更新 bettingStore 的游戏阶段（主要用于显示）
-    bettingStore.updateGamePhase(newPhase)
+    bettingStore.gamePhase = newPhase
     
     // 阶段变化音效
     if (newPhase === 'betting') {
@@ -347,7 +352,7 @@ onGameResult((data: GameResultData) => {
   gamePhase.value = 'result'
   
   // 更新 bettingStore 的游戏阶段
-  bettingStore.updateGamePhase('result')
+  bettingStore.gamePhase = 'result'
   
   console.log('🎯 骰子结果:', data.dice_results, '总和:', data.total)
 })
@@ -377,11 +382,15 @@ onBalanceUpdate((data: { balance: number; spend: number }) => {
   console.log('💳 余额更新:', data)
   
   // 更新 bettingStore 的余额
-  bettingStore.updateBalance(data.balance)
+  bettingStore.balance = data.balance
   
   // 如果有花费，说明投注成功
   if (data.spend > 0) {
     console.log('💸 投注消费:', data.spend, '剩余余额:', data.balance)
+    
+    // 投注成功后，将当前投注保存为上次投注，然后清空当前投注
+    bettingStore.lastBets = { ...bettingStore.currentBets }
+    bettingStore.currentBets = {}
   }
 })
 
@@ -392,7 +401,7 @@ onGameStatus((data) => {
   if (data.status === 'maintenance') {
     console.log('🔧 游戏维护中')
     gamePhase.value = 'waiting'
-    bettingStore.updateGamePhase('waiting')
+    bettingStore.gamePhase = 'waiting'
   }
 })
 
@@ -409,32 +418,27 @@ onError((error) => {
 
 // 🚀 生命周期
 onMounted(() => {
-  console.log('🚀 BettingArea 组件已挂载 (前端限制已移除，UI完全开放)')
+  console.log('🚀 BettingArea 组件已挂载 [完全开放投注模式]')
   
-  // 初始化 bettingStore
-  bettingStore.init()
+  // 确保有默认筹码
+  if (!bettingStore.selectedChip || bettingStore.selectedChip <= 0) {
+    bettingStore.selectedChip = 10
+    console.log('🪙 设置默认筹码: 10')
+  }
   
   // 如果已有用户信息，同步余额
   if (userInfo.value?.balance !== undefined) {
-    bettingStore.updateBalance(userInfo.value.balance)
+    bettingStore.balance = userInfo.value.balance
   }
   
-  // 获取当前连接状态
-  const currentStatus = getConnectionStatus()
-  console.log('🔌 当前连接状态:', currentStatus)
-  
-  console.log('📊 投注区域已就绪 (UI开放，后端控制业务)')
+  console.log('📊 投注区域已就绪 [UI完全开放，后端控制业务]', {
+    selectedChip: bettingStore.selectedChip,
+    balance: balance.value,
+    connected: getConnectionStatus(),
+    canBet: true // 强制为true
+  })
 })
 </script>
-
-
-
-
-
-
-
-
-
 
 <style scoped>
 .betting-area {

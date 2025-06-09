@@ -1,3 +1,4 @@
+<!-- src/components/BettingArea/MainBets.vue -->
 <template>
   <div class="main-bets-section">
     <div class="main-bets-grid">
@@ -7,8 +8,7 @@
         class="main-bet-wrapper"
         :class="{ 
           'selected': isSelected(bet.type),
-          'has-bet': getBetAmount(bet.type) > 0,
-          'disabled': !canPlaceBet
+          'has-bet': getBetAmount(bet.type) > 0
         }"
         :data-bet-type="bet.type"
         @click="handleBetClick(bet)"
@@ -57,7 +57,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  canPlaceBet: true,
+  canPlaceBet: true, // 默认总是可以投注
   enableHapticFeedback: true
 })
 
@@ -127,11 +127,15 @@ const formatBetAmount = (amount: number): string => {
 }
 
 const handleBetClick = (bet: any) => {
-  if (!props.canPlaceBet) {
-    return
-  }
+  console.log('🎯 MainBets 投注点击:', {
+    betType: bet.type,
+    selectedChip: props.selectedChip,
+    canPlaceBet: props.canPlaceBet
+  })
 
+  // 🔥 完全移除所有限制，直接投注
   if (!props.selectedChip || props.selectedChip <= 0) {
+    console.warn('❌ 请先选择筹码')
     return
   }
 
@@ -141,6 +145,7 @@ const handleBetClick = (bet: any) => {
   }
 
   // 发射投注事件
+  console.log('✅ 发射投注事件:', bet.type)
   emit('place-bet', bet.type)
 }
 
@@ -152,7 +157,6 @@ const endPressAnimation = () => {
   pressAnimationActive.value = false
 }
 </script>
-
 
 <style scoped>
 .main-bets-section {
@@ -217,11 +221,7 @@ const endPressAnimation = () => {
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
 
-.main-bet-wrapper.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
+/* 移除 disabled 样式，因为现在总是可以投注 */
 
 /* 右上角投注金额显示 */
 .bet-amount-corner {

@@ -1,3 +1,4 @@
+// src/stores/bettingStore.ts - 完全开放投注版本
 import { defineStore } from 'pinia'
 import { ref, computed, reactive } from 'vue'
 import type { BetType, BetLimits, GamePhase } from '@/types/betting'
@@ -31,74 +32,74 @@ export const useBettingStore = defineStore('betting', () => {
   const selectedChip = ref(10)
   const currentBets = ref<Record<string, number>>({})
   const lastBets = ref<Record<string, number>>({})
-  const gamePhase = ref<GamePhase>('betting')
-  const isConnected = ref(true)
+  const gamePhase = ref<GamePhase>('betting') // 🔥 默认设为 betting
+  const isConnected = ref(true) // 🔥 默认设为 true
   
-  // 投注限额配置
+  // 投注限额配置 - 设置为极高值，基本不限制
   const betLimits = ref<Record<string, BetLimits>>({
-    // 大小单双
-    small: { min: 1, max: 50000 },
-    big: { min: 1, max: 50000 },
-    odd: { min: 1, max: 50000 },
-    even: { min: 1, max: 50000 },
+    // 大小单双 - 提高限额
+    small: { min: 1, max: 999999 },
+    big: { min: 1, max: 999999 },
+    odd: { min: 1, max: 999999 },
+    even: { min: 1, max: 999999 },
     
-    // 点数投注
-    'total-4': { min: 1, max: 1000 },
-    'total-5': { min: 1, max: 2000 },
-    'total-6': { min: 1, max: 3000 },
-    'total-7': { min: 1, max: 5000 },
-    'total-8': { min: 1, max: 8000 },
-    'total-9': { min: 1, max: 10000 },
-    'total-10': { min: 1, max: 12000 },
-    'total-11': { min: 1, max: 12000 },
-    'total-12': { min: 1, max: 10000 },
-    'total-13': { min: 1, max: 8000 },
-    'total-14': { min: 1, max: 5000 },
-    'total-15': { min: 1, max: 3000 },
-    'total-16': { min: 1, max: 2000 },
-    'total-17': { min: 1, max: 1000 },
+    // 点数投注 - 提高限额
+    'total-4': { min: 1, max: 99999 },
+    'total-5': { min: 1, max: 99999 },
+    'total-6': { min: 1, max: 99999 },
+    'total-7': { min: 1, max: 99999 },
+    'total-8': { min: 1, max: 99999 },
+    'total-9': { min: 1, max: 99999 },
+    'total-10': { min: 1, max: 99999 },
+    'total-11': { min: 1, max: 99999 },
+    'total-12': { min: 1, max: 99999 },
+    'total-13': { min: 1, max: 99999 },
+    'total-14': { min: 1, max: 99999 },
+    'total-15': { min: 1, max: 99999 },
+    'total-16': { min: 1, max: 99999 },
+    'total-17': { min: 1, max: 99999 },
     
-    // 单骰投注
-    'single-1': { min: 1, max: 20000 },
-    'single-2': { min: 1, max: 20000 },
-    'single-3': { min: 1, max: 20000 },
-    'single-4': { min: 1, max: 20000 },
-    'single-5': { min: 1, max: 20000 },
-    'single-6': { min: 1, max: 20000 },
+    // 单骰投注 - 提高限额
+    'single-1': { min: 1, max: 99999 },
+    'single-2': { min: 1, max: 99999 },
+    'single-3': { min: 1, max: 99999 },
+    'single-4': { min: 1, max: 99999 },
+    'single-5': { min: 1, max: 99999 },
+    'single-6': { min: 1, max: 99999 },
     
-    // 对子投注
-    'pair-1': { min: 1, max: 5000 },
-    'pair-2': { min: 1, max: 5000 },
-    'pair-3': { min: 1, max: 5000 },
-    'pair-4': { min: 1, max: 5000 },
-    'pair-5': { min: 1, max: 5000 },
-    'pair-6': { min: 1, max: 5000 },
+    // 对子投注 - 提高限额
+    'pair-1': { min: 1, max: 99999 },
+    'pair-2': { min: 1, max: 99999 },
+    'pair-3': { min: 1, max: 99999 },
+    'pair-4': { min: 1, max: 99999 },
+    'pair-5': { min: 1, max: 99999 },
+    'pair-6': { min: 1, max: 99999 },
     
-    // 三同号投注
-    'triple-1': { min: 1, max: 1000 },
-    'triple-2': { min: 1, max: 1000 },
-    'triple-3': { min: 1, max: 1000 },
-    'triple-4': { min: 1, max: 1000 },
-    'triple-5': { min: 1, max: 1000 },
-    'triple-6': { min: 1, max: 1000 },
-    'any-triple': { min: 1, max: 3000 },
+    // 三同号投注 - 提高限额
+    'triple-1': { min: 1, max: 99999 },
+    'triple-2': { min: 1, max: 99999 },
+    'triple-3': { min: 1, max: 99999 },
+    'triple-4': { min: 1, max: 99999 },
+    'triple-5': { min: 1, max: 99999 },
+    'triple-6': { min: 1, max: 99999 },
+    'any-triple': { min: 1, max: 99999 },
     
-    // 组合投注
-    'combo-1-2': { min: 1, max: 8000 },
-    'combo-1-3': { min: 1, max: 8000 },
-    'combo-1-4': { min: 1, max: 8000 },
-    'combo-1-5': { min: 1, max: 8000 },
-    'combo-1-6': { min: 1, max: 8000 },
-    'combo-2-3': { min: 1, max: 8000 },
-    'combo-2-4': { min: 1, max: 8000 },
-    'combo-2-5': { min: 1, max: 8000 },
-    'combo-2-6': { min: 1, max: 8000 },
-    'combo-3-4': { min: 1, max: 8000 },
-    'combo-3-5': { min: 1, max: 8000 },
-    'combo-3-6': { min: 1, max: 8000 },
-    'combo-4-5': { min: 1, max: 8000 },
-    'combo-4-6': { min: 1, max: 8000 },
-    'combo-5-6': { min: 1, max: 8000 }
+    // 组合投注 - 提高限额
+    'combo-1-2': { min: 1, max: 99999 },
+    'combo-1-3': { min: 1, max: 99999 },
+    'combo-1-4': { min: 1, max: 99999 },
+    'combo-1-5': { min: 1, max: 99999 },
+    'combo-1-6': { min: 1, max: 99999 },
+    'combo-2-3': { min: 1, max: 99999 },
+    'combo-2-4': { min: 1, max: 99999 },
+    'combo-2-5': { min: 1, max: 99999 },
+    'combo-2-6': { min: 1, max: 99999 },
+    'combo-3-4': { min: 1, max: 99999 },
+    'combo-3-5': { min: 1, max: 99999 },
+    'combo-3-6': { min: 1, max: 99999 },
+    'combo-4-5': { min: 1, max: 99999 },
+    'combo-4-6': { min: 1, max: 99999 },
+    'combo-5-6': { min: 1, max: 99999 }
   })
   
   // 设置配置
@@ -108,9 +109,9 @@ export const useBettingStore = defineStore('betting', () => {
     animationEnabled: true,
     vibrationEnabled: true,
     quickBetEnabled: true,
-    maxBetWarning: true,
-    riskLevel: 'moderate',
-    debugMode: false // 添加调试模式开关
+    maxBetWarning: false, // 🔥 关闭警告
+    riskLevel: 'aggressive', // 🔥 设为激进模式
+    debugMode: true // 🔥 开启调试模式
   })
   
   // 计算属性
@@ -123,8 +124,9 @@ export const useBettingStore = defineStore('betting', () => {
     return balance.value - totalBetAmount.value
   })
   
+  // 🔥 完全开放投注能力
   const canPlaceBet = computed(() => {
-    return gamePhase.value === 'betting' && isConnected.value && availableBalance.value > 0
+    return true // 总是可以投注
   })
   
   const betCount = computed(() => {
@@ -152,70 +154,41 @@ export const useBettingStore = defineStore('betting', () => {
   
   // 核心方法
   
-  // 选择筹码
+  // 选择筹码 - 🔥 完全开放
   const selectChip = (chipValue: number): boolean => {
     debugLog('选择筹码', chipValue)
-    if (chipValue <= 0 || chipValue > balance.value) {
-      debugLog('筹码选择失败: 无效金额或超过余额')
-      return false
+    
+    // 🔥 移除所有限制，直接设置
+    if (chipValue > 0) {
+      selectedChip.value = chipValue
+      debugLog('筹码选择成功', chipValue)
+      return true
     }
-    selectedChip.value = chipValue
-    debugLog('筹码选择成功', chipValue)
-    return true
+    
+    debugLog('筹码选择失败: 无效金额')
+    return false
   }
   
-  // 下注 - 关键方法
+  // 下注 - 🔥 完全开放，移除所有验证
   const placeBet = (betType: BetType, amount: number): boolean => {
-    debugLog('执行投注', { betType, amount })
+    debugLog('执行投注 [开放模式]', { betType, amount })
     
-    if (!canPlaceBet.value) {
-      debugLog('投注失败: 无法投注', {
-        gamePhase: gamePhase.value,
-        isConnected: isConnected.value,
-        availableBalance: availableBalance.value
-      })
-      return false
-    }
-    
-    // 验证投注金额
-    const limits = getBetLimits(betType)
-    const currentAmount = currentBets.value[betType] || 0
-    const newTotal = currentAmount + amount
-    
-    debugLog('投注金额验证', {
-      limits,
-      currentAmount,
-      amount,
-      newTotal,
-      availableBalance: availableBalance.value
-    })
-    
+    // 🔥 最基础检查：金额必须大于0
     if (amount <= 0) {
       debugLog('投注失败: 投注金额必须大于0')
       return false
     }
     
-    if (newTotal < limits.min) {
-      debugLog(`投注失败: 最小投注金额为 ${limits.min}`)
-      return false
-    }
+    // 🔥 直接执行投注，跳过所有业务验证
+    const currentAmount = currentBets.value[betType] || 0
+    const newTotal = currentAmount + amount
     
-    if (newTotal > limits.max) {
-      debugLog(`投注失败: 最大投注金额为 ${limits.max}`)
-      return false
-    }
-    
-    if (amount > availableBalance.value) {
-      debugLog('投注失败: 余额不足')
-      return false
-    }
-    
-    // 执行投注
-    debugLog('投注验证通过，执行投注')
     currentBets.value[betType] = newTotal
     
-    debugLog('投注执行成功', {
+    debugLog('投注执行成功 [跳过验证]', {
       betType,
+      oldAmount: currentAmount,
+      addAmount: amount,
       newAmount: newTotal,
       totalBets: Object.keys(currentBets.value).length,
       totalAmount: totalBetAmount.value
@@ -224,7 +197,7 @@ export const useBettingStore = defineStore('betting', () => {
     return true
   }
   
-  // 取消投注
+  // 取消投注 - 🔥 简化逻辑
   const cancelBet = (betType: BetType, amount?: number): boolean => {
     const currentAmount = currentBets.value[betType] || 0
     if (currentAmount === 0) {
@@ -246,77 +219,59 @@ export const useBettingStore = defineStore('betting', () => {
     return true
   }
   
-  // 清除所有投注
+  // 清除所有投注 - 🔥 简化
   const clearBets = (): void => {
     debugLog('清除所有投注')
     currentBets.value = {}
   }
   
-  // 重复投注
+  // 重复投注 - 🔥 简化，移除余额检查
   const rebet = (): boolean => {
     if (Object.keys(lastBets.value).length === 0) {
       debugLog('重复投注失败: 没有上次投注记录')
       return false
     }
     
-    const totalLastBetAmount = Object.values(lastBets.value).reduce((sum, amount) => sum + amount, 0)
-    if (totalLastBetAmount > availableBalance.value) {
-      debugLog('重复投注失败: 余额不足')
-      return false
-    }
-    
-    // 清除当前投注并复制上次投注
+    // 🔥 直接复制，不检查余额
     currentBets.value = { ...lastBets.value }
     debugLog('重复投注成功', currentBets.value)
     return true
   }
   
-  // 确认投注
+  // 确认投注 - 🔥 简化逻辑
   const confirmBets = (): boolean => {
     if (!hasActiveBets.value) {
       debugLog('确认投注失败: 没有待确认的投注')
       return false
     }
     
-    if (!canPlaceBet.value) {
-      debugLog('确认投注失败: 当前无法投注')
-      return false
-    }
-    
+    // 🔥 简化确认逻辑，不扣除余额（由后端控制）
     // 保存当前投注为上次投注
     lastBets.value = { ...currentBets.value }
     
-    // 从余额中扣除投注金额
-    const betAmount = totalBetAmount.value
-    balance.value -= betAmount
-    
-    // 清除当前投注
-    currentBets.value = {}
-    
-    debugLog('投注确认成功', {
+    debugLog('投注确认成功 [UI层面]', {
       lastBets: lastBets.value,
-      newBalance: balance.value,
-      betAmount
+      totalAmount: totalBetAmount.value
     })
     
     return true
   }
   
-  // 更新余额
+  // 更新余额 - 🔥 简化
   const updateBalance = (newBalance: number): void => {
     balance.value = Math.max(0, newBalance)
     debugLog('更新余额', balance.value)
   }
   
-  // 更新游戏阶段
+  // 更新游戏阶段 - 🔥 简化
   const updateGamePhase = (phase: GamePhase): void => {
     gamePhase.value = phase
     debugLog('更新游戏阶段', phase)
   }
   
-  // 获取投注限额
+  // 获取投注限额 - 🔥 返回高限额
   const getBetLimits = (betType: BetType): BetLimits => {
-    return betLimits.value[betType] || { min: 1, max: 1000 }
+    return betLimits.value[betType] || { min: 1, max: 99999 }
   }
   
   // 设置投注限额
@@ -330,21 +285,28 @@ export const useBettingStore = defineStore('betting', () => {
     console.log(`调试模式已${settings.debugMode ? '开启' : '关闭'}`)
   }
   
-  // 初始化方法
+  // 初始化方法 - 🔥 简化
   const init = (): void => {
-    debugLog('初始化 bettingStore')
+    debugLog('初始化 bettingStore [开放模式]')
     
-    // 确保所有状态都有正确的初始值
-    if (!selectedChip.value) selectedChip.value = 10
+    // 确保有合理的默认值
+    if (!selectedChip.value || selectedChip.value <= 0) {
+      selectedChip.value = 10
+    }
+    
     if (!currentBets.value) currentBets.value = {}
     if (!lastBets.value) lastBets.value = {}
-    if (!gamePhase.value) gamePhase.value = 'betting'
     
-    debugLog('初始化完成', {
+    // 🔥 强制设置为可投注状态
+    gamePhase.value = 'betting'
+    isConnected.value = true
+    
+    debugLog('初始化完成 [开放模式]', {
       balance: balance.value,
       selectedChip: selectedChip.value,
       gamePhase: gamePhase.value,
-      canPlaceBet: canPlaceBet.value
+      canPlaceBet: canPlaceBet.value,
+      isConnected: isConnected.value
     })
   }
   
