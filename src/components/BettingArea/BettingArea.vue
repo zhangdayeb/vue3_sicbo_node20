@@ -96,56 +96,14 @@
       </div>
     </div>
 
-    <!-- 🎯 特效组件 -->
+    <!-- 特效组件 -->
     <DiceRollingEffect ref="diceEffectRef" />
     <WinningEffect ref="winEffectRef" />
-
-    <!-- 简化的调试信息 -->
-    <div v-if="showDebugInfo" class="debug-info">
-      <div class="debug-item">
-        <span>连接:</span>
-        <span :class="`status-${getConnectionStatus()}`">
-          {{ getConnectionStatus() }}
-        </span>
-      </div>
-      <div class="debug-item">
-        <span>游戏:</span>
-        <span>{{ gamePhase }}</span>
-      </div>
-      <div class="debug-item">
-        <span>投注:</span>
-        <span :class="`phase-${bettingStore.bettingPhase}`">{{ bettingStore.bettingPhase }}</span>
-      </div>
-      <div class="debug-item">
-        <span>倒计时:</span>
-        <span>{{ countdown }}s</span>
-      </div>
-      <div class="debug-item">
-        <span>余额:</span>
-        <span>¥{{ balance.toLocaleString() }}</span>
-      </div>
-      <div class="debug-item">
-        <span>当前:</span>
-        <span>¥{{ totalBetAmount.toLocaleString() }}</span>
-      </div>
-      <div class="debug-item">
-        <span>已确认:</span>
-        <span class="confirmed-amount">¥{{ bettingStore.confirmedBetAmount.toLocaleString() }}</span>
-      </div>
-      <!-- 🎯 新增：游戏结果信息 -->
-      <div v-if="currentGameInfo.isProcessing" class="debug-item">
-        <span>结果:</span>
-        <span class="processing">处理中 {{ currentGameInfo.pushCount }}/5</span>
-      </div>
-      <div v-if="currentGameInfo.hasWon" class="debug-item">
-        <span>中奖:</span>
-        <span class="win-amount">¥{{ currentGameInfo.totalWinAmount.toLocaleString() }}</span>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import { useBettingStore } from '@/stores/bettingStore'
 import { useAudio } from '@/composables/useAudio'
@@ -165,12 +123,13 @@ import ComboBets from './ComboBets.vue'
 import ChipSelector from './ChipSelector.vue'
 import ControlButtons from './ControlButtons.vue'
 
-// 🎯 特效组件（根据实际路径调整）
+// 特效组件
 import DiceRollingEffect from '@/components/Effects/DiceRollingEffect.vue'
 import WinningEffect from '@/components/Effects/WinningEffect.vue'
 
 import type { BetType } from '@/types/betting'
 import type { CountdownData, GameStatusData } from '@/types/api'
+
 
 // Store 和 Composables
 const bettingStore = useBettingStore()
@@ -181,10 +140,8 @@ const {
   playErrorSound
 } = useAudio()
 
-// 🎯 游戏结果处理
+// 游戏结果处理
 const {
-  currentGameInfo,
-  isWaitingForResults,
   setEffectRefs
 } = useGameResults()
 
@@ -193,25 +150,18 @@ const {
   onCountdown,
   onGameStatus,
   onBalanceUpdate,
-  onError,
-  getConnectionStatus
+  onError
 } = useWebSocketEvents()
 
 // 游戏数据
 const {
-  userInfo,
-  isInitialized
+  userInfo
 } = useGameData()
 
-// 本地状态
-const countdown = ref(0)
-const currentGameNumber = ref('')
-const gamePhase = ref<'waiting' | 'betting' | 'dealing' | 'result'>('waiting')
-const showDebugInfo = ref(true)
-
-// 🎯 特效组件引用
-const diceEffectRef = ref()
-const winEffectRef = ref()
+// 特效组件引用
+// ✅ 正确定义特效组件引用类型
+const diceEffectRef = ref<ComponentPublicInstance | null>(null)
+const winEffectRef = ref<ComponentPublicInstance | null>(null)
 
 // 计算属性 - 从 bettingStore 获取状态
 const selectedChip = computed(() => bettingStore.selectedChip)
@@ -326,44 +276,30 @@ const confirmBets = async (): Promise<void> => {
   }
 }
 
-// ======================================
-// 🎯 WebSocket 事件处理器
-// ======================================
-
-// 倒计时事件处理
+// WebSocket 事件处理器
 onCountdown((data: CountdownData) => {
-  countdown.value = data.countdown
-  currentGameNumber.value = data.game_number
-  
   const newPhase = data.status
-  if (newPhase !== gamePhase.value) {
-    gamePhase.value = newPhase
-    bettingStore.updateGamePhase(newPhase)
-    
-    if (newPhase === 'betting') {
-      if (bettingStore.bettingPhase === 'result') {
-        bettingStore.updateBettingPhase('betting')
-      }
-    } else if (newPhase === 'dealing') {
-      bettingStore.updateBettingPhase('dealing')
+  bettingStore.updateGamePhase(newPhase)
+  
+  if (newPhase === 'betting') {
+    if (bettingStore.bettingPhase === 'result') {
+      bettingStore.updateBettingPhase('betting')
     }
+  } else if (newPhase === 'dealing') {
+    bettingStore.updateBettingPhase('dealing')
   }
 })
 
-// 余额更新事件处理
 onBalanceUpdate((data: { balance: number; spend: number }) => {
   bettingStore.updateBalance(data.balance)
 })
 
-// 游戏状态事件处理
 onGameStatus((data: GameStatusData) => {
   if (data.status === 'maintenance') {
-    gamePhase.value = 'waiting'
     bettingStore.updateBettingPhase('waiting')
   }
 })
 
-// 错误事件处理
 onError((error) => {
   try {
     playErrorSound()
@@ -384,7 +320,7 @@ onMounted(() => {
     bettingStore.updateBalance(userInfo.value.balance)
   }
 
-  // 🎯 设置特效组件引用
+  // 设置特效组件引用
   setTimeout(() => {
     setEffectRefs(diceEffectRef.value, winEffectRef.value)
   }, 100)
@@ -444,103 +380,6 @@ onMounted(() => {
   padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
-/* 简化的调试信息样式 */
-.debug-info {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  z-index: 9999;
-  max-width: 220px;
-}
-
-.debug-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-  gap: 8px;
-}
-
-.debug-item:last-child {
-  margin-bottom: 0;
-}
-
-.debug-item span:first-child {
-  color: #ccc;
-  font-weight: 500;
-}
-
-.debug-item span:last-child {
-  color: #fff;
-  font-weight: 600;
-}
-
-/* 已确认金额的特殊样式 */
-.confirmed-amount {
-  color: #00bcd4 !important;
-  text-shadow: 0 0 4px rgba(0, 188, 212, 0.6);
-}
-
-/* 🎯 新增：特效相关样式 */
-.processing {
-  color: #f59e0b !important;
-  animation: pulse 1s infinite;
-}
-
-.win-amount {
-  color: #10b981 !important;
-  text-shadow: 0 0 4px rgba(16, 185, 129, 0.6);
-  font-weight: bold;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* 连接状态样式 */
-.status-connected {
-  color: #22c55e !important;
-}
-
-.status-connecting {
-  color: #f59e0b !important;
-}
-
-.status-disconnected {
-  color: #ef4444 !important;
-}
-
-.status-error {
-  color: #dc2626 !important;
-}
-
-/* 投注阶段状态样式 */
-.phase-betting {
-  color: #4ade80 !important;
-}
-
-.phase-confirmed {
-  color: #00bcd4 !important;
-  text-shadow: 0 0 4px rgba(0, 188, 212, 0.6);
-}
-
-.phase-dealing {
-  color: #f59e0b !important;
-}
-
-.phase-result {
-  color: #a855f7 !important;
-}
-
-.phase-waiting {
-  color: #6b7280 !important;
-}
-
 /* 响应式适配 */
 @media (max-width: 375px) {
   .betting-container {
@@ -555,14 +394,6 @@ onMounted(() => {
   .betting-content {
     padding-bottom: 110px;
     padding-top: 12px;
-  }
-  
-  .debug-info {
-    top: 5px;
-    right: 5px;
-    padding: 6px 8px;
-    font-size: 11px;
-    max-width: 200px;
   }
 }
 
@@ -590,10 +421,6 @@ onMounted(() => {
   
   .betting-sections {
     gap: 3px;
-  }
-  
-  .debug-info {
-    display: none; /* 横屏时隐藏调试信息 */
   }
 }
 

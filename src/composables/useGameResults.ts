@@ -2,7 +2,6 @@
 import { ref, reactive, computed, watch, onUnmounted, readonly } from 'vue'
 import { useWebSocketEvents } from './useWebSocketEvents'
 import { useAudio } from './useAudio'
-import { useGameEffects } from './useGameEffects'
 import { useBettingStore } from '@/stores/bettingStore'
 import type { GameResultData, WinData } from '@/types/api'
 
@@ -22,12 +21,6 @@ interface GameResultState {
 export const useGameResults = () => {
   const bettingStore = useBettingStore()
   const { playWinSound, playSound } = useAudio()
-  const { 
-    playWinEffect, 
-    playDiceEffect,
-    setDiceRollingEffectRef,
-    setWinningEffectRef 
-  } = useGameEffects()
 
   // 状态管理
   const state = reactive<GameResultState>({
@@ -42,12 +35,88 @@ export const useGameResults = () => {
     resultProcessedAt: null
   })
 
+  // 特效组件实例存储
+  let diceEffectComponent: any = null
+  let winEffectComponent: any = null
+
   // 超时处理
   const resultTimeout = ref<number | null>(null)
   const RESULT_TIMEOUT = 15000 // 15秒超时
 
   // WebSocket事件监听
   const wsEvents = useWebSocketEvents()
+
+  // 设置特效组件引用
+  const setEffectRefs = (diceRef: any, winRef: any) => {
+    diceEffectComponent = diceRef
+    winEffectComponent = winRef
+    console.log('🎯 特效组件引用已设置:', {
+      dice: !!diceEffectComponent,
+      win: !!winEffectComponent
+    })
+  }
+
+  // 触发开牌特效
+  const triggerDiceEffect = async (diceResults: [number, number, number]) => {
+    if (!diceEffectComponent) {
+      console.warn('🎯 骰子特效组件未设置')
+      return false
+    }
+    
+    try {
+      console.log('🎲 触发开牌特效:', diceResults)
+      
+      // 根据特效组件的实际接口调用
+      if (typeof diceEffectComponent.startEffect === 'function') {
+        // 如果组件有 startEffect 方法
+        diceEffectComponent.startEffect(diceResults)
+      } else {
+        // 如果组件使用 props 控制
+        diceEffectComponent.show = true
+        diceEffectComponent.results = diceResults
+      }
+      
+      // 播放开牌音效
+      playSound('dice-shake')
+      
+      return true
+    } catch (error) {
+      console.error('🎯 开牌特效触发失败:', error)
+      return false
+    }
+  }
+
+  // 触发中奖特效
+  const triggerWinEffect = async (
+    winAmount: number, 
+    winType: 'small' | 'medium' | 'big' | 'jackpot' = 'small'
+  ) => {
+    if (!winEffectComponent) {
+      console.warn('🎯 中奖特效组件未设置')
+      return false
+    }
+    
+    try {
+      console.log('🎉 触发中奖特效:', { winAmount, winType })
+      
+      // 根据特效组件的实际接口调用
+      if (typeof winEffectComponent.startEffect === 'function') {
+        winEffectComponent.startEffect(winAmount, winType)
+      } else {
+        winEffectComponent.show = true
+        winEffectComponent.winAmount = winAmount
+        winEffectComponent.winType = winType
+      }
+      
+      // 播放中奖音效
+      playWinSound(winType)
+      
+      return true
+    } catch (error) {
+      console.error('🎯 中奖特效触发失败:', error)
+      return false
+    }
+  }
 
   // 重置状态
   const resetState = (gameNumber: string) => {
@@ -86,7 +155,8 @@ export const useGameResults = () => {
     // 第一次收到开牌结果时，播放开牌动画
     if (!state.diceResults) {
       state.diceResults = data.dice_results
-      await playDiceAnimation(data.dice_results)
+      // 触发开牌特效
+      await triggerDiceEffect(data.dice_results)
     }
 
     // 检查是否达到最大推送次数
@@ -111,8 +181,17 @@ export const useGameResults = () => {
       state.totalWinAmount += data.win_amount
       state.hasWon = true
 
-      // 播放中奖特效
-      await playWinAnimation(data.win_amount)
+      // 触发中奖特效
+      let winType: 'small' | 'medium' | 'big' | 'jackpot' = 'small'
+      if (data.win_amount >= 100000) {
+        winType = 'jackpot'
+      } else if (data.win_amount >= 10000) {
+        winType = 'big'
+      } else if (data.win_amount >= 1000) {
+        winType = 'medium'
+      }
+
+      await triggerWinEffect(data.win_amount, winType)
 
       // 更新余额
       updateBalance(data.win_amount)
@@ -121,63 +200,6 @@ export const useGameResults = () => {
     // 检查是否达到最大推送次数
     if (state.pushCount >= state.maxPushCount) {
       completeProcessing()
-    }
-  }
-
-  // 播放开牌动画
-  const playDiceAnimation = async (diceResults: [number, number, number]) => {
-    try {
-      // 播放开牌音效
-      playSound('dice-shake')
-      
-      // 播放开牌特效
-      await playDiceEffect({
-        diceResults,
-        cupShakeDuration: 1500,
-        rollDuration: 2000,
-        revealDelay: 500,
-        showCup: true
-      })
-
-      // 延迟播放结果音效
-      window.setTimeout(() => {
-        playSound('dice-roll')
-      }, 2000)
-
-    } catch (error) {
-      console.warn('开牌动画播放失败:', error)
-    }
-  }
-
-  // 播放中奖动画
-  const playWinAnimation = async (winAmount: number) => {
-    try {
-      // 确定中奖等级
-      let winType: 'small' | 'medium' | 'big' | 'jackpot' = 'small'
-      
-      if (winAmount >= 100000) {
-        winType = 'jackpot'
-      } else if (winAmount >= 10000) {
-        winType = 'big'
-      } else if (winAmount >= 1000) {
-        winType = 'medium'
-      }
-
-      // 播放中奖音效
-      playWinSound(winType)
-
-      // 播放中奖特效
-      await playWinEffect({
-        winAmount,
-        winType,
-        centerX: window.innerWidth / 2,
-        centerY: window.innerHeight / 2,
-        duration: winType === 'jackpot' ? 5000 : 3000,
-        intensity: winType === 'jackpot' ? 1.5 : 1.0
-      })
-
-    } catch (error) {
-      console.warn('中奖动画播放失败:', error)
     }
   }
 
@@ -220,14 +242,26 @@ export const useGameResults = () => {
   // 强制完成（超时保护）
   const forceComplete = () => {
     if (!state.isComplete) {
+      console.warn('🎯 游戏结果处理超时，强制完成')
       completeProcessing()
     }
   }
 
-  // 设置特效组件引用
-  const setEffectRefs = (diceRef: any, winRef: any) => {
-    if (diceRef) setDiceRollingEffectRef(diceRef)
-    if (winRef) setWinningEffectRef(winRef)
+  // 手动触发测试特效（开发调试用）
+  const testDiceEffect = () => {
+    triggerDiceEffect([Math.ceil(Math.random() * 6), Math.ceil(Math.random() * 6), Math.ceil(Math.random() * 6)] as [number, number, number])
+  }
+
+  const testWinEffect = (amount: number = 1000) => {
+    let winType: 'small' | 'medium' | 'big' | 'jackpot' = 'small'
+    if (amount >= 100000) {
+      winType = 'jackpot'
+    } else if (amount >= 10000) {
+      winType = 'big'
+    } else if (amount >= 1000) {
+      winType = 'medium'
+    }
+    triggerWinEffect(amount, winType)
   }
 
   // 计算属性
@@ -273,8 +307,16 @@ export const useGameResults = () => {
     currentGameInfo,
     isWaitingForResults,
     
-    // 方法
+    // 特效管理方法
     setEffectRefs,
+    triggerDiceEffect,
+    triggerWinEffect,
+    
+    // 测试方法（开发调试用）
+    testDiceEffect,
+    testWinEffect,
+    
+    // 其他方法
     forceComplete,
     resetState,
     
