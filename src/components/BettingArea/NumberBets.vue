@@ -10,8 +10,8 @@
             :key="number.value"
             class="number-bet-wrapper"
             :class="{ 
-              'selected': isSelected(`total-${number.value}`),
-              'has-bet': getBetAmount(`total-${number.value}`) > 0,
+              'selected': getTotalBetAmount(`total-${number.value}`) > 0,
+              'has-bet': getTotalBetAmount(`total-${number.value}`) > 0,
               'disabled': !canPlaceBet
             }"
             :data-bet-type="`total-${number.value}`"
@@ -24,10 +24,10 @@
           >
             <!-- 投注金额显示 - 右上角 -->
             <div 
-              v-if="getBetAmount(`total-${number.value}`) > 0" 
+              v-if="getTotalBetAmount(`total-${number.value}`) > 0" 
               class="bet-amount-corner"
             >
-              {{ formatBetAmount(getBetAmount(`total-${number.value}`)) }}
+              {{ formatBetAmount(getTotalBetAmount(`total-${number.value}`)) }}
             </div>
             
             <!-- 按钮内容 -->
@@ -43,7 +43,7 @@
             </div>
 
             <!-- 按钮边框装饰 -->
-            <div class="bet-border-glow" v-if="isSelected(`total-${number.value}`)"></div>
+            <div class="bet-border-glow" v-if="getTotalBetAmount(`total-${number.value}`) > 0"></div>
           </div>
         </div>
       </div>
@@ -56,8 +56,8 @@
             :key="number.value"
             class="number-bet-wrapper"
             :class="{ 
-              'selected': isSelected(`total-${number.value}`),
-              'has-bet': getBetAmount(`total-${number.value}`) > 0,
+              'selected': getTotalBetAmount(`total-${number.value}`) > 0,
+              'has-bet': getTotalBetAmount(`total-${number.value}`) > 0,
               'disabled': !canPlaceBet
             }"
             :data-bet-type="`total-${number.value}`"
@@ -70,10 +70,10 @@
           >
             <!-- 投注金额显示 - 右上角 -->
             <div 
-              v-if="getBetAmount(`total-${number.value}`) > 0" 
+              v-if="getTotalBetAmount(`total-${number.value}`) > 0" 
               class="bet-amount-corner"
             >
-              {{ formatBetAmount(getBetAmount(`total-${number.value}`)) }}
+              {{ formatBetAmount(getTotalBetAmount(`total-${number.value}`)) }}
             </div>
             
             <!-- 按钮内容 -->
@@ -89,7 +89,7 @@
             </div>
 
             <!-- 按钮边框装饰 -->
-            <div class="bet-border-glow" v-if="isSelected(`total-${number.value}`)"></div>
+            <div class="bet-border-glow" v-if="getTotalBetAmount(`total-${number.value}`) > 0"></div>
           </div>
         </div>
       </div>
@@ -123,10 +123,12 @@ const gameTheme = {
   }
 }
 
-// Props
+// Props - 与 MainBets.vue 保持一致
 interface Props {
   selectedChip: number
   currentBets: Record<string, number>
+  confirmedBets: Record<string, number>
+  displayBets: Record<string, { current: number; confirmed: number; total: number }>
   canPlaceBet?: boolean
   enableHapticFeedback?: boolean
 }
@@ -182,18 +184,11 @@ const bigNumbers = computed(() => {
   }))
 })
 
-// 计算属性
-const isSelected = computed(() => {
+// 计算属性 - 获取总投注金额（与 MainBets.vue 一致）
+const getTotalBetAmount = computed(() => {
   return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount > 0
-  }
-})
-
-const getBetAmount = computed(() => {
-  return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount
+    const display = props.displayBets[betType]
+    return display ? display.total : 0
   }
 })
 

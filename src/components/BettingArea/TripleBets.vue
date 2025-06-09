@@ -9,8 +9,8 @@
           :key="triple.value"
           class="triple-bet-wrapper specific-triple"
           :class="{ 
-            'selected': isSelected(`triple-${triple.value}`),
-            'has-bet': getBetAmount(`triple-${triple.value}`) > 0,
+            'selected': getTotalBetAmount(`triple-${triple.value}`) > 0,
+            'has-bet': getTotalBetAmount(`triple-${triple.value}`) > 0,
             'disabled': !canPlaceBet
           }"
           :data-bet-type="`triple-${triple.value}`"
@@ -23,10 +23,10 @@
         >
           <!-- 投注金额显示 - 右上角 -->
           <div 
-            v-if="getBetAmount(`triple-${triple.value}`) > 0" 
+            v-if="getTotalBetAmount(`triple-${triple.value}`) > 0" 
             class="bet-amount-corner"
           >
-            {{ formatBetAmount(getBetAmount(`triple-${triple.value}`)) }}
+            {{ formatBetAmount(getTotalBetAmount(`triple-${triple.value}`)) }}
           </div>
           
           <!-- 按钮内容 -->
@@ -60,15 +60,15 @@
           </div>
 
           <!-- 按钮边框装饰 -->
-          <div class="bet-border-glow" v-if="isSelected(`triple-${triple.value}`)"></div>
+          <div class="bet-border-glow" v-if="getTotalBetAmount(`triple-${triple.value}`) > 0"></div>
         </div>
         
         <!-- 全围（任意三同号） -->
         <div
           class="triple-bet-wrapper any-triple"
           :class="{ 
-            'selected': isSelected('any-triple'),
-            'has-bet': getBetAmount('any-triple') > 0,
+            'selected': getTotalBetAmount('any-triple') > 0,
+            'has-bet': getTotalBetAmount('any-triple') > 0,
             'disabled': !canPlaceBet
           }"
           :data-bet-type="'any-triple'"
@@ -81,10 +81,10 @@
         >
           <!-- 投注金额显示 - 右上角 -->
           <div 
-            v-if="getBetAmount('any-triple') > 0" 
+            v-if="getTotalBetAmount('any-triple') > 0" 
             class="bet-amount-corner"
           >
-            {{ formatBetAmount(getBetAmount('any-triple')) }}
+            {{ formatBetAmount(getTotalBetAmount('any-triple')) }}
           </div>
           
           <!-- 按钮内容 -->
@@ -100,7 +100,7 @@
           </div>
 
           <!-- 按钮边框装饰 -->
-          <div class="bet-border-glow" v-if="isSelected('any-triple')"></div>
+          <div class="bet-border-glow" v-if="getTotalBetAmount('any-triple') > 0"></div>
         </div>
       </div>
     </n-config-provider>
@@ -133,10 +133,12 @@ const gameTheme = {
   }
 }
 
-// Props
+// Props - 与 MainBets.vue 保持一致
 interface Props {
   selectedChip: number
   currentBets: Record<string, number>
+  confirmedBets: Record<string, number>
+  displayBets: Record<string, { current: number; confirmed: number; total: number }>
   canPlaceBet?: boolean
   enableHapticFeedback?: boolean
 }
@@ -202,18 +204,11 @@ const getDotPattern = (value: number) => {
   return patterns[value as keyof typeof patterns] || []
 }
 
-// 计算属性
-const isSelected = computed(() => {
+// 计算属性 - 获取总投注金额（与 MainBets.vue 一致）
+const getTotalBetAmount = computed(() => {
   return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount > 0
-  }
-})
-
-const getBetAmount = computed(() => {
-  return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount
+    const display = props.displayBets[betType]
+    return display ? display.total : 0
   }
 })
 

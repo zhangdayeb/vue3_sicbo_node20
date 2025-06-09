@@ -8,8 +8,8 @@
           :key="dice.value"
           class="dice-bet-wrapper"
           :class="{ 
-            'selected': isSelected(`single-${dice.value}`),
-            'has-bet': getBetAmount(`single-${dice.value}`) > 0,
+            'selected': getTotalBetAmount(`single-${dice.value}`) > 0,
+            'has-bet': getTotalBetAmount(`single-${dice.value}`) > 0,
             'disabled': !canPlaceBet
           }"
           :data-bet-type="`single-${dice.value}`"
@@ -22,10 +22,10 @@
         >
           <!-- 投注金额显示 - 右上角 -->
           <div 
-            v-if="getBetAmount(`single-${dice.value}`) > 0" 
+            v-if="getTotalBetAmount(`single-${dice.value}`) > 0" 
             class="bet-amount-corner"
           >
-            {{ formatBetAmount(getBetAmount(`single-${dice.value}`)) }}
+            {{ formatBetAmount(getTotalBetAmount(`single-${dice.value}`)) }}
           </div>
           
           <!-- 按钮内容 -->
@@ -53,7 +53,7 @@
           </div>
 
           <!-- 按钮边框装饰 -->
-          <div class="bet-border-glow" v-if="isSelected(`single-${dice.value}`)"></div>
+          <div class="bet-border-glow" v-if="getTotalBetAmount(`single-${dice.value}`) > 0"></div>
         </div>
       </div>
     </n-config-provider>
@@ -86,10 +86,12 @@ const gameTheme = {
   }
 }
 
-// Props
+// Props - 与 MainBets.vue 保持一致
 interface Props {
   selectedChip: number
   currentBets: Record<string, number>
+  confirmedBets: Record<string, number>
+  displayBets: Record<string, { current: number; confirmed: number; total: number }>
   canPlaceBet?: boolean
   enableHapticFeedback?: boolean
 }
@@ -163,18 +165,11 @@ const getDotPattern = (value: number): DotPattern[] => {
   return patterns[value] || []
 }
 
-// 计算属性
-const isSelected = computed(() => {
+// 计算属性 - 获取总投注金额（与 MainBets.vue 一致）
+const getTotalBetAmount = computed(() => {
   return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount > 0
-  }
-})
-
-const getBetAmount = computed(() => {
-  return (betType: string) => {
-    const amount = props.currentBets[betType] || 0
-    return amount
+    const display = props.displayBets[betType]
+    return display ? display.total : 0
   }
 })
 
