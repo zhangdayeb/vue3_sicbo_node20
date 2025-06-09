@@ -78,10 +78,7 @@
       <div v-if="showGameScreen" class="game-container">
         <!-- 顶部视频区域 -->
         <div class="top-section">
-          <GameTopSection 
-            :table-info="lifecycleState.tableInfo"
-            :user-info="lifecycleState.userInfo" 
-          />
+          <GameTopSection />
         </div>
         
         <!-- 底部投注区域 -->
@@ -109,10 +106,7 @@ const isStartingGame = ref(false)
 // 🧠 集成游戏生命周期管理（大脑核心）
 const {
   lifecycleState,
-  gameParams,
   isReady,
-  canPlaceBets,
-  gamePhaseText,
   initialize,
   reconnect,
   clearError
@@ -121,7 +115,6 @@ const {
   enableAudio: true,
   skipGameTypeValidation: ENV_CONFIG.IS_DEV
 })
-
 // 音频管理
 const { unlockAudioContext, playSound } = useAudio()
 

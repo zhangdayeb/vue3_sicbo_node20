@@ -9,10 +9,7 @@
     <!-- UI覆盖层 -->
     <div class="ui-overlay">
       <!-- 顶部工具栏 -->
-          <TopToolbar 
-            :table-info="tableInfo"
-            :user-info="userInfo"
-          />
+      <TopToolbar />
       
       <!-- 左侧区域：游戏状态和倒计时 -->
       <GameStatus />
@@ -29,11 +26,6 @@ import VideoPlayer from '@/components/VideoPlayer/VideoPlayer.vue'
 import TopToolbar from '@/components/GameInfo/TopToolbar.vue'
 import GameStatus from '@/components/GameInfo/GameStatus.vue'
 
-// Props 接收并传递
-const props = defineProps<{
-  tableInfo: any
-  userInfo: any  
-}>()
 
 const gameStore = useGameStore()
 

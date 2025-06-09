@@ -5,9 +5,9 @@
         ←
       </button>
       <div class="table-info">
-        <span class="table-name">{{ tableInfo.table_title }}</span>
+        <span class="table-name">{{ tableInfo?.table_title || '加载中...' }}</span>
         <div class="bet-limits">
-          限红: {{ tableInfo.right_money_banker_player }}
+          限红: {{ tableInfo?.right_money_banker_player || '---' }}
         </div>
       </div>
     </div>
@@ -18,15 +18,15 @@
         <!-- 局号行 -->
         <div class="info-row">
           <span class="info-label">局号</span>
-          <span class="game-number">{{ tableInfo.bureau_number }}</span>
+          <span class="game-number">{{ gameNumber }}</span>
         </div>
         
         <!-- 余额行 -->
         <div class="info-row">
           <span class="info-label">余额</span>
-          <span class="balance-amount">{{ userInfo.money_balance }}</span>
-          <button class="refresh-btn" @click="refreshBalance">
-            🔄
+          <span class="balance-amount">{{ formattedBalance }}</span>
+          <button class="refresh-btn" @click="handleRefreshBalance" :disabled="isRefreshing">
+            {{ isRefreshing ? '⏳' : '🔄' }}
           </button>
         </div>
       </div>
@@ -92,21 +92,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useGameData } from '@/composables/useGameData'
+import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
 
-// 接收 props
-const props = defineProps<{
-  tableInfo: any
-  userInfo: any
-}>()
+// 数据访问
+const { tableInfo, userInfo, formattedBalance, refreshBalance } = useGameData()
+
+// WebSocket 事件监听
+const { onBalanceUpdate } = useWebSocketEvents()
 
 const showSettings = ref(false)
 const settingsDropdown = ref<HTMLElement>()
+const isRefreshing = ref(false)
 
 // 设置选项
 const settings = reactive({
   backgroundMusic: true,
   soundEffects: true
+})
+
+// 计算局号 - 可以从多个来源获取
+const gameNumber = computed(() => {
+  // 优先从 tableInfo 获取，如果没有则显示默认值
+  return tableInfo.value?.bureau_number || 'T001250115001'
 })
 
 const goBack = () => {
@@ -117,8 +126,18 @@ const toggleSettings = () => {
   showSettings.value = !showSettings.value
 }
 
-const refreshBalance = () => {
-  console.log('刷新余额')
+// 处理刷新余额
+const handleRefreshBalance = async () => {
+  if (isRefreshing.value) return
+  
+  try {
+    isRefreshing.value = true
+    await refreshBalance()
+  } catch (error) {
+    console.error('刷新余额失败:', error)
+  } finally {
+    isRefreshing.value = false
+  }
 }
 
 // 功能跳转
@@ -149,6 +168,12 @@ const handleClickOutside = (event: Event) => {
   }
 }
 
+// 监听 WebSocket 余额更新
+onBalanceUpdate((data) => {
+  console.log('💰 余额自动更新:', data.balance)
+  // 余额会通过 WebSocket 自动更新到 useGameData 中
+})
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
@@ -164,7 +189,7 @@ onUnmounted(() => {
   top: 10px;
   left: 10px;
   right: 10px;
-  height: 40px; /* 减少高度到40px */
+  height: 40px;
   background: rgba(0, 0, 0, 0.85);
   border-radius: 8px;
   display: flex;
@@ -291,9 +316,14 @@ onUnmounted(() => {
   margin-left: 3px;
 }
 
-.refresh-btn:hover {
+.refresh-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.25);
   border-color: rgba(255, 255, 255, 0.35);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* 设置下拉菜单 */
