@@ -96,8 +96,11 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useGameData } from '@/composables/useGameData'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
 
+const referrerUrl = document.referrer;
+console.log('来路地址:', referrerUrl);
+
 // 数据访问
-const { tableInfo, userInfo, formattedBalance, refreshBalance } = useGameData()
+const { tableInfo, formattedBalance, refreshBalance } = useGameData()
 
 // WebSocket 事件监听
 const { onBalanceUpdate } = useWebSocketEvents()
