@@ -143,20 +143,20 @@ const emit = defineEmits<{
 
 // 点数投注配置（基于真实骰宝概率）
 const numberConfigs = {
-  4: {id: 308, betAmount: 0, showChip: [], flashClass: '', odds: 62, probability: '3种' },   // 最难出现
-  5: {id: 309, betAmount: 0, showChip: [], flashClass: '', odds: 31, probability: '6种' },
-  6: {id: 310, betAmount: 0, showChip: [], flashClass: '', odds: 18, probability: '10种' },
-  7: {id: 311, betAmount: 0, showChip: [], flashClass: '', odds: 12, probability: '15种' },
-  8: {id: 312, betAmount: 0, showChip: [], flashClass: '', odds: 8, probability: '21种' },
-  9: {id: 313, betAmount: 0, showChip: [], flashClass: '', odds: 6, probability: '25种' },
-  10: {id: 314, betAmount: 0, showChip: [], flashClass: '', odds: 6, probability: '27种' },  // 最容易（小数中）
-  11: {id: 315, betAmount: 0, showChip: [], flashClass: '', odds: 6, probability: '27种' },  // 最容易（大数中）
-  12: {id: 316, betAmount: 0, showChip: [], flashClass: '', odds: 6, probability: '25种' },
-  13: {id: 317, betAmount: 0, showChip: [], flashClass: '', odds: 8, probability: '21种' },
-  14: {id: 318, betAmount: 0, showChip: [], flashClass: '', odds: 12, probability: '15种' },
-  15: {id: 319, betAmount: 0, showChip: [], flashClass: '', odds: 18, probability: '10种' },
-  16: {id: 320, betAmount: 0, showChip: [], flashClass: '', odds: 31, probability: '6种' },
-  17: {id: 321, betAmount: 0, showChip: [], flashClass: '', odds: 62, probability: '3种' }   // 最难出现
+  4: { flashClass: '', odds: 62, probability: '3种' },   // 最难出现
+  5: { flashClass: '', odds: 31, probability: '6种' },
+  6: { flashClass: '', odds: 18, probability: '10种' },
+  7: { flashClass: '', odds: 12, probability: '15种' },
+  8: { flashClass: '', odds: 8, probability: '21种' },
+  9: { flashClass: '', odds: 6, probability: '25种' },
+  10: { flashClass: '', odds: 6, probability: '27种' },  // 最容易（小数中）
+  11: { flashClass: '', odds: 6, probability: '27种' },  // 最容易（大数中）
+  12: { flashClass: '', odds: 6, probability: '25种' },
+  13: { flashClass: '', odds: 8, probability: '21种' },
+  14: { flashClass: '', odds: 12, probability: '15种' },
+  15: { flashClass: '', odds: 18, probability: '10种' },
+  16: { flashClass: '', odds: 31, probability: '6种' },
+  17: { flashClass: '', odds: 62, probability: '3种' }   // 最难出现
 }
 
 // 响应式数据

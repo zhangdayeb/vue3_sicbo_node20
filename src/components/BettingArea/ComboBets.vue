@@ -124,29 +124,29 @@ const emit = defineEmits<{
 // 生成所有可能的两两组合
 const comboOptions = [
   // 第一行：1与其他数字组合
-  { id: 341, betAmount: 0, showChip: [], flashClass: '', type: 'combo-1-2', first: 1, second: 2, label: '1-2' },
-  { id: 342, betAmount: 0, showChip: [], flashClass: '', type: 'combo-1-3', first: 1, second: 3, label: '1-3' },
-  { id: 343, betAmount: 0, showChip: [], flashClass: '', type: 'combo-1-4', first: 1, second: 4, label: '1-4' },
-  { id: 344, betAmount: 0, showChip: [], flashClass: '', type: 'combo-1-5', first: 1, second: 5, label: '1-5' },
-  { id: 345, betAmount: 0, showChip: [], flashClass: '', type: 'combo-1-6', first: 1, second: 6, label: '1-6' },
+  { flashClass: '', type: 'combo-1-2', first: 1, second: 2, label: '1-2' },
+  { flashClass: '', type: 'combo-1-3', first: 1, second: 3, label: '1-3' },
+  { flashClass: '', type: 'combo-1-4', first: 1, second: 4, label: '1-4' },
+  { flashClass: '', type: 'combo-1-5', first: 1, second: 5, label: '1-5' },
+  { flashClass: '', type: 'combo-1-6', first: 1, second: 6, label: '1-6' },
   
   // 第二行：2与其他数字组合（排除已有的1-2）
-  { id: 346, betAmount: 0, showChip: [], flashClass: '', type: 'combo-2-3', first: 2, second: 3, label: '2-3' },
-  { id: 347, betAmount: 0, showChip: [], flashClass: '', type: 'combo-2-4', first: 2, second: 4, label: '2-4' },
-  { id: 348, betAmount: 0, showChip: [], flashClass: '', type: 'combo-2-5', first: 2, second: 5, label: '2-5' },
-  { id: 349, betAmount: 0, showChip: [], flashClass: '', type: 'combo-2-6', first: 2, second: 6, label: '2-6' },
+  { flashClass: '', type: 'combo-2-3', first: 2, second: 3, label: '2-3' },
+  { flashClass: '', type: 'combo-2-4', first: 2, second: 4, label: '2-4' },
+  { flashClass: '', type: 'combo-2-5', first: 2, second: 5, label: '2-5' },
+  { flashClass: '', type: 'combo-2-6', first: 2, second: 6, label: '2-6' },
   
   // 第三行：3与其他数字组合（排除已有的）
-  { id: 350, betAmount: 0, showChip: [], flashClass: '', type: 'combo-3-4', first: 3, second: 4, label: '3-4' },
-  { id: 351, betAmount: 0, showChip: [], flashClass: '', type: 'combo-3-5', first: 3, second: 5, label: '3-5' },
-  { id: 352, betAmount: 0, showChip: [], flashClass: '', type: 'combo-3-6', first: 3, second: 6, label: '3-6' },
+  { flashClass: '', type: 'combo-3-4', first: 3, second: 4, label: '3-4' },
+  { flashClass: '', type: 'combo-3-5', first: 3, second: 5, label: '3-5' },
+  { flashClass: '', type: 'combo-3-6', first: 3, second: 6, label: '3-6' },
   
   // 第四行：4与其他数字组合（排除已有的）
-  { id: 353, betAmount: 0, showChip: [], flashClass: '', type: 'combo-4-5', first: 4, second: 5, label: '4-5' },
-  { id: 354, betAmount: 0, showChip: [], flashClass: '', type: 'combo-4-6', first: 4, second: 6, label: '4-6' },
+  { flashClass: '', type: 'combo-4-5', first: 4, second: 5, label: '4-5' },
+  { flashClass: '', type: 'combo-4-6', first: 4, second: 6, label: '4-6' },
   
   // 第五行：5与6的组合
-  { id: 355, betAmount: 0, showChip: [], flashClass: '', type: 'combo-5-6', first: 5, second: 6, label: '5-6' }
+  { flashClass: '', type: 'combo-5-6', first: 5, second: 6, label: '5-6' }
 ]
 
 // 响应式数据

@@ -125,12 +125,12 @@ const emit = defineEmits<{
 
 // 对子选项配置
 const pairOptions = [
-  { id: 328, betAmount: 0, showChip: [], flashClass: '', value: 1, probability: '15种', color: '#e74c3c' },
-  { id: 329, betAmount: 0, showChip: [], flashClass: '', value: 2, probability: '15种', color: '#3498db' },
-  { id: 330, betAmount: 0, showChip: [], flashClass: '', value: 3, probability: '15种', color: '#e67e22' },
-  { id: 331, betAmount: 0, showChip: [], flashClass: '', value: 4, probability: '15种', color: '#9b59b6' },
-  { id: 332, betAmount: 0, showChip: [], flashClass: '', value: 5, probability: '15种', color: '#27ae60' },
-  { id: 333, betAmount: 0, showChip: [], flashClass: '', value: 6, probability: '15种', color: '#f39c12' }
+  { flashClass: '', value: 1, probability: '15种', color: '#e74c3c' },
+  { flashClass: '', value: 2, probability: '15种', color: '#3498db' },
+  { flashClass: '', value: 3, probability: '15种', color: '#e67e22' },
+  { flashClass: '', value: 4, probability: '15种', color: '#9b59b6' },
+  { flashClass: '', value: 5, probability: '15种', color: '#27ae60' },
+  { flashClass: '', value: 6, probability: '15种', color: '#f39c12' }
 ]
 
 // 响应式数据
