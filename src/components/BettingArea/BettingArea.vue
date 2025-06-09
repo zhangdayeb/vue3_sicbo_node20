@@ -11,7 +11,6 @@
             <MainBets 
               :selectedChip="selectedChip"
               :currentBets="currentBets"
-              :canPlaceBet="canBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -96,6 +95,10 @@
       <div class="debug-item">
         <span>游戏局号:</span>
         <span>{{ currentGameNumber }}</span>
+      </div>
+      <div class="debug-item">
+        <span>可投注:</span>
+        <span :class="{ 'status-connected': canBet, 'status-error': !canBet }">{{ canBet ? '是' : '否' }}</span>
       </div>
     </div>
   </div>
@@ -223,7 +226,7 @@ const selectChip = (value: number): void => {
   }
 }
 
-// 🎯 方法 - 处理投注
+// 🎯 方法 - 处理投注（统一控制投注逻辑）
 const handlePlaceBet = async (betType: string): Promise<void> => {
   console.log('🎯 投注请求:', { 
     betType, 
@@ -233,7 +236,7 @@ const handlePlaceBet = async (betType: string): Promise<void> => {
     connected: isConnected()
   })
   
-  // 检查是否可以投注
+  // 🔥 统一的投注检查逻辑（原本分散在各个组件中）
   if (!canBet.value) {
     console.warn('❌ 当前无法投注:', {
       connected: isConnected(),
@@ -249,7 +252,19 @@ const handlePlaceBet = async (betType: string): Promise<void> => {
     }
     return
   }
+
+  // 🔥 检查筹码是否有效
+  if (!selectedChip.value || selectedChip.value <= 0) {
+    console.warn('❌ 未选择有效筹码')
+    try {
+      playErrorSound()
+    } catch (error) {
+      createSimpleBeep(300, 300)
+    }
+    return
+  }
   
+  // 🔥 执行投注
   const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
   
   if (success) {
@@ -427,7 +442,7 @@ onError((error) => {
 
 // 🚀 生命周期
 onMounted(() => {
-  console.log('🚀 BettingArea 组件已挂载 (WebSocket 版本)')
+  console.log('🚀 BettingArea 组件已挂载 (移除 canPlaceBet 版本)')
   
   // 初始化 bettingStore
   bettingStore.init()
@@ -441,9 +456,19 @@ onMounted(() => {
   const currentStatus = getConnectionStatus()
   console.log('🔌 当前连接状态:', currentStatus)
   
-  console.log('📊 投注区域已就绪 (WebSocket 集成)')
+  console.log('📊 投注区域已就绪 (统一投注控制版本)')
 })
 </script>
+
+
+
+
+
+
+
+
+
+
 
 <style scoped>
 .betting-area {

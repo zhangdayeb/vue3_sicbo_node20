@@ -305,12 +305,13 @@ const endPressAnimation = () => {
   gap: 4px;
 }
 
-/* 投注标签 - 强化对比度 */
+/* 投注标签 - 修复：让它继承父元素的白色 */
 .bet-label {
   font-size: 20px;
   font-weight: 900;
   margin-bottom: 2px;
   line-height: 1;
+  /* 不设置 color，让它继承父元素的 color: white */
   
   /* 增强文字清晰度 */
   text-shadow: 
@@ -322,8 +323,9 @@ const endPressAnimation = () => {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 选中状态的标签颜色 */
 .main-bet-wrapper.selected .bet-label {
-  color: #1a1a1a;
+  color: #1a1a1a; /* 选中时才设置深色 */
   text-shadow: 
     0 1px 0 rgba(255, 255, 255, 0.9),
     0 1px 3px rgba(255, 215, 0, 0.8);
@@ -333,7 +335,7 @@ const endPressAnimation = () => {
 .bet-range {
   font-size: 11px;
   margin-bottom: 2px;
-  color: #e8e8e8;
+  color: rgba(255, 255, 255, 0.9); /* 稍微淡一点的白色 */
   font-weight: 700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
@@ -347,7 +349,7 @@ const endPressAnimation = () => {
 /* 赔率显示 */
 .bet-odds {
   font-size: 10px;
-  color: #90ee90;
+  color: #90ee90; /* 保持绿色 */
   font-weight: 800;
   text-shadow: 
     0 1px 0 rgba(0, 0, 0, 1),
