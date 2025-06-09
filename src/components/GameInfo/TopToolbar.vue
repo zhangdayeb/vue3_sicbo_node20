@@ -68,10 +68,10 @@
           <!-- 功能链接 -->
           <div class="menu-section">
             <div class="section-title">功能</div>
-            <div class="menu-item clickable" @click="goToRecharge">
+            <!-- <div class="menu-item clickable" @click="goToRecharge">
               <span class="item-label">💰 充值</span>
               <span class="arrow">›</span>
-            </div>
+            </div> -->
             <div class="menu-item clickable" @click="goToVip">
               <span class="item-label">👑 会员中心</span>
               <span class="arrow">›</span>
@@ -95,13 +95,18 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useGameData } from '@/composables/useGameData'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
+import { parseGameParams } from '@/utils/urlParams'
+import type { GameParams } from '@/types/api'
 
-const referrerUrl = document.referrer;
+// 解析URL参数
+const gameParams = ref<GameParams>(parseGameParams())
+const referrerUrl = document.referrer.split('?')[0]
 console.log('来路地址:', referrerUrl);
 
 // 数据访问
-const { tableInfo, formattedBalance, refreshBalance } = useGameData()
-
+const { userInfo, tableInfo, formattedBalance, refreshBalance } = useGameData()
+const realUserId = userInfo.value?.user_id || gameParams.value.user_id
+const realToken = gameParams.value.token
 // WebSocket 事件监听
 const { onBalanceUpdate } = useWebSocketEvents()
 
@@ -122,7 +127,10 @@ const gameNumber = computed(() => {
 })
 
 const goBack = () => {
+
   console.log('返回上级页面')
+  const url = referrerUrl+'#/pages/index/index?user_id='+realUserId+'&token='+realToken
+  window.location.href = url
 }
 
 const toggleSettings = () => {
@@ -147,11 +155,15 @@ const handleRefreshBalance = async () => {
 const goToRecharge = () => {
   console.log('跳转到充值页面')
   showSettings.value = false
+  const url = referrerUrl+'#/pages/user/chongzhi?user_id='+realUserId+'&token='+realToken
+  window.location.href = url
 }
 
 const goToVip = () => {
   console.log('跳转到会员中心')
   showSettings.value = false
+  const url = referrerUrl+'#/pages/user/user?user_id='+realUserId+'&token='+realToken
+  window.location.href = url
 }
 
 const contactService = () => {
