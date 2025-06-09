@@ -96,6 +96,10 @@
       </div>
     </div>
 
+    <!-- 🎯 特效组件 -->
+    <DiceRollingEffect ref="diceEffectRef" />
+    <WinningEffect ref="winEffectRef" />
+
     <!-- 简化的调试信息 -->
     <div v-if="showDebugInfo" class="debug-info">
       <div class="debug-item">
@@ -128,6 +132,15 @@
         <span>已确认:</span>
         <span class="confirmed-amount">¥{{ bettingStore.confirmedBetAmount.toLocaleString() }}</span>
       </div>
+      <!-- 🎯 新增：游戏结果信息 -->
+      <div v-if="currentGameInfo.isProcessing" class="debug-item">
+        <span>结果:</span>
+        <span class="processing">处理中 {{ currentGameInfo.pushCount }}/5</span>
+      </div>
+      <div v-if="currentGameInfo.hasWon" class="debug-item">
+        <span>中奖:</span>
+        <span class="win-amount">¥{{ currentGameInfo.totalWinAmount.toLocaleString() }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -138,6 +151,7 @@ import { useBettingStore } from '@/stores/bettingStore'
 import { useAudio } from '@/composables/useAudio'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
 import { useGameData } from '@/composables/useGameData'
+import { useGameResults } from '@/composables/useGameResults'
 
 // 投注区域组件
 import MainBets from './MainBets.vue'
@@ -151,8 +165,12 @@ import ComboBets from './ComboBets.vue'
 import ChipSelector from './ChipSelector.vue'
 import ControlButtons from './ControlButtons.vue'
 
+// 🎯 特效组件（根据实际路径调整）
+import DiceRollingEffect from '@/components/Effects/DiceRollingEffect.vue'
+import WinningEffect from '@/components/Effects/WinningEffect.vue'
+
 import type { BetType } from '@/types/betting'
-import type { CountdownData, GameResultData, WinData } from '@/types/api'
+import type { CountdownData, GameStatusData } from '@/types/api'
 
 // Store 和 Composables
 const bettingStore = useBettingStore()
@@ -160,17 +178,21 @@ const {
   playChipSelectSound, 
   playChipPlaceSound, 
   playBetConfirmSound, 
-  playErrorSound,
-  playWinSound
+  playErrorSound
 } = useAudio()
+
+// 🎯 游戏结果处理
+const {
+  currentGameInfo,
+  isWaitingForResults,
+  setEffectRefs
+} = useGameResults()
 
 // WebSocket 事件监听
 const {
   onCountdown,
-  onGameResult,
-  onWinData,
-  onBalanceUpdate,
   onGameStatus,
+  onBalanceUpdate,
   onError,
   getConnectionStatus
 } = useWebSocketEvents()
@@ -186,6 +208,10 @@ const countdown = ref(0)
 const currentGameNumber = ref('')
 const gamePhase = ref<'waiting' | 'betting' | 'dealing' | 'result'>('waiting')
 const showDebugInfo = ref(true)
+
+// 🎯 特效组件引用
+const diceEffectRef = ref()
+const winEffectRef = ref()
 
 // 计算属性 - 从 bettingStore 获取状态
 const selectedChip = computed(() => bettingStore.selectedChip)
@@ -291,7 +317,7 @@ const rebet = (): void => {
   }
 }
 
-// 方法 - 确认投注（兼容性保留）
+// 方法 - 确认投注
 const confirmBets = async (): Promise<void> => {
   try {
     playBetConfirmSound()
@@ -300,21 +326,21 @@ const confirmBets = async (): Promise<void> => {
   }
 }
 
-// WebSocket 事件处理器
+// ======================================
+// 🎯 WebSocket 事件处理器
+// ======================================
 
 // 倒计时事件处理
 onCountdown((data: CountdownData) => {
   countdown.value = data.countdown
   currentGameNumber.value = data.game_number
   
-  // 更新游戏阶段
   const newPhase = data.status
   if (newPhase !== gamePhase.value) {
     gamePhase.value = newPhase
     bettingStore.updateGamePhase(newPhase)
     
     if (newPhase === 'betting') {
-      // 如果是新一轮投注开始，重置投注阶段
       if (bettingStore.bettingPhase === 'result') {
         bettingStore.updateBettingPhase('betting')
       }
@@ -324,46 +350,13 @@ onCountdown((data: CountdownData) => {
   }
 })
 
-// 游戏结果事件处理 - 现在才清场
-onGameResult((data: GameResultData) => {
-  currentGameNumber.value = data.game_number
-  gamePhase.value = 'result'
-  
-  // 重要：现在才清除投注显示
-  bettingStore.handleGameResult(data)
-  
-  // TODO: 这里可以触发开牌动画
-  // startDiceAnimation(data)
-})
-
-// 中奖数据事件处理
-onWinData((data: WinData) => {
-  if (data.win_amount > 0) {
-    try {
-      if (data.win_amount >= 1000) {
-        playWinSound('big')
-      } else {
-        playWinSound('small')
-      }
-    } catch (error) {
-      createSimpleBeep(1200, 300)
-    }
-  }
-})
-
-// 余额更新事件处理 - 不再自动清场
+// 余额更新事件处理
 onBalanceUpdate((data: { balance: number; spend: number }) => {
-  // 更新 bettingStore 的余额
   bettingStore.updateBalance(data.balance)
-  
-  // 如果有花费，说明投注成功，但不清场
-  if (data.spend > 0) {
-    // 投注成功，等待开牌结果
-  }
 })
 
 // 游戏状态事件处理
-onGameStatus((data) => {
+onGameStatus((data: GameStatusData) => {
   if (data.status === 'maintenance') {
     gamePhase.value = 'waiting'
     bettingStore.updateBettingPhase('waiting')
@@ -390,6 +383,11 @@ onMounted(() => {
   if (userInfo.value?.balance !== undefined) {
     bettingStore.updateBalance(userInfo.value.balance)
   }
+
+  // 🎯 设置特效组件引用
+  setTimeout(() => {
+    setEffectRefs(diceEffectRef.value, winEffectRef.value)
+  }, 100)
 })
 </script>
 
@@ -485,6 +483,23 @@ onMounted(() => {
 .confirmed-amount {
   color: #00bcd4 !important;
   text-shadow: 0 0 4px rgba(0, 188, 212, 0.6);
+}
+
+/* 🎯 新增：特效相关样式 */
+.processing {
+  color: #f59e0b !important;
+  animation: pulse 1s infinite;
+}
+
+.win-amount {
+  color: #10b981 !important;
+  text-shadow: 0 0 4px rgba(16, 185, 129, 0.6);
+  font-weight: bold;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* 连接状态样式 */
@@ -589,7 +604,6 @@ onMounted(() => {
 
 .betting-content::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
 }
 
 .betting-content::-webkit-scrollbar-thumb {
@@ -599,5 +613,11 @@ onMounted(() => {
 
 .betting-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 215, 0, 0.5);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  *:hover {
+    /* 在触摸设备上禁用 hover 效果 */
+  }
 }
 </style>
