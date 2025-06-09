@@ -23,7 +23,7 @@ export type BetType =
   | 'combo-5-6'
 
 // 游戏阶段
-export type GamePhase = 'waiting' | 'betting' | 'rolling' | 'result' | 'settling'
+export type GamePhase = 'waiting' | 'betting' | 'dealing' | 'result'
 
 // 投注状态
 export type BetStatus = 'pending' | 'confirmed' | 'won' | 'lost' | 'cancelled' | 'settled'
