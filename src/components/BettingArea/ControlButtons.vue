@@ -87,8 +87,12 @@ import {
   CheckmarkCircleOutline as CheckmarkIcon
 } from '@vicons/ionicons5'
 import { useBettingStore } from '@/stores/bettingStore'
+import { useGameData } from '@/composables/useGameData' // 🔥 新增：导入useGameData
 import { getGlobalApiService } from '@/services/gameApi'
 import type { BetRequest, BetResponse } from '@/services/gameApi'
+
+// 🔥 新增：获取useGameData的refreshBalance方法
+const { refreshBalance } = useGameData()
 
 // 游戏主题配置
 const gameTheme = {
@@ -310,7 +314,7 @@ const prepareBetRequests = (displayBets: Record<string, { current: number; confi
   return betRequests
 }
 
-// 真实投注提交 - 发送累计总金额
+// 🔥 修改：真实投注提交 - 增加余额刷新
 const submitRealBets = async (): Promise<void> => {
   try {
     isSubmitting.value = true
@@ -334,9 +338,14 @@ const submitRealBets = async (): Promise<void> => {
     // 确认当前投注到已确认投注
     bettingStore.confirmCurrentBets()
     
-    // 更新余额
-    if (result.money_balance !== undefined) {
-      bettingStore.updateBalance(result.money_balance)
+    // 🔥 新增：投注成功后刷新余额
+    try {
+      console.log('💰 投注成功，正在刷新余额...')
+      await refreshBalance()
+      console.log('✅ 余额刷新成功')
+    } catch (balanceError) {
+      console.error('❌ 刷新余额失败:', balanceError)
+      // 不影响投注成功的提示，只是余额可能不是最新的
     }
     
     // 显示简化的成功消息

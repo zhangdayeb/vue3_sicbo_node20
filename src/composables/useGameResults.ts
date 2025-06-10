@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch, onUnmounted, readonly } from 'vue'
 import { useWebSocketEvents } from './useWebSocketEvents'
 import { useAudio } from './useAudio' // 🔥 使用简化后的音频系统
+import { useGameData } from './useGameData' // 🔥 新增：导入useGameData
 import { useBettingStore } from '@/stores/bettingStore'
 import type { GameResultData, WinData } from '@/types/api'
 
@@ -27,6 +28,9 @@ export const useGameResults = () => {
     playDiceRollSound, 
     canPlayAudio 
   } = useAudio()
+
+  // 🔥 新增：获取useGameData的refreshBalance方法
+  const { refreshBalance } = useGameData()
 
   // 状态管理
   const state = reactive<GameResultState>({
@@ -364,7 +368,7 @@ export const useGameResults = () => {
     }
   }
 
-  // 🔥 修改：处理中奖数据推送 - 使用简化的中奖类型判断
+  // 🔥 修改：处理中奖数据推送 - 增加余额刷新
   const handleWinDataPush = async (data: WinData) => {
     const gameNumber = data.game_number
 
@@ -401,7 +405,17 @@ export const useGameResults = () => {
 
       await triggerWinEffect(data.win_amount, winType)
 
-      // 更新余额
+      // 🔥 新增：中奖后刷新余额
+      try {
+        console.log('💰 用户中奖，正在刷新余额...')
+        await refreshBalance()
+        console.log('✅ 中奖后余额刷新成功')
+      } catch (balanceError) {
+        console.error('❌ 中奖后刷新余额失败:', balanceError)
+        // 不影响中奖特效，只是余额可能不是最新的
+      }
+
+      // 更新本地余额（保持原有逻辑作为备份）
       updateBalance(data.win_amount)
     }
 
@@ -417,7 +431,7 @@ export const useGameResults = () => {
     const newBalance = currentBalance + winAmount
     bettingStore.updateBalance(newBalance)
     
-    console.log('🎯 更新余额:', {
+    console.log('🎯 更新本地余额:', {
       winAmount,
       currentBalance,
       newBalance
