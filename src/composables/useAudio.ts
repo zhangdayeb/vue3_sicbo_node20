@@ -208,8 +208,7 @@ export const useAudio = () => {
       silentAudio.muted = true
       
       // 创建短暂的音频数据
-      const audioBuffer = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA=='
-      silentAudio.src = audioBuffer
+      silentAudio.src = '/audio/chip-select.mp3'  // 你项目里有这个文件
       
       const playPromise = silentAudio.play()
       if (playPromise) {
@@ -619,6 +618,7 @@ export const useAudio = () => {
     stopAllSounds()
     saveConfig()
   })
+
 
   return {
     // 状态
