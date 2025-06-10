@@ -1,7 +1,7 @@
-// src/composables/useGameResults.ts - 修复版本
+// src/composables/useGameResults.ts - 配合简化音频系统的修复版本
 import { ref, reactive, computed, watch, onUnmounted, readonly } from 'vue'
 import { useWebSocketEvents } from './useWebSocketEvents'
-import { useAudio } from './useAudio'
+import { useAudio } from './useAudio' // 🔥 使用简化后的音频系统
 import { useBettingStore } from '@/stores/bettingStore'
 import type { GameResultData, WinData } from '@/types/api'
 
@@ -20,7 +20,13 @@ interface GameResultState {
 
 export const useGameResults = () => {
   const bettingStore = useBettingStore()
-  const { playWinSound, playSound } = useAudio()
+  
+  // 🔥 修改：使用简化后的音频系统
+  const { 
+    playWinSound, 
+    playDiceRollSound, 
+    canPlayAudio 
+  } = useAudio()
 
   // 状态管理
   const state = reactive<GameResultState>({
@@ -45,6 +51,31 @@ export const useGameResults = () => {
 
   // WebSocket事件监听
   const wsEvents = useWebSocketEvents()
+
+  // 🔥 新增：音效播放安全包装函数
+  const safePlayAudio = async (audioFunction: () => Promise<boolean> | boolean) => {
+    try {
+      if (canPlayAudio.value) {
+        const result = await audioFunction()
+        console.log('🎵 音效播放成功')
+        return result
+      } else {
+        console.log('🔇 音频系统未就绪，跳过音效播放')
+        // 使用震动作为替代反馈
+        if ('vibrate' in navigator) {
+          navigator.vibrate(100)
+        }
+        return false
+      }
+    } catch (error) {
+      console.warn('⚠️ 音效播放失败，使用震动反馈:', error)
+      // 降级到震动反馈
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100])
+      }
+      return false
+    }
+  }
 
   // 设置特效组件引用
   const setEffectRefs = (diceRef: any, winRef: any) => {
@@ -72,43 +103,47 @@ export const useGameResults = () => {
     }
     
     try {
-      // 🔥 修复：直接设置组件的响应式属性
-      // Vue 3 组件实例通过 $ 访问属性和方法
-      if (diceEffectComponent.$) {
-        // 访问组件的 exposed 属性和方法
+      // 🔥 修复：统一的组件触发方式
+      let success = false
+      
+      // 方案1：调用 startAnimation 方法
+      if (typeof diceEffectComponent.startAnimation === 'function') {
+        console.log('🎲 使用 startAnimation 方法触发')
+        await diceEffectComponent.startAnimation(diceResults)
+        success = true
+      }
+      // 方案2：通过 Vue 实例访问
+      else if (diceEffectComponent.$) {
         const componentInstance = diceEffectComponent.$
         
-        if (componentInstance.exposed) {
-          // 如果组件有 exposed 的方法
-          if (typeof componentInstance.exposed.startAnimation === 'function') {
-            componentInstance.exposed.startAnimation(diceResults)
-          } else {
-            // 直接设置 props
-            componentInstance.setupState.show = true
-            componentInstance.setupState.results = diceResults
-          }
-        } else {
-          // 直接访问组件实例
-          if (typeof componentInstance.startAnimation === 'function') {
-            componentInstance.startAnimation(diceResults)
-          } else {
-            // 通过 proxy 设置属性
-            componentInstance.show = true
-            componentInstance.results = diceResults
-          }
+        if (componentInstance.exposed?.startAnimation) {
+          console.log('🎲 使用 exposed.startAnimation 方法触发')
+          await componentInstance.exposed.startAnimation(diceResults)
+          success = true
+        } else if (componentInstance.setupState) {
+          console.log('🎲 使用 setupState 属性设置')
+          componentInstance.setupState.show = true
+          componentInstance.setupState.results = diceResults
+          success = true
         }
-      } else {
-        // 🔥 最简单的方式：直接设置属性
+      }
+      // 方案3：直接设置属性
+      else {
         console.log('🎲 使用直接属性设置方式')
         diceEffectComponent.show = true
         diceEffectComponent.results = diceResults
+        success = true
       }
       
-      // 播放开牌音效
-      playSound('dice-shake')
-      
-      console.log('🎲 开牌特效触发成功')
-      return true
+      if (success) {
+        // 🔥 修改：使用简化后的音频系统播放开牌音效
+        await safePlayAudio(() => playDiceRollSound())
+        console.log('🎲 开牌特效触发成功')
+        return true
+      } else {
+        console.warn('🎯 所有触发方案都失败了')
+        return false
+      }
       
     } catch (error) {
       console.error('🎯 开牌特效触发失败:', error)
@@ -123,7 +158,7 @@ export const useGameResults = () => {
           return true
         }
         
-        // 方案2：直接调用方法
+        // 方案2：调用其他可能的方法
         if (typeof diceEffectComponent.startEffect === 'function') {
           diceEffectComponent.startEffect(diceResults)
           return true
@@ -133,6 +168,13 @@ export const useGameResults = () => {
         if (diceEffectComponent.value) {
           diceEffectComponent.value.show = true
           diceEffectComponent.value.results = diceResults
+          return true
+        }
+        
+        // 方案4：强制调用全局调试方法
+        if (typeof window !== 'undefined' && (window as any).debugDiceEffect) {
+          console.log('🎲 使用全局调试方法触发')
+          ;(window as any).debugDiceEffect.startAnimation(diceResults)
           return true
         }
         
@@ -147,7 +189,7 @@ export const useGameResults = () => {
   // 🔥 修复：正确的中奖特效触发方式
   const triggerWinEffect = async (
     winAmount: number, 
-    winType: 'normal' | 'big' | 'super' | 'jackpot' = 'normal'
+    winType: 'small' | 'medium' | 'big' | 'jackpot' = 'small' // 🔥 修改：使用简化音频系统的类型
   ) => {
     console.log('🎉 准备触发中奖特效:', {
       winAmount,
@@ -168,32 +210,28 @@ export const useGameResults = () => {
       // 方案1：调用 startEffect 方法
       if (typeof winEffectComponent.startEffect === 'function') {
         console.log('🎉 使用 startEffect 方法触发')
-        winEffectComponent.startEffect(winAmount, winType)
+        await winEffectComponent.startEffect(winAmount, winType)
         success = true
       }
       // 方案2：调用 startAnimation 方法
       else if (typeof winEffectComponent.startAnimation === 'function') {
         console.log('🎉 使用 startAnimation 方法触发')
-        winEffectComponent.startAnimation({ winAmount, winType })
+        await winEffectComponent.startAnimation({ winAmount, winType })
         success = true
       }
       // 方案3：通过 Vue 实例访问
       else if (winEffectComponent.$) {
         const componentInstance = winEffectComponent.$
         
-        if (componentInstance.exposed) {
-          if (typeof componentInstance.exposed.startEffect === 'function') {
-            console.log('🎉 使用 exposed.startEffect 方法触发')
-            componentInstance.exposed.startEffect(winAmount, winType)
-            success = true
-          } else if (typeof componentInstance.exposed.startAnimation === 'function') {
-            console.log('🎉 使用 exposed.startAnimation 方法触发')
-            componentInstance.exposed.startAnimation({ winAmount, winType })
-            success = true
-          }
-        }
-        
-        if (!success && componentInstance.setupState) {
+        if (componentInstance.exposed?.startEffect) {
+          console.log('🎉 使用 exposed.startEffect 方法触发')
+          await componentInstance.exposed.startEffect(winAmount, winType)
+          success = true
+        } else if (componentInstance.exposed?.startAnimation) {
+          console.log('🎉 使用 exposed.startAnimation 方法触发')
+          await componentInstance.exposed.startAnimation({ winAmount, winType })
+          success = true
+        } else if (componentInstance.setupState) {
           console.log('🎉 使用 setupState 属性设置')
           componentInstance.setupState.show = true
           componentInstance.setupState.winAmount = winAmount
@@ -211,8 +249,8 @@ export const useGameResults = () => {
       }
       
       if (success) {
-        // 播放中奖音效
-        playWinSound(winType === 'normal' ? 'small' : winType === 'big' ? 'medium' : winType === 'super' ? 'big' : 'jackpot')
+        // 🔥 修改：使用简化后的音频系统播放中奖音效
+        await safePlayAudio(() => playWinSound())
         console.log('🎉 中奖特效触发成功')
         return true
       } else {
@@ -326,7 +364,7 @@ export const useGameResults = () => {
     }
   }
 
-  // 处理中奖数据推送
+  // 🔥 修改：处理中奖数据推送 - 使用简化的中奖类型判断
   const handleWinDataPush = async (data: WinData) => {
     const gameNumber = data.game_number
 
@@ -349,14 +387,16 @@ export const useGameResults = () => {
       state.totalWinAmount += data.win_amount
       state.hasWon = true
 
-      // 🔥 修复：确保中奖类型匹配组件期望的类型
-      let winType: 'normal' | 'big' | 'super' | 'jackpot' = 'normal'
+      // 🔥 修改：简化的中奖类型判断 - 匹配简化音频系统
+      let winType: 'small' | 'medium' | 'big' | 'jackpot' = 'small'
       if (data.win_amount >= 100000) {
         winType = 'jackpot'
       } else if (data.win_amount >= 10000) {
-        winType = 'super'
-      } else if (data.win_amount >= 1000) {
         winType = 'big'
+      } else if (data.win_amount >= 1000) {
+        winType = 'medium'
+      } else {
+        winType = 'small'
       }
 
       await triggerWinEffect(data.win_amount, winType)
@@ -424,7 +464,7 @@ export const useGameResults = () => {
     }
   }
 
-  // 🔥 新增：手动触发测试特效（开发调试用）
+  // 🔥 修改：手动触发测试特效（开发调试用）- 使用简化音频系统
   const testDiceEffect = () => {
     const testResults: [number, number, number] = [
       Math.ceil(Math.random() * 6), 
@@ -436,17 +476,30 @@ export const useGameResults = () => {
   }
 
   const testWinEffect = (amount: number = 1000) => {
-    let winType: 'normal' | 'big' | 'super' | 'jackpot' = 'normal'
+    // 🔥 修改：使用简化的中奖类型判断
+    let winType: 'small' | 'medium' | 'big' | 'jackpot' = 'small'
     if (amount >= 100000) {
       winType = 'jackpot'
     } else if (amount >= 10000) {
-      winType = 'super'
-    } else if (amount >= 1000) {
       winType = 'big'
+    } else if (amount >= 1000) {
+      winType = 'medium'
+    } else {
+      winType = 'small'
     }
     console.log('🎉 手动测试中奖特效:', { amount, winType })
     triggerWinEffect(amount, winType)
   }
+
+  // 🔥 新增：音频系统状态检查
+  const getAudioSystemInfo = () => ({
+    canPlayAudio: canPlayAudio.value,
+    audioSystemType: 'simplified',
+    hasAudioFunctions: {
+      playWinSound: typeof playWinSound === 'function',
+      playDiceRollSound: typeof playDiceRollSound === 'function'
+    }
+  })
 
   // 计算属性
   const currentGameInfo = computed(() => ({
@@ -456,7 +509,8 @@ export const useGameResults = () => {
     pushCount: state.pushCount,
     totalWinAmount: state.totalWinAmount,
     hasWon: state.hasWon,
-    isComplete: state.isComplete
+    isComplete: state.isComplete,
+    audioInfo: getAudioSystemInfo() // 🔥 新增：音频系统信息
   }))
 
   const isWaitingForResults = computed(() => {
@@ -487,7 +541,7 @@ export const useGameResults = () => {
     }
   })
 
-  // 🔥 新增：暴露到 window 用于调试
+  // 🔥 新增：暴露到 window 用于调试（包含音频信息）
   if (typeof window !== 'undefined' && import.meta.env.DEV) {
     (window as any).debugGameResults = {
       testDiceEffect,
@@ -495,10 +549,12 @@ export const useGameResults = () => {
       triggerDiceEffect,
       triggerWinEffect,
       state,
+      audioInfo: getAudioSystemInfo,
       diceEffectComponent: () => diceEffectComponent,
-      winEffectComponent: () => winEffectComponent
+      winEffectComponent: () => winEffectComponent,
+      safePlayAudio
     }
-    console.log('🐛 调试工具已添加到 window.debugGameResults')
+    console.log('🐛 调试工具已添加到 window.debugGameResults（包含音频信息）')
   }
 
   return {
@@ -514,6 +570,10 @@ export const useGameResults = () => {
     // 测试方法（开发调试用）
     testDiceEffect,
     testWinEffect,
+    
+    // 🔥 新增：音频相关方法
+    safePlayAudio,
+    getAudioSystemInfo,
     
     // 其他方法
     forceComplete,

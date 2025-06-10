@@ -1,5 +1,6 @@
+// src/composables/useGameEffects.ts - 配合简化音频系统的调整版本
 import { ref, computed, reactive, watch, readonly } from 'vue'
-import { useAudio } from './useAudio'
+import { useAudio } from './useAudio' // 🔥 使用简化后的音频系统
 import type { ComponentPublicInstance } from 'vue'
 
 export interface EffectConfig {
@@ -71,7 +72,7 @@ export interface GlowEffect {
 
 export interface WinEffectOptions {
   winAmount: number
-  winType: 'small' | 'medium' | 'big' | 'jackpot'
+  winType: 'small' | 'medium' | 'big' | 'jackpot' // 🔥 修改：与简化音频系统一致
   centerX?: number
   centerY?: number
   duration?: number
@@ -87,7 +88,13 @@ export interface DiceEffectOptions {
 }
 
 export const useGameEffects = () => {
-  const { playSound, playWinSound } = useAudio()
+  // 🔥 修改：使用简化后的音频系统
+  const { 
+    playSound, 
+    playWinSound, 
+    playDiceRollSound,
+    canPlayAudio 
+  } = useAudio()
 
   // 特效配置
   const config = reactive<EffectConfig>({
@@ -101,7 +108,7 @@ export const useGameEffects = () => {
     qualityLevel: 'high'
   })
 
-  // 组件引用 - 移除 chipAnimationRef
+  // 组件引用
   const winningEffectRef = ref<ComponentPublicInstance>()
   const diceRollingEffectRef = ref<ComponentPublicInstance>()
 
@@ -129,12 +136,35 @@ export const useGameEffects = () => {
     return multipliers[config.qualityLevel]
   })
 
+  // 🔥 新增：音效播放安全包装函数
+  const safePlaySound = async (soundFunction: () => Promise<boolean> | boolean) => {
+    try {
+      if (canPlayAudio.value) {
+        const result = await soundFunction()
+        return result
+      } else {
+        console.log('🔇 音频系统未就绪，跳过音效播放')
+        // 使用震动作为替代反馈
+        if (config.enableScreenShake && 'vibrate' in navigator) {
+          navigator.vibrate(50)
+        }
+        return false
+      }
+    } catch (error) {
+      console.warn('⚠️ 音效播放失败，使用震动反馈:', error)
+      // 降级到震动反馈
+      if (config.enableScreenShake && 'vibrate' in navigator) {
+        navigator.vibrate(50)
+      }
+      return false
+    }
+  }
+
   // 生成唯一ID
   const generateEffectId = (type: string): string => {
     return `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  // 移除筹码动画相关的 setChipAnimationRef 方法
   const setWinningEffectRef = (ref: ComponentPublicInstance | null) => {
     if (ref) winningEffectRef.value = ref
   }
@@ -143,7 +173,7 @@ export const useGameEffects = () => {
     if (ref) diceRollingEffectRef.value = ref
   }
 
-  // 中奖特效
+  // 🔥 修改：中奖特效 - 使用简化后的音频系统
   const playWinEffect = async (options: WinEffectOptions): Promise<string | null> => {
     if (!canPlayEffects.value || !winningEffectRef.value) return null
 
@@ -151,8 +181,8 @@ export const useGameEffects = () => {
     const adjustedDuration = (options.duration || 3000) / effectiveSpeed.value
 
     try {
-      // 播放中奖音效
-      playWinSound(options.winType)
+      // 🔥 修改：使用简化后的音频系统播放中奖音效
+      await safePlaySound(() => playWinSound())
 
       // 启动中奖特效组件
       ;(winningEffectRef.value as any).show = true
@@ -207,12 +237,12 @@ export const useGameEffects = () => {
 
       return effectId
     } catch (error) {
-      console.error('中奖特效播放失败:', error)
+      console.error('❌ 中奖特效播放失败:', error)
       return null
     }
   }
 
-  // 骰子特效
+  // 🔥 修改：骰子特效 - 使用简化后的音频系统
   const playDiceEffect = async (options: DiceEffectOptions): Promise<string | null> => {
     if (!canPlayEffects.value || !diceRollingEffectRef.value) return null
 
@@ -223,18 +253,8 @@ export const useGameEffects = () => {
       ;(diceRollingEffectRef.value as any).show = true
       ;(diceRollingEffectRef.value as any).results = options.diceResults
 
-      // 播放摇骰音效
-      playSound('dice-shake')
-
-      // 延迟播放滚动音效
-      setTimeout(() => {
-        playSound('dice-roll')
-      }, options.cupShakeDuration || 2000)
-
-      // 延迟播放结果音效
-      setTimeout(() => {
-        playSound('result-reveal')
-      }, (options.cupShakeDuration || 2000) + (options.rollDuration || 2000))
+      // 🔥 修改：使用简化后的音频系统播放摇骰音效
+      await safePlaySound(() => playDiceRollSound())
 
       const totalDuration = (options.cupShakeDuration || 2000) + 
                            (options.rollDuration || 2000) + 
@@ -262,12 +282,12 @@ export const useGameEffects = () => {
 
       return effectId
     } catch (error) {
-      console.error('骰子特效播放失败:', error)
+      console.error('❌ 骰子特效播放失败:', error)
       return null
     }
   }
 
-  // 屏幕震动效果
+  // 屏幕震动效果 - 保持不变
   const playScreenShake = async (options: ScreenShakeOptions): Promise<string> => {
     if (!config.enableScreenShake) return ''
 
@@ -318,7 +338,7 @@ export const useGameEffects = () => {
     return effectId
   }
 
-  // 粒子效果
+  // 粒子效果 - 保持不变，但优化了性能
   const playParticleEffect = async (
     type: 'celebration' | 'explosion' | 'sparkle' | 'coins',
     options: {
@@ -348,7 +368,7 @@ export const useGameEffects = () => {
         x: options.x,
         y: options.y,
         vx: Math.cos(angle) * velocity,
-        vy: Math.sin(angle) * velocity - 100, // 向上的初始速度
+        vy: Math.sin(angle) * velocity - 100,
         life,
         maxLife: life,
         size: 2 + Math.random() * 4,
@@ -404,7 +424,7 @@ export const useGameEffects = () => {
         if (particle.life > 0) {
           aliveParticles++
           
-          // 创建DOM元素（简化版，实际可能需要Canvas或WebGL）
+          // 创建DOM元素（简化版）
           createParticleElement(particle)
         }
       })
@@ -477,7 +497,7 @@ export const useGameEffects = () => {
     })
   }
 
-  // 发光效果
+  // 发光效果 - 保持不变
   const playGlowEffect = (element: HTMLElement, options: Partial<GlowEffect> = {}): string => {
     if (!config.enableGlow) return ''
 
@@ -583,7 +603,7 @@ export const useGameEffects = () => {
         try {
           await effect()
         } catch (error) {
-          console.error('特效队列处理错误:', error)
+          console.error('❌ 特效队列处理错误:', error)
         }
       }
     }
@@ -591,11 +611,11 @@ export const useGameEffects = () => {
     isProcessingQueue.value = false
   }
 
-  // 复合特效
+  // 🔥 修改：复合特效 - 使用简化后的音频系统
   const playBetConfirmEffect = async (element: HTMLElement): Promise<void> => {
     await Promise.all([
       playGlowEffect(element, { color: '#00FF00', duration: 500 }),
-      playSound('bet-confirm')
+      safePlaySound(() => playSound('bet-confirm'))
     ])
   }
 
@@ -609,7 +629,7 @@ export const useGameEffects = () => {
     try {
       localStorage.setItem('sicbo_effects_config', JSON.stringify(config))
     } catch (error) {
-      console.error('保存特效配置失败:', error)
+      console.error('❌ 保存特效配置失败:', error)
     }
   }
 
@@ -621,9 +641,15 @@ export const useGameEffects = () => {
         Object.assign(config, savedConfig)
       }
     } catch (error) {
-      console.error('加载特效配置失败:', error)
+      console.error('❌ 加载特效配置失败:', error)
     }
   }
+
+  // 🔥 新增：音频系统状态信息
+  const getAudioInfo = () => ({
+    canPlayAudio: canPlayAudio.value,
+    audioSystemType: 'simplified'
+  })
 
   // 性能监控
   const getPerformanceInfo = () => ({
@@ -633,7 +659,8 @@ export const useGameEffects = () => {
       .reduce((total, system) => total + system.particles.filter(p => p.life > 0).length, 0),
     screenShakeActive: screenShakeState.value.isActive,
     queuedEffects: effectQueue.value.length,
-    config: { ...config }
+    config: { ...config },
+    audioInfo: getAudioInfo() // 🔥 新增音频信息
   })
 
   // 监听配置变化
@@ -654,18 +681,18 @@ export const useGameEffects = () => {
     effectiveSpeed,
     qualityMultiplier,
     
-    // 组件引用设置 - 移除 setChipAnimationRef
+    // 组件引用设置
     setWinningEffectRef,
     setDiceRollingEffectRef,
     
-    // 特效播放 - 移除筹码相关方法
+    // 特效播放
     playWinEffect,
     playDiceEffect,
     playScreenShake,
     playParticleEffect,
     playGlowEffect,
     
-    // 复合特效 - 移除筹码相关的复合特效
+    // 复合特效
     playBetConfirmEffect,
     
     // 控制方法
@@ -677,6 +704,10 @@ export const useGameEffects = () => {
     updateConfig,
     saveConfig,
     loadConfig,
-    getPerformanceInfo
+    getPerformanceInfo,
+    
+    // 🔥 新增：音频相关方法
+    safePlaySound,
+    getAudioInfo
   }
 }
