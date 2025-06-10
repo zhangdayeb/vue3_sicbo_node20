@@ -59,7 +59,7 @@ export const useAudio = () => {
     // UI 音效
     {
       id: 'click',
-      url: '/audio/chip-select.mp3', // 🔥 修改：原来是 new URL('@/assets/audio/chip-select.mp3', import.meta.url).href
+      url: '/audio/chip-select.mp3', // 🔥 修改：
       category: 'sfx',
       volume: 0.6,
       preload: true

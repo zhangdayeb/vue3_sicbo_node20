@@ -199,7 +199,7 @@ const startAnimation = async (newResults?: number[]) => {
   setTimeout(() => {
     showDice.value = true
     // 🔥 修改1：播放展示音效
-    playSound('/audio/dice-roll.mp3') // 原来是 './src/assets/audio/dice-roll.mp3'
+    playSound('/audio/dice-roll.mp3') 
     emit('phase-change', 'showing')
   }, 300)
   
@@ -207,7 +207,7 @@ const startAnimation = async (newResults?: number[]) => {
   setTimeout(() => {
     showResult.value = true
     // 🔥 修改2：播放结果音效
-    playSound('/audio/win.mp3') // 原来是 './src/assets/audio/win.mp3'
+    playSound('/audio/win.mp3') 
   }, 600)
   
   // 阶段4: 完成动画
