@@ -70,6 +70,7 @@ function createAudioSystem() {
     { id: 'hover', url: '/audio/chip-select.mp3', category: 'sfx', volume: 0.4, preload: true },
     { id: 'error', url: '/audio/error.mp3', category: 'sfx', volume: 0.8, preload: true },
     { id: 'success', url: '/audio/bet-confirm.mp3', category: 'sfx', volume: 0.7, preload: true },
+    { id: 'bg001', url: '/audio/bg001.mp3', category: 'sfx', volume: 0.7, preload: true },
 
     // 筹码音效
     { id: 'chip-select', url: '/audio/chip-select.mp3', category: 'sfx', volume: 0.7, preload: true },
@@ -82,6 +83,8 @@ function createAudioSystem() {
 
     // 中奖音效
     { id: 'win-small', url: '/audio/win-small.mp3', category: 'sfx', volume: 0.9, preload: true },
+    { id: 'bet-start', url: '/audio/bet-start.mp3', category: 'sfx', volume: 0.9, preload: true },
+    { id: 'bet-stop', url: '/audio/bet-stop.mp3', category: 'sfx', volume: 0.9, preload: true },
     { id: 'win', url: '/audio/win.mp3', category: 'sfx', volume: 1.0, preload: true }
   ])
 
