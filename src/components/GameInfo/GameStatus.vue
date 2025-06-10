@@ -47,16 +47,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 连接状态指示器 - 仅在连接异常时显示 -->
-      <div 
-        v-if="!isConnected" 
-        class="connection-status"
-        :class="connectionStatusClass"
-      >
-        <div class="connection-icon">{{ connectionIcon }}</div>
-        <span class="connection-text">{{ connectionText }}</span>
-      </div>
     </n-config-provider>
   </div>
 </template>
@@ -65,6 +55,7 @@
 import { computed, reactive, onMounted, onUnmounted } from 'vue'
 import { NConfigProvider } from 'naive-ui'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
+import { useAudio } from '@/composables/useAudio'
 import type { CountdownData, GameResultData, GameStatusData } from '@/types/api'
 
 // 游戏主题配置 - 最小化配置，保持原有样式
@@ -83,39 +74,29 @@ const gameState = reactive({
   countdown: 0,
   gameNumber: '',
   round: 1,
-  lastUpdateTime: 0
+  lastUpdateTime: 0,
+  lastCountdownValue: 0  // 🔥 新增：记录上一次的倒计时值，用于判断音效触发时机
 })
 
-// 连接状态
-const connectionState = reactive({
-  isConnected: false,
-  status: 'disconnected' as string,
-  error: null as string | null
-})
+// 🔥 集成音频功能
+const { playSound } = useAudio()
 
 // WebSocket 事件监听
 const { 
   onCountdown, 
   onGameResult, 
   onGameStatus, 
-  onError,
-  getConnectionStatus,
-  isConnected: wsConnected
+  onError
 } = useWebSocketEvents()
 
 // 定时器引用
 let resultDisplayTimer: number | null = null
-let countdownTimer: number | null = null
 
 // 清理定时器
 const clearTimers = () => {
   if (resultDisplayTimer) {
     clearTimeout(resultDisplayTimer)
     resultDisplayTimer = null
-  }
-  if (countdownTimer) {
-    clearInterval(countdownTimer)
-    countdownTimer = null
   }
 }
 
@@ -157,36 +138,24 @@ const statusText = computed(() => {
   return statusMap[gameState.status] || '未知状态'
 })
 
-// 连接状态相关
-const isConnected = computed(() => {
-  return connectionState.isConnected && wsConnected()
-})
-
-const connectionStatusClass = computed(() => {
-  return {
-    'connection-error': connectionState.status === 'error',
-    'connection-disconnected': connectionState.status === 'disconnected',
-    'connection-reconnecting': connectionState.status === 'reconnecting'
+// 🔥 音效播放函数
+const playBetStartSound = () => {
+  try {
+    playSound('bet-start')
+    console.log('🎵 播放投注开始音效')
+  } catch (error) {
+    console.warn('播放bet-start音效失败:', error)
   }
-})
+}
 
-const connectionIcon = computed(() => {
-  switch (connectionState.status) {
-    case 'error': return '❌'
-    case 'reconnecting': return '🔄'
-    case 'disconnected': return '⚠️'
-    default: return '🔌'
+const playBetStopSound = () => {
+  try {
+    playSound('bet-stop')
+    console.log('🎵 播放投注结束音效')
+  } catch (error) {
+    console.warn('播放bet-stop音效失败:', error)
   }
-})
-
-const connectionText = computed(() => {
-  switch (connectionState.status) {
-    case 'error': return '连接错误'
-    case 'reconnecting': return '重连中...'
-    case 'disconnected': return '连接断开'
-    default: return '连接异常'
-  }
-})
+}
 
 // WebSocket 事件处理函数
 
@@ -194,17 +163,31 @@ const connectionText = computed(() => {
 const handleCountdown = (data: CountdownData) => {
   console.log('🎯 GameStatus 收到倒计时事件:', data)
   
+  const previousCountdown = gameState.countdown
+  const previousStatus = gameState.status
+  
   gameState.countdown = data.countdown
   gameState.gameNumber = data.game_number
   gameState.lastUpdateTime = Date.now()
   
-  // 根据倒计时和状态更新游戏阶段
+  // 🔥 音效触发逻辑
   if (data.status === 'betting' && data.countdown > 0) {
-    gameState.status = 'betting'
-    
-    // 启动本地倒计时（防止网络延迟）
-    startLocalCountdown()
+    // 投注开始：从非投注状态进入投注状态，或者倒计时从0变为有值
+    if (previousStatus !== 'betting' || (previousCountdown === 0 && data.countdown > 0)) {
+      gameState.status = 'betting'
+      playBetStartSound()
+      console.log('🎵 投注阶段开始，播放开始音效')
+    } else {
+      // 投注进行中，只更新状态不播放音效
+      gameState.status = 'betting'
+    }
   } else if (data.status === 'dealing' || data.countdown === 0) {
+    // 投注结束：从投注状态变为开牌状态，或者倒计时归零
+    if (previousStatus === 'betting' && (data.status === 'dealing' || data.countdown === 0)) {
+      playBetStopSound()
+      console.log('🎵 投注阶段结束，播放结束音效')
+    }
+    
     gameState.status = 'dealing'
     gameState.countdown = 0
     clearTimers()
@@ -213,6 +196,9 @@ const handleCountdown = (data: CountdownData) => {
     gameState.countdown = 0
     clearTimers()
   }
+  
+  // 更新上一次倒计时值
+  gameState.lastCountdownValue = data.countdown
 }
 
 // 处理游戏结果事件
@@ -250,38 +236,6 @@ const handleGameStatus = (data: GameStatusData) => {
 // 处理连接错误
 const handleError = (error: any) => {
   console.error('❌ WebSocket 错误:', error)
-  connectionState.error = error.message || '连接错误'
-}
-
-// 本地倒计时（防止网络延迟造成的不准确）
-const startLocalCountdown = () => {
-  clearTimers()
-  
-  countdownTimer = window.setInterval(() => {
-    if (gameState.countdown > 0) {
-      gameState.countdown--
-      
-      // 倒计时到0时自动切换到开牌状态
-      if (gameState.countdown === 0) {
-        gameState.status = 'dealing'
-        clearTimers()
-        console.log('⏰ 本地倒计时结束，切换到开牌状态')
-      }
-    } else {
-      clearTimers()
-    }
-  }, 1000)
-}
-
-// 更新连接状态
-const updateConnectionStatus = () => {
-  const wsStatus = getConnectionStatus()
-  connectionState.status = wsStatus
-  connectionState.isConnected = wsConnected()
-  
-  if (connectionState.isConnected) {
-    connectionState.error = null
-  }
 }
 
 // 生命周期管理
@@ -293,19 +247,6 @@ onMounted(() => {
   onGameResult(handleGameResult)
   onGameStatus(handleGameStatus)
   onError(handleError)
-  
-  // 初始化连接状态
-  updateConnectionStatus()
-  
-  // 定期检查连接状态
-  const connectionChecker = setInterval(() => {
-    updateConnectionStatus()
-  }, 1000)
-  
-  // 组件卸载时清理
-  onUnmounted(() => {
-    clearInterval(connectionChecker)
-  })
 })
 
 onUnmounted(() => {
@@ -430,39 +371,6 @@ onUnmounted(() => {
   stroke: #FF5722;
 }
 
-/* 连接状态指示器 */
-.connection-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(244, 67, 54, 0.9);
-  padding: 8px 12px;
-  border-radius: 20px;
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.connection-status.connection-reconnecting {
-  background: rgba(255, 152, 0, 0.9);
-}
-
-.connection-status.connection-disconnected {
-  background: rgba(158, 158, 158, 0.9);
-}
-
-.connection-icon {
-  font-size: 12px;
-  line-height: 1;
-}
-
-.connection-text {
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
 /* 动画效果 */
 @keyframes pulse {
   0%, 100% {
@@ -471,15 +379,5 @@ onUnmounted(() => {
   50% {
     opacity: 0.5;
   }
-}
-
-/* 重连动画 */
-.connection-status.connection-reconnecting .connection-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 </style>

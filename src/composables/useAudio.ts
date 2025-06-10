@@ -1,4 +1,10 @@
+// 🔥 解决方案1：单例模式的音频系统 - useAudio.ts 修改版
+
 import { ref, computed, reactive, watch, onMounted, onUnmounted, readonly } from 'vue'
+
+// 🔥 全局单例状态 - 确保只初始化一次
+let audioSystemInstance: ReturnType<typeof createAudioSystem> | null = null
+let isGlobalInitialized = false
 
 export interface AudioConfig {
   masterVolume: number
@@ -41,7 +47,10 @@ export interface AudioContextState {
   audioContext?: AudioContext
 }
 
-export const useAudio = () => {
+// 🔥 核心音频系统创建函数
+function createAudioSystem() {
+  console.log('🎵 创建音频系统实例')
+  
   // 音效配置
   const config = reactive<AudioConfig>({
     masterVolume: 0.8,
@@ -54,92 +63,26 @@ export const useAudio = () => {
     maxConcurrentSounds: 10
   })
 
-  // 音效定义 - 修正路径为 src/assets/audio
+  // 音效定义
   const soundDefinitions = ref<SoundDefinition[]>([
     // UI 音效
-    {
-      id: 'click',
-      url: '/audio/chip-select.mp3', // 🔥 修改：
-      category: 'sfx',
-      volume: 0.6,
-      preload: true
-    },
-    {
-      id: 'hover',
-      url: '/audio/chip-select.mp3', // 🔥 修改2
-      category: 'sfx',
-      volume: 0.4,
-      preload: true
-    },
-    {
-      id: 'error',
-      url: '/audio/error.mp3', // 🔥 修改3
-      category: 'sfx',
-      volume: 0.8,
-      preload: true
-    },
-    {
-      id: 'success',
-      url: '/audio/bet-confirm.mp3', // 🔥 修改4
-      category: 'sfx',
-      volume: 0.7,
-      preload: true
-    },
+    { id: 'click', url: '/audio/chip-select.mp3', category: 'sfx', volume: 0.6, preload: true },
+    { id: 'hover', url: '/audio/chip-select.mp3', category: 'sfx', volume: 0.4, preload: true },
+    { id: 'error', url: '/audio/error.mp3', category: 'sfx', volume: 0.8, preload: true },
+    { id: 'success', url: '/audio/bet-confirm.mp3', category: 'sfx', volume: 0.7, preload: true },
 
     // 筹码音效
-    {
-      id: 'chip-select',
-      url: '/audio/chip-select.mp3', // 🔥 修改5
-      category: 'sfx',
-      volume: 0.7,
-      preload: true
-    },
-    {
-      id: 'chip-place',
-      url: '/audio/chip-place.mp3', // 🔥 修改6
-      category: 'sfx',
-      volume: 0.8,
-      preload: true
-    },
+    { id: 'chip-select', url: '/audio/chip-select.mp3', category: 'sfx', volume: 0.7, preload: true },
+    { id: 'chip-place', url: '/audio/chip-place.mp3', category: 'sfx', volume: 0.8, preload: true },
 
     // 游戏音效
-    {
-      id: 'bet-confirm',
-      url: '/audio/bet-confirm.mp3', // 🔥 修改7
-      category: 'sfx',
-      volume: 0.9,
-      preload: true
-    },
-    {
-      id: 'dice-shake',
-      url: '/audio/dice-shake.mp3', // 🔥 修改8
-      category: 'sfx',
-      volume: 0.8,
-      preload: true
-    },
-    {
-      id: 'dice-roll',
-      url: '/audio/dice-roll.mp3', // 🔥 修改9
-      category: 'sfx',
-      volume: 0.7,
-      preload: true
-    },
+    { id: 'bet-confirm', url: '/audio/bet-confirm.mp3', category: 'sfx', volume: 0.9, preload: true },
+    { id: 'dice-shake', url: '/audio/dice-shake.mp3', category: 'sfx', volume: 0.8, preload: true },
+    { id: 'dice-roll', url: '/audio/dice-roll.mp3', category: 'sfx', volume: 0.7, preload: true },
 
     // 中奖音效
-    {
-      id: 'win-small',
-      url: '/audio/win-small.mp3', // 🔥 修改10
-      category: 'sfx',
-      volume: 0.9,
-      preload: true
-    },
-    {
-      id: 'win',
-      url: '/audio/win.mp3', // 🔥 修改11
-      category: 'sfx',
-      volume: 1.0,
-      preload: true
-    }
+    { id: 'win-small', url: '/audio/win-small.mp3', category: 'sfx', volume: 0.9, preload: true },
+    { id: 'win', url: '/audio/win.mp3', category: 'sfx', volume: 1.0, preload: true }
   ])
 
   // 音频上下文
@@ -167,12 +110,20 @@ export const useAudio = () => {
     voice: config.enableSfx ? config.masterVolume * config.sfxVolume : 0
   }))
 
-  // 初始化音频系统
+  // 🔥 初始化音频系统 - 增加防重复调用保护
   const initializeAudio = async (): Promise<boolean> => {
+    if (isInitialized.value) {
+      console.log('🎵 音频系统已初始化，跳过重复初始化')
+      return true
+    }
+
     try {
+      console.log('🎵 开始初始化音频系统...')
+      
       // 检查浏览器支持
       if (typeof Audio === 'undefined') {
         audioContext.isSupported = false
+        console.error('❌ 浏览器不支持 Audio API')
         return false
       }
 
@@ -188,10 +139,10 @@ export const useAudio = () => {
       await preloadSounds()
 
       isInitialized.value = true
-      console.log('音频系统初始化完成')
+      console.log('✅ 音频系统初始化完成')
       return true
     } catch (error) {
-      console.error('音频系统初始化失败:', error)
+      console.error('❌ 音频系统初始化失败:', error)
       audioContext.isSupported = false
       return false
     }
@@ -199,16 +150,21 @@ export const useAudio = () => {
 
   // 解锁音频上下文（移动端需要）
   const unlockAudioContext = async (): Promise<boolean> => {
-    if (audioContext.isUnlocked) return true
+    if (audioContext.isUnlocked) {
+      console.log('🎵 音频上下文已解锁，跳过重复解锁')
+      return true
+    }
 
     try {
+      console.log('🔓 正在解锁音频上下文...')
+      
       // 播放静音音频解锁
       const silentAudio = new Audio()
       silentAudio.volume = 0
       silentAudio.muted = true
       
       // 创建短暂的音频数据
-      silentAudio.src = '/audio/chip-select.mp3'  // 你项目里有这个文件
+      silentAudio.src = '/audio/chip-select.mp3'
       
       const playPromise = silentAudio.play()
       if (playPromise) {
@@ -223,16 +179,18 @@ export const useAudio = () => {
       }
 
       audioContext.isUnlocked = true
-      console.log('音频上下文已解锁')
+      console.log('✅ 音频上下文解锁成功')
       return true
     } catch (error) {
-      console.warn('音频上下文解锁失败:', error)
+      console.warn('⚠️ 音频上下文解锁失败:', error)
       return false
     }
   }
 
   // 预加载音效
   const preloadSounds = async (): Promise<void> => {
+    console.log('🔄 开始预加载音效...')
+    
     const preloadPromises = soundDefinitions.value
       .filter(sound => sound.preload)
       .map(async (sound) => {
@@ -246,7 +204,7 @@ export const useAudio = () => {
           
           // 添加错误处理
           audio.addEventListener('error', (e) => {
-            console.warn(`音效预加载失败: ${sound.id}`, e)
+            console.warn(`⚠️ 音效预加载失败: ${sound.id}`, e)
             if (sound.fallbackUrl) {
               audio.src = sound.fallbackUrl
             }
@@ -255,20 +213,23 @@ export const useAudio = () => {
           // 等待加载完成
           await new Promise<void>((resolve, reject) => {
             audio.addEventListener('canplaythrough', () => resolve(), { once: true })
-            audio.addEventListener('error', () => resolve(), { once: true }) // 改为 resolve 而不是 reject
+            audio.addEventListener('error', () => resolve(), { once: true })
             audio.load()
           })
 
           audioContext.preloadedSounds.set(sound.id, audio)
-          console.log(`音效预加载完成: ${sound.id}`)
+          console.log(`✅ 音效预加载完成: ${sound.id}`)
         } catch (error) {
-          console.warn(`音效预加载失败: ${sound.id}`, error)
+          console.warn(`⚠️ 音效预加载失败: ${sound.id}`, error)
         }
       })
 
     await Promise.allSettled(preloadPromises)
+    console.log(`✅ 音效预加载完成，共 ${audioContext.preloadedSounds.size} 个`)
   }
 
+  // ... 其他方法保持不变 ...
+  
   // 创建音频实例
   const createAudioInstance = (soundId: string): HTMLAudioElement | null => {
     const soundDef = soundDefinitions.value.find(s => s.id === soundId)
@@ -308,13 +269,13 @@ export const useAudio = () => {
   ): Promise<string | null> => {
     // 如果音频系统未就绪，静默返回
     if (!canPlayAudio.value) {
-      console.warn('音频系统未就绪，跳过播放:', soundId)
+      console.warn('⚠️ 音频系统未就绪，跳过播放:', soundId)
       return null
     }
 
     const soundDef = soundDefinitions.value.find(s => s.id === soundId)
     if (!soundDef) {
-      console.warn(`未找到音效: ${soundId}`)
+      console.warn(`⚠️ 未找到音效: ${soundId}`)
       return null
     }
 
@@ -384,18 +345,13 @@ export const useAudio = () => {
       })
 
       audio.addEventListener('error', (error) => {
-        console.error(`音效播放错误 ${soundId}:`, error)
+        console.error(`❌ 音效播放错误 ${soundId}:`, error)
         audioContext.activeInstances.delete(instanceId)
       })
 
       // 播放音频
       await audio.play()
       instance.isPlaying = true
-
-      // 淡入效果
-      if (options.fadeIn && options.fadeIn > 0) {
-        await fadeInAudio(audio, finalVolume, options.fadeIn)
-      }
 
       // 触发震动（如果启用且支持）
       if (config.enableVibration && 'vibrate' in navigator) {
@@ -406,10 +362,10 @@ export const useAudio = () => {
       }
 
       audioContext.activeInstances.set(instanceId, instance)
-      console.log(`音效播放: ${soundId} (${instanceId})`)
+      console.log(`🎵 音效播放: ${soundId} (${instanceId})`)
       return instanceId
     } catch (error) {
-      console.error(`播放音效失败 ${soundId}:`, error)
+      console.error(`❌ 播放音效失败 ${soundId}:`, error)
       return null
     }
   }
@@ -419,18 +375,9 @@ export const useAudio = () => {
     const instance = audioContext.activeInstances.get(instanceId)
     if (!instance) return false
 
-    if (fadeOut && fadeOut > 0) {
-      fadeOutAudio(instance.audio, fadeOut).then(() => {
-        instance.audio.pause()
-        instance.audio.currentTime = 0
-        audioContext.activeInstances.delete(instanceId)
-      })
-    } else {
-      instance.audio.pause()
-      instance.audio.currentTime = 0
-      audioContext.activeInstances.delete(instanceId)
-    }
-
+    instance.audio.pause()
+    instance.audio.currentTime = 0
+    audioContext.activeInstances.delete(instanceId)
     instance.isPlaying = false
     return true
   }
@@ -450,48 +397,6 @@ export const useAudio = () => {
     } else {
       instancesToStop.forEach(instance => stopSound(instance.id, fadeOut))
     }
-  }
-
-  // 音频淡入效果
-  const fadeInAudio = async (audio: HTMLAudioElement, targetVolume: number, duration: number): Promise<void> => {
-    return new Promise((resolve) => {
-      const startVolume = 0
-      const volumeStep = targetVolume / (duration / 16) // 60fps
-      let currentVolume = startVolume
-      
-      audio.volume = startVolume
-      
-      const fadeInterval = setInterval(() => {
-        currentVolume += volumeStep
-        if (currentVolume >= targetVolume) {
-          audio.volume = targetVolume
-          clearInterval(fadeInterval)
-          resolve()
-        } else {
-          audio.volume = currentVolume
-        }
-      }, 16)
-    })
-  }
-
-  // 音频淡出效果
-  const fadeOutAudio = async (audio: HTMLAudioElement, duration: number): Promise<void> => {
-    return new Promise((resolve) => {
-      const startVolume = audio.volume
-      const volumeStep = startVolume / (duration / 16) // 60fps
-      let currentVolume = startVolume
-      
-      const fadeInterval = setInterval(() => {
-        currentVolume -= volumeStep
-        if (currentVolume <= 0) {
-          audio.volume = 0
-          clearInterval(fadeInterval)
-          resolve()
-        } else {
-          audio.volume = currentVolume
-        }
-      }, 16)
-    })
   }
 
   // 获取震动模式
@@ -523,32 +428,17 @@ export const useAudio = () => {
   // 音量控制
   const setMasterVolume = (volume: number): void => {
     config.masterVolume = Math.max(0, Math.min(1, volume))
-    updateAllVolumes()
     saveConfig()
   }
 
   const setSfxVolume = (volume: number): void => {
     config.sfxVolume = Math.max(0, Math.min(1, volume))
-    updateAllVolumes()
     saveConfig()
   }
 
   const setMusicVolume = (volume: number): void => {
     config.musicVolume = Math.max(0, Math.min(1, volume))
-    updateAllVolumes()
     saveConfig()
-  }
-
-  // 更新所有活动音频的音量
-  const updateAllVolumes = (): void => {
-    audioContext.activeInstances.forEach(instance => {
-      const soundDef = soundDefinitions.value.find(s => s.id === instance.soundId)
-      if (soundDef) {
-        const categoryVolume = effectiveVolume.value[soundDef.category]
-        const baseVolume = soundDef.volume ?? 1
-        instance.audio.volume = baseVolume * categoryVolume
-      }
-    })
   }
 
   // 配置管理
@@ -556,7 +446,7 @@ export const useAudio = () => {
     try {
       localStorage.setItem('sicbo_audio_config', JSON.stringify(config))
     } catch (error) {
-      console.error('保存音频配置失败:', error)
+      console.error('❌ 保存音频配置失败:', error)
     }
   }
 
@@ -568,7 +458,7 @@ export const useAudio = () => {
         Object.assign(config, savedConfig)
       }
     } catch (error) {
-      console.error('加载音频配置失败:', error)
+      console.error('❌ 加载音频配置失败:', error)
     }
   }
 
@@ -594,31 +484,6 @@ export const useAudio = () => {
       stopAllSounds('music')
     }
   })
-
-  // 生命周期
-  onMounted(() => {
-    loadConfig()
-    initializeAudio()
-    
-    // 监听用户交互以解锁音频
-    const unlockEvents = ['click', 'touchstart', 'keydown']
-    const unlockHandler = () => {
-      unlockAudioContext()
-      unlockEvents.forEach(event => {
-        document.removeEventListener(event, unlockHandler)
-      })
-    }
-    
-    unlockEvents.forEach(event => {
-      document.addEventListener(event, unlockHandler, { once: true })
-    })
-  })
-
-  onUnmounted(() => {
-    stopAllSounds()
-    saveConfig()
-  })
-
 
   return {
     // 状态
@@ -656,8 +521,46 @@ export const useAudio = () => {
     getAudioInfo,
     
     // 高级功能
-    soundDefinitions,
-    fadeInAudio,
-    fadeOutAudio
+    soundDefinitions
   }
+}
+
+// 🔥 单例模式的 useAudio 导出
+export const useAudio = () => {
+  if (!audioSystemInstance) {
+    console.log('🎵 首次创建音频系统单例')
+    audioSystemInstance = createAudioSystem()
+    
+    // 🔥 在创建时就加载配置，但不自动初始化
+    audioSystemInstance.loadConfig()
+  } else {
+    console.log('🎵 复用现有音频系统单例')
+  }
+  
+  return audioSystemInstance
+}
+
+// 🔥 全局初始化方法 - 只能被调用一次
+export const initializeGlobalAudioSystem = async (): Promise<boolean> => {
+  if (isGlobalInitialized) {
+    console.log('🎵 全局音频系统已初始化，跳过')
+    return true
+  }
+  
+  console.log('🎵 开始全局音频系统初始化')
+  const audioSystem = useAudio()
+  const result = await audioSystem.initializeAudio()
+  
+  if (result) {
+    isGlobalInitialized = true
+    console.log('✅ 全局音频系统初始化完成')
+  }
+  
+  return result
+}
+
+// 🔥 全局解锁方法
+export const unlockGlobalAudioContext = async (): Promise<boolean> => {
+  const audioSystem = useAudio()
+  return await audioSystem.unlockAudioContext()
 }

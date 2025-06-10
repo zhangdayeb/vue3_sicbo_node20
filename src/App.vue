@@ -1,3 +1,4 @@
+<!-- App.vue - 修复音频重复初始化版本 -->
 <template>
   <n-message-provider>
     <div id="app">
@@ -51,6 +52,15 @@
                 <span>建立实时连接</span>
                 <i v-if="lifecycleState.initSteps.websocket" class="check-icon">✓</i>
               </div>
+              <!-- 🔥 新增：音频系统初始化步骤 -->
+              <div 
+                class="loading-step" 
+                :class="{ 'completed': audioInitialized }"
+              >
+                <i class="step-icon">🎵</i>
+                <span>初始化音频系统</span>
+                <i v-if="audioInitialized" class="check-icon">✓</i>
+              </div>
             </div>
             <div class="loading-progress">
               <div class="progress-bar">
@@ -96,12 +106,15 @@ import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
 import { useGameLifecycle } from '@/composables/useGameLifecycle'
-import { useAudio } from '@/composables/useAudio'
+import { initializeGlobalAudioSystem, unlockGlobalAudioContext } from '@/composables/useAudio'  // 🔥 修改：使用全局方法
 import { ENV_CONFIG } from '@/utils/envUtils'
 
 // 欢迎界面状态
 const showWelcome = ref(true)
 const isStartingGame = ref(false)
+
+// 🔥 新增：音频系统状态
+const audioInitialized = ref(false)
 
 // 🧠 集成游戏生命周期管理（大脑核心）
 const {
@@ -115,8 +128,6 @@ const {
   enableAudio: true,
   skipGameTypeValidation: ENV_CONFIG.IS_DEV
 })
-// 音频管理
-const { unlockAudioContext, playSound } = useAudio()
 
 // 消息通知状态 - 延迟获取
 let message: any = null
@@ -147,9 +158,12 @@ const showGameScreen = computed(() => {
          !isStartingGame.value
 })
 
-// 初始化进度计算
+// 🔥 修改：初始化进度计算 - 包含音频系统
 const initializationProgress = computed(() => {
-  const steps = lifecycleState.initSteps
+  const steps = {
+    ...lifecycleState.initSteps,
+    audio: audioInitialized.value  // 新增音频步骤
+  }
   const completedSteps = Object.values(steps).filter(Boolean).length
   const totalSteps = Object.keys(steps).length
   return Math.round((completedSteps / totalSteps) * 100)
@@ -168,31 +182,42 @@ const showMessage = (type: 'success' | 'error' | 'info' | 'warning', text: strin
   }
 }
 
-// 方法 - 启动游戏
+// 🔥 修改：启动游戏 - 使用全局音频初始化
 const startGame = async () => {
   try {
     isStartingGame.value = true
     
     console.log('🎮 用户点击开始游戏')
-    console.log('🔊 正在解锁音频上下文...')
     
-    // 先解锁音频上下文
+    // 🔥 步骤1：首先初始化音频系统
+    console.log('🎵 正在初始化音频系统...')
     try {
-      await unlockAudioContext()
+      const audioInitResult = await initializeGlobalAudioSystem()
+      if (audioInitResult) {
+        audioInitialized.value = true
+        console.log('✅ 音频系统初始化成功')
+      } else {
+        console.warn('⚠️ 音频系统初始化失败，继续游戏初始化')
+        audioInitialized.value = true // 即使失败也标记为完成，避免阻塞
+      }
+    } catch (error) {
+      console.error('❌ 音频系统初始化异常:', error)
+      audioInitialized.value = true // 标记为完成，避免阻塞
+    }
+    
+    // 🔥 步骤2：解锁音频上下文
+    console.log('🔓 正在解锁音频上下文...')
+    try {
+      await unlockGlobalAudioContext()
       console.log('✅ 音频上下文解锁成功')
-      
-      // 播放欢迎音效
-      setTimeout(() => {
-        playSound('success')
-      }, 100)
     } catch (error) {
       console.warn('⚠️ 音频上下文解锁失败，继续游戏初始化:', error)
     }
     
-    // 隐藏欢迎界面
+    // 🔥 步骤3：隐藏欢迎界面
     showWelcome.value = false
     
-    // 开始游戏初始化
+    // 🔥 步骤4：开始游戏初始化
     console.log('🚀 开始游戏生命周期初始化...')
     await initialize()
     
@@ -251,12 +276,11 @@ onMounted(async () => {
   } catch (error) {
     console.warn('⚠️ 无法获取消息实例，将使用控制台输出:', error)
   }
+  
+  // 🔥 注意：这里不再进行任何音频初始化，等待用户交互
+  console.log('📋 App.vue 初始化完成，等待用户启动游戏')
 })
 </script>
-
-
-
-
 
 <style>
 /* 全局重置 - 保持原样但添加颜色继承 */
@@ -273,7 +297,7 @@ html, body {
   padding: 0;
   overflow: hidden;
   background: #000;
-  color: #ffffff; /* 🔥 新增：设置全局白色文字 */
+  color: #ffffff;
 }
 
 #app {
@@ -285,7 +309,7 @@ html, body {
   display: flex;
   flex-direction: column;
   background: #000;
-  color: inherit; /* 🔥 新增：继承全局颜色 */
+  color: inherit;
 }
 
 .game-container {
@@ -293,7 +317,7 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  color: inherit; /* 🔥 新增：继承颜色 */
+  color: inherit;
 }
 
 .top-section {
@@ -308,21 +332,19 @@ html, body {
   overflow: hidden;
   background: #0d2818;
   min-height: 0;
-  position: relative; /* 🔥 新增：为投注金额定位提供参考 */
-  z-index: 1; /* 🔥 新增：确保投注区域有独立层级空间 */
-  color: inherit; /* 🔥 新增：继承颜色 */
+  position: relative;
+  z-index: 1;
+  color: inherit;
 }
 
-/* 🔥 新增：确保投注相关元素不被覆盖 */
 .bottom-section * {
   color: inherit;
 }
 
-/* 🔥 新增：为投注金额徽章预留高层级空间 */
 .bottom-section .bet-amount-corner,
 .bottom-section [class*="bet-amount"],
 .bottom-section [class*="amount-corner"] {
-  z-index: 250 !important; /* 高于所有其他层级 */
+  z-index: 250 !important;
 }
 
 /* ========== 欢迎界面样式 ========== */
