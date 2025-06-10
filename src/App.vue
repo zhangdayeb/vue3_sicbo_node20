@@ -1,4 +1,4 @@
-<!-- App.vue - 修复音频重复初始化版本 -->
+<!-- App.vue - 配合简化音频系统的版本 -->
 <template>
   <n-message-provider>
     <div id="app">
@@ -52,13 +52,13 @@
                 <span>建立实时连接</span>
                 <i v-if="lifecycleState.initSteps.websocket" class="check-icon">✓</i>
               </div>
-              <!-- 🔥 新增：音频系统初始化步骤 -->
+              <!-- 🔥 修改：音频系统初始化步骤 - 更简洁 -->
               <div 
                 class="loading-step" 
                 :class="{ 'completed': audioInitialized }"
               >
                 <i class="step-icon">🎵</i>
-                <span>初始化音频系统</span>
+                <span>启用音频系统</span>
                 <i v-if="audioInitialized" class="check-icon">✓</i>
               </div>
             </div>
@@ -106,14 +106,14 @@ import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
 import { useGameLifecycle } from '@/composables/useGameLifecycle'
-import { initializeGlobalAudioSystem, unlockGlobalAudioContext } from '@/composables/useAudio'  // 🔥 修改：使用全局方法
+import { initializeGlobalAudioSystem, unlockGlobalAudioContext } from '@/composables/useAudio'  // 🔥 使用简化后的全局方法
 import { ENV_CONFIG } from '@/utils/envUtils'
 
 // 欢迎界面状态
 const showWelcome = ref(true)
 const isStartingGame = ref(false)
 
-// 🔥 新增：音频系统状态
+// 🔥 简化：音频系统状态
 const audioInitialized = ref(false)
 
 // 🧠 集成游戏生命周期管理（大脑核心）
@@ -158,7 +158,7 @@ const showGameScreen = computed(() => {
          !isStartingGame.value
 })
 
-// 🔥 修改：初始化进度计算 - 包含音频系统
+// 🔥 简化：初始化进度计算 - 包含音频系统
 const initializationProgress = computed(() => {
   const steps = {
     ...lifecycleState.initSteps,
@@ -182,30 +182,29 @@ const showMessage = (type: 'success' | 'error' | 'info' | 'warning', text: strin
   }
 }
 
-// 🔥 修改：启动游戏 - 使用全局音频初始化
+// 🔥 简化：启动游戏 - 使用简化后的音频系统
 const startGame = async () => {
   try {
     isStartingGame.value = true
     
     console.log('🎮 用户点击开始游戏')
     
-    // 🔥 步骤1：首先初始化音频系统
+    // 🔥 步骤1：初始化音频系统（极简版本）
     console.log('🎵 正在初始化音频系统...')
     try {
       const audioInitResult = await initializeGlobalAudioSystem()
       if (audioInitResult) {
-        audioInitialized.value = true
         console.log('✅ 音频系统初始化成功')
       } else {
         console.warn('⚠️ 音频系统初始化失败，继续游戏初始化')
-        audioInitialized.value = true // 即使失败也标记为完成，避免阻塞
       }
+      audioInitialized.value = true // 无论成功失败都标记完成
     } catch (error) {
       console.error('❌ 音频系统初始化异常:', error)
       audioInitialized.value = true // 标记为完成，避免阻塞
     }
     
-    // 🔥 步骤2：解锁音频上下文
+    // 🔥 步骤2：解锁音频上下文（使用真实音频文件）
     console.log('🔓 正在解锁音频上下文...')
     try {
       await unlockGlobalAudioContext()
@@ -232,7 +231,7 @@ const startGame = async () => {
   }
 }
 
-// 监听器
+// 监听器 - 保持原有逻辑
 watch(() => lifecycleState.error, (newError, oldError) => {
   if (newError && newError !== oldError) {
     console.error('🚨 游戏错误:', newError)
@@ -283,7 +282,7 @@ onMounted(async () => {
 </script>
 
 <style>
-/* 全局重置 - 保持原样但添加颜色继承 */
+/* 保持原有样式 - 无需修改 */
 * {
   margin: 0;
   padding: 0;

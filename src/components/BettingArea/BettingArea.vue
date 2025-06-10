@@ -118,7 +118,7 @@
 import type { ComponentPublicInstance } from 'vue'
 import { computed, onMounted, ref, nextTick } from 'vue'
 import { useBettingStore } from '@/stores/bettingStore'
-import { useAudio } from '@/composables/useAudio'
+import { useAudio } from '@/composables/useAudio'  // 🔥 修改：使用简化后的音频系统
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
 import { useGameData } from '@/composables/useGameData'
 import { useGameResults } from '@/composables/useGameResults'
@@ -147,11 +147,14 @@ const isDev = import.meta.env.DEV
 
 // Store 和 Composables
 const bettingStore = useBettingStore()
+
+// 🔥 修改：使用简化后的音频系统
 const { 
   playChipSelectSound, 
   playChipPlaceSound, 
   playBetConfirmSound, 
-  playErrorSound
+  playErrorSound,
+  canPlayAudio
 } = useAudio()
 
 // 游戏结果处理
@@ -193,14 +196,32 @@ const balance = computed(() => {
 const totalBetAmount = computed(() => bettingStore.totalBetAmount)
 const canPlaceBet = computed(() => bettingStore.canPlaceBet)
 
-// 简单的音效回退函数
-const createSimpleBeep = (frequency: number = 800, duration: number = 100) => {
+// 🔥 修改：简化的音效回退函数（使用震动）
+const createSimpleHaptic = (duration: number = 50) => {
   try {
     if ('vibrate' in navigator) {
-      navigator.vibrate(duration / 2)
+      navigator.vibrate(duration)
     }
   } catch (error) {
     // 静默处理
+  }
+}
+
+// 🔥 修改：音效播放包装函数（安全调用）
+const safePlaySound = async (soundFunction: () => Promise<boolean> | boolean) => {
+  try {
+    if (canPlayAudio.value) {
+      const result = await soundFunction()
+      return result
+    } else {
+      console.log('🔇 音频系统未就绪，使用震动反馈')
+      createSimpleHaptic()
+      return false
+    }
+  } catch (error) {
+    console.warn('⚠️ 音效播放失败，使用震动反馈:', error)
+    createSimpleHaptic()
+    return false
   }
 }
 
@@ -208,11 +229,8 @@ const createSimpleBeep = (frequency: number = 800, duration: number = 100) => {
 const selectChip = (value: number): void => {
   bettingStore.selectChip(value)
   
-  try {
-    playChipSelectSound()
-  } catch (error) {
-    createSimpleBeep(600, 80)
-  }
+  // 🔥 修改：安全播放音效
+  safePlaySound(() => playChipSelectSound())
 }
 
 // 方法 - 处理投注
@@ -220,47 +238,32 @@ const handlePlaceBet = async (betType: string): Promise<void> => {
   const success = bettingStore.placeBet(betType as BetType, selectedChip.value)
   
   if (success) {
-    try {
-      playChipPlaceSound()
-    } catch (error) {
-      createSimpleBeep(800, 120)
-    }
+    // 🔥 修改：安全播放音效
+    safePlaySound(() => playChipPlaceSound())
   } else {
-    try {
-      playErrorSound()
-    } catch (error) {
-      createSimpleBeep(300, 300)
-    }
+    // 🔥 修改：安全播放错误音效
+    safePlaySound(() => playErrorSound())
   }
 }
 
 // 方法 - 清除当前投注
 const clearCurrentBets = (): void => {
   bettingStore.clearBets()
-  try {
-    playChipSelectSound()
-  } catch (error) {
-    createSimpleBeep(600, 80)
-  }
+  // 🔥 修改：安全播放音效
+  safePlaySound(() => playChipSelectSound())
 }
 
 // 方法 - 清除投注区域
 const clearField = (): void => {
   bettingStore.clearBets()
-  try {
-    playChipSelectSound()
-  } catch (error) {
-    createSimpleBeep(600, 80)
-  }
+  // 🔥 修改：安全播放音效
+  safePlaySound(() => playChipSelectSound())
 }
 
 // 方法 - 完全清场
 const clearAllField = (): void => {
-  try {
-    playChipSelectSound()
-  } catch (error) {
-    createSimpleBeep(600, 80)
-  }
+  // 🔥 修改：安全播放音效
+  safePlaySound(() => playChipSelectSound())
 }
 
 // 方法 - 重复投注
@@ -268,27 +271,18 @@ const rebet = (): void => {
   const success = bettingStore.rebet()
   
   if (success) {
-    try {
-      playChipPlaceSound()
-    } catch (error) {
-      createSimpleBeep(800, 120)
-    }
+    // 🔥 修改：安全播放音效
+    safePlaySound(() => playChipPlaceSound())
   } else {
-    try {
-      playErrorSound()
-    } catch (error) {
-      createSimpleBeep(300, 300)
-    }
+    // 🔥 修改：安全播放错误音效
+    safePlaySound(() => playErrorSound())
   }
 }
 
 // 方法 - 确认投注
 const confirmBets = async (): Promise<void> => {
-  try {
-    playBetConfirmSound()
-  } catch (error) {
-    createSimpleBeep(1000, 200)
-  }
+  // 🔥 修改：安全播放音效
+  safePlaySound(() => playBetConfirmSound())
 }
 
 // WebSocket 事件处理器
@@ -316,11 +310,8 @@ onGameStatus((data: GameStatusData) => {
 })
 
 onError((error) => {
-  try {
-    playErrorSound()
-  } catch (e) {
-    createSimpleBeep(300, 500)
-  }
+  // 🔥 修改：安全播放错误音效
+  safePlaySound(() => playErrorSound())
 })
 
 // 🔥 修复：特效组件引用设置
@@ -367,6 +358,14 @@ onMounted(async () => {
   setTimeout(async () => {
     await setupEffectRefs()
   }, 500) // 增加延迟时间
+
+  // 🔥 开发模式下添加音频系统状态日志
+  if (isDev) {
+    console.log('🎵 BettingArea 音频系统状态:', {
+      canPlayAudio: canPlayAudio.value,
+      audioSystem: 'simplified'
+    })
+  }
 })
 </script>
 
@@ -378,35 +377,6 @@ onMounted(async () => {
   background: #0d2818;
   color: white;
   position: relative;
-}
-
-/* 🔥 新增：调试按钮样式 */
-.debug-effects {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 10000;
-  display: flex;
-  gap: 8px;
-}
-
-.debug-btn {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.debug-btn:hover {
-  background: #c0392b;
-}
-
-.debug-btn:active {
-  transform: scale(0.95);
 }
 
 /* 游戏区域样式 */

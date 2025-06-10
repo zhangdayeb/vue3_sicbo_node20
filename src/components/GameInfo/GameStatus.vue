@@ -55,7 +55,7 @@
 import { computed, reactive, onMounted, onUnmounted } from 'vue'
 import { NConfigProvider } from 'naive-ui'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
-import { useAudio } from '@/composables/useAudio'
+import { useAudio } from '@/composables/useAudio'  // 🔥 修改：使用简化后的音频系统
 import type { CountdownData, GameResultData, GameStatusData } from '@/types/api'
 
 // 游戏主题配置 - 最小化配置，保持原有样式
@@ -78,8 +78,12 @@ const gameState = reactive({
   lastCountdownValue: 0  // 🔥 新增：记录上一次的倒计时值，用于判断音效触发时机
 })
 
-// 🔥 集成音频功能
-const { playSound } = useAudio()
+// 🔥 修改：集成简化后的音频功能
+const { 
+  playBetStartSound, 
+  playBetStopSound, 
+  canPlayAudio 
+} = useAudio()
 
 // WebSocket 事件监听
 const { 
@@ -138,22 +142,40 @@ const statusText = computed(() => {
   return statusMap[gameState.status] || '未知状态'
 })
 
-// 🔥 音效播放函数
-const playBetStartSound = () => {
+// 🔥 修改：简化的音效播放函数
+const safePlayBetStartSound = async () => {
   try {
-    playSound('bet-start')
-    console.log('🎵 播放投注开始音效')
+    if (canPlayAudio.value) {
+      await playBetStartSound()
+      console.log('🎵 播放投注开始音效')
+    } else {
+      console.log('🔇 音频系统未就绪，跳过投注开始音效')
+      // 使用震动作为替代反馈
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100])
+      }
+    }
   } catch (error) {
-    console.warn('播放bet-start音效失败:', error)
+    console.warn('⚠️ 播放bet-start音效失败:', error)
+    // 静默处理，不影响游戏流程
   }
 }
 
-const playBetStopSound = () => {
+const safePlayBetStopSound = async () => {
   try {
-    playSound('bet-stop')
-    console.log('🎵 播放投注结束音效')
+    if (canPlayAudio.value) {
+      await playBetStopSound()
+      console.log('🎵 播放投注结束音效')
+    } else {
+      console.log('🔇 音频系统未就绪，跳过投注结束音效')
+      // 使用震动作为替代反馈
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200])
+      }
+    }
   } catch (error) {
-    console.warn('播放bet-stop音效失败:', error)
+    console.warn('⚠️ 播放bet-stop音效失败:', error)
+    // 静默处理，不影响游戏流程
   }
 }
 
@@ -170,12 +192,12 @@ const handleCountdown = (data: CountdownData) => {
   gameState.gameNumber = data.game_number
   gameState.lastUpdateTime = Date.now()
   
-  // 🔥 音效触发逻辑
+  // 🔥 修改：音效触发逻辑（使用安全播放）
   if (data.status === 'betting' && data.countdown > 0) {
     // 投注开始：从非投注状态进入投注状态，或者倒计时从0变为有值
     if (previousStatus !== 'betting' || (previousCountdown === 0 && data.countdown > 0)) {
       gameState.status = 'betting'
-      playBetStartSound()
+      safePlayBetStartSound()
       console.log('🎵 投注阶段开始，播放开始音效')
     } else {
       // 投注进行中，只更新状态不播放音效
@@ -184,7 +206,7 @@ const handleCountdown = (data: CountdownData) => {
   } else if (data.status === 'dealing' || data.countdown === 0) {
     // 投注结束：从投注状态变为开牌状态，或者倒计时归零
     if (previousStatus === 'betting' && (data.status === 'dealing' || data.countdown === 0)) {
-      playBetStopSound()
+      safePlayBetStopSound()
       console.log('🎵 投注阶段结束，播放结束音效')
     }
     
@@ -247,6 +269,14 @@ onMounted(() => {
   onGameResult(handleGameResult)
   onGameStatus(handleGameStatus)
   onError(handleError)
+
+  // 🔥 开发模式下添加音频系统状态日志
+  if (import.meta.env.DEV) {
+    console.log('🎵 GameStatus 音频系统状态:', {
+      canPlayAudio: canPlayAudio.value,
+      audioSystem: 'simplified'
+    })
+  }
 })
 
 onUnmounted(() => {
