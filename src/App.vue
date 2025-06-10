@@ -1,4 +1,4 @@
-<!-- App.vue - 配合简化音频系统的版本 -->
+<!-- App.vue - 修复 Safari 按钮显示问题的版本 -->
 <template>
   <n-message-provider>
     <div id="app">
@@ -52,7 +52,6 @@
                 <span>建立实时连接</span>
                 <i v-if="lifecycleState.initSteps.websocket" class="check-icon">✓</i>
               </div>
-              <!-- 🔥 修改：音频系统初始化步骤 - 更简洁 -->
               <div 
                 class="loading-step" 
                 :class="{ 'completed': audioInitialized }"
@@ -106,20 +105,20 @@ import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
 import { useGameLifecycle } from '@/composables/useGameLifecycle'
-import { initializeGlobalAudioSystem, unlockGlobalAudioContext, useAudio } from '@/composables/useAudio'  // 🔥 使用简化后的全局方法
+import { initializeGlobalAudioSystem, unlockGlobalAudioContext, useAudio } from '@/composables/useAudio'
 import { ENV_CONFIG } from '@/utils/envUtils'
 
 // 欢迎界面状态
 const showWelcome = ref(true)
 const isStartingGame = ref(false)
 
-// 🔥 简化：音频系统状态
+// 音频系统状态
 const audioInitialized = ref(false)
 
-// 🔥 新增：音频系统实例引用
+// 音频系统实例引用
 const audioSystem = useAudio()
 
-// 🧠 集成游戏生命周期管理（大脑核心）
+// 集成游戏生命周期管理
 const {
   lifecycleState,
   isReady,
@@ -127,7 +126,7 @@ const {
   reconnect,
   clearError
 } = useGameLifecycle({
-  autoInitialize: false,  // 改为手动初始化，等待用户点击
+  autoInitialize: false,
   enableAudio: true,
   skipGameTypeValidation: ENV_CONFIG.IS_DEV
 })
@@ -161,11 +160,11 @@ const showGameScreen = computed(() => {
          !isStartingGame.value
 })
 
-// 🔥 简化：初始化进度计算 - 包含音频系统
+// 初始化进度计算 - 包含音频系统
 const initializationProgress = computed(() => {
   const steps = {
     ...lifecycleState.initSteps,
-    audio: audioInitialized.value  // 新增音频步骤
+    audio: audioInitialized.value
   }
   const completedSteps = Object.values(steps).filter(Boolean).length
   const totalSteps = Object.keys(steps).length
@@ -185,12 +184,11 @@ const showMessage = (type: 'success' | 'error' | 'info' | 'warning', text: strin
   }
 }
 
-// 🔥 新增：自动播放背景音乐检查
+// 自动播放背景音乐检查
 const checkAndStartBackgroundMusic = async () => {
   try {
     console.log('🎵 检查是否需要自动播放背景音乐...')
     
-    // 短暂延迟确保音频系统完全就绪
     await new Promise(resolve => setTimeout(resolve, 500))
     
     const audioInfo = audioSystem.getAudioInfo()
@@ -214,14 +212,14 @@ const checkAndStartBackgroundMusic = async () => {
   }
 }
 
-// 🔥 简化：启动游戏 - 使用简化后的音频系统
+// 启动游戏
 const startGame = async () => {
   try {
     isStartingGame.value = true
     
     console.log('🎮 用户点击开始游戏')
     
-    // 🔥 步骤1：初始化音频系统（极简版本）
+    // 步骤1：初始化音频系统
     console.log('🎵 正在初始化音频系统...')
     try {
       const audioInitResult = await initializeGlobalAudioSystem()
@@ -230,13 +228,13 @@ const startGame = async () => {
       } else {
         console.warn('⚠️ 音频系统初始化失败，继续游戏初始化')
       }
-      audioInitialized.value = true // 无论成功失败都标记完成
+      audioInitialized.value = true
     } catch (error) {
       console.error('❌ 音频系统初始化异常:', error)
-      audioInitialized.value = true // 标记为完成，避免阻塞
+      audioInitialized.value = true
     }
     
-    // 🔥 步骤2：解锁音频上下文（使用真实音频文件）
+    // 步骤2：解锁音频上下文
     console.log('🔓 正在解锁音频上下文...')
     try {
       await unlockGlobalAudioContext()
@@ -245,17 +243,17 @@ const startGame = async () => {
       console.warn('⚠️ 音频上下文解锁失败，继续游戏初始化:', error)
     }
     
-    // 🔥 步骤3：隐藏欢迎界面
+    // 步骤3：隐藏欢迎界面
     showWelcome.value = false
     
-    // 🔥 步骤4：开始游戏初始化
+    // 步骤4：开始游戏初始化
     console.log('🚀 开始游戏生命周期初始化...')
     await initialize()
     
     console.log('🎉 游戏启动完成！')
     showMessage('success', '🎲 欢迎来到骰宝游戏！')
     
-    // 🔥 步骤5：游戏初始化完成后检查背景音乐
+    // 步骤5：游戏初始化完成后检查背景音乐
     await checkAndStartBackgroundMusic()
     
   } catch (error: any) {
@@ -266,7 +264,7 @@ const startGame = async () => {
   }
 }
 
-// 监听器 - 保持原有逻辑
+// 监听器
 watch(() => lifecycleState.error, (newError, oldError) => {
   if (newError && newError !== oldError) {
     console.error('🚨 游戏错误:', newError)
@@ -288,16 +286,14 @@ watch(() => lifecycleState.connectionStatus, (newStatus, oldStatus) => {
   }
 })
 
-// 🔥 新增：监听游戏就绪状态，自动播放背景音乐
 watch(isReady, async (ready) => {
   if (ready) {
     console.log('🎮 游戏已就绪，可以开始游戏！')
     showMessage('success', '🎲 骰宝游戏已就绪！')
     
-    // 游戏就绪后再次检查背景音乐
     setTimeout(async () => {
       await checkAndStartBackgroundMusic()
-    }, 1000) // 延迟1秒确保所有系统都完全就绪
+    }, 1000)
   }
 })
 
@@ -305,78 +301,132 @@ watch(isReady, async (ready) => {
 onMounted(async () => {
   console.log('🚀 App.vue 已挂载，游戏生命周期管理已启动')
   
-  // 等待下一个 tick 以确保组件完全渲染
   await nextTick()
   
-  // 尝试获取 message 实例
   try {
-    // 这里我们延迟设置 message，避免在组件未完全渲染时就使用
     const { message: messageInstance } = await import('@/utils/message')
     message = messageInstance
   } catch (error) {
     console.warn('⚠️ 无法获取消息实例，将使用控制台输出:', error)
   }
   
-  // 🔥 注意：这里不再进行任何音频初始化，等待用户交互
   console.log('📋 App.vue 初始化完成，等待用户启动游戏')
 })
 </script>
 
 <style>
-/* 保持原有样式 - 无需修改 */
+/* ========== 🔥 修复 Safari 按钮显示问题的关键样式 ========== */
+
+/* 基础重置 - 保持不变 */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* 🔥 修复1: html, body 样式调整 */
 html, body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
   margin: 0;
   padding: 0;
-  overflow: hidden;
   background: #000;
   color: #ffffff;
+  
+  /* 🔥 Safari 修复: 不要在根元素使用 overflow: hidden */
+  overflow-x: hidden;
+  /* overflow-y 保持默认，让子元素控制 */
 }
 
+/* 🔥 修复2: #app 关键修改 - 不使用 position: fixed */
 #app {
-  position: fixed;
+  /* 🔥 关键修复: 使用 absolute 而不是 fixed */
+  position: absolute;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+  
+  /* 🔥 Safari 视口高度修复 */
+  height: 100dvh; /* 动态视口高度，Safari 15.4+ */
+  
   display: flex;
   flex-direction: column;
   background: #000;
   color: inherit;
+  
+  /* 🔥 允许子元素溢出以支持固定定位 */
+  overflow: visible;
+  
+  /* 🔥 Safari 硬件加速 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
+/* 🔥 修复3: 游戏容器样式调整 */
 .game-container {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   color: inherit;
+  
+  /* 🔥 确保容器可以包含固定定位的子元素 */
+  position: relative;
+  overflow: hidden; /* 只在游戏容器层面控制溢出 */
 }
 
 .top-section {
   height: 300px;
   flex-shrink: 0;
   background: #000;
-  z-index: 150;
+  z-index: 1;
+  position: relative; /* 🔥 明确定位上下文 */
 }
 
 .bottom-section {
   flex: 1;
-  overflow: hidden;
   background: #0d2818;
   min-height: 0;
-  position: relative;
+  position: relative; /* 🔥 为固定定位的子元素提供定位上下文 */
   z-index: 1;
   color: inherit;
+  
+  /* 🔥 确保固定定位元素可见 */
+  overflow: visible;
 }
 
+/* 🔥 修复4: Safari 特定的条件样式 */
+@supports (-webkit-touch-callout: none) {
+  /* Safari 特定修复 */
+  #app {
+    /* 在 Safari 中使用更保守的设置 */
+    position: absolute !important;
+    overflow: visible !important;
+  }
+  
+  .game-container {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  
+  .bottom-section {
+    /* 确保底部区域在 Safari 中正确显示 */
+    overflow: visible !important;
+    contain: none; /* 移除 CSS containment 限制 */
+  }
+}
+
+/* 🔥 修复5: iOS Safari 特定修复 */
+@media screen and (-webkit-min-device-pixel-ratio: 2) {
+  #app {
+    /* iOS 高分辨率设备优化 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* 保持原有的其他样式不变 */
 .bottom-section * {
   color: inherit;
 }
@@ -387,7 +437,7 @@ html, body {
   z-index: 250 !important;
 }
 
-/* ========== 欢迎界面样式 ========== */
+/* ========== 欢迎界面样式 - 保持不变 ========== */
 .welcome-overlay {
   position: fixed;
   top: 0;
@@ -519,7 +569,7 @@ html, body {
   line-height: 1.4;
 }
 
-/* ========== 加载界面样式 ========== */
+/* ========== 加载界面样式 - 保持不变 ========== */
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -617,7 +667,7 @@ html, body {
   min-width: 40px;
 }
 
-/* ========== 错误界面样式 ========== */
+/* ========== 错误界面样式 - 保持不变 ========== */
 .error-overlay {
   position: fixed;
   top: 0;
@@ -661,7 +711,7 @@ html, body {
   font-size: 1.1rem;
 }
 
-/* ========== 响应式设计 ========== */
+/* ========== 响应式设计 - 保持不变 ========== */
 @media (max-width: 768px) {
   html, body {
     font-size: 14px;
@@ -700,6 +750,7 @@ html, body {
   }
 }
 
+/* ========== 其他样式保持不变 ========== */
 @media (prefers-contrast: high) {
   #app {
     border: 2px solid #fff;
