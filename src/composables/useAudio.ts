@@ -273,7 +273,21 @@ function createAudioSystem() {
     }
   }
 
+  // 🔥 新增：检查并自动播放背景音乐
+  const startBackgroundMusicIfEnabled = async (): Promise<boolean> => {
+    console.log('🎵 检查背景音乐设置:', {
+      enableMusic: config.enableMusic,
+      canPlayAudio: canPlayAudio.value,
+      hasCurrentMusic: !!audioContext.currentBackgroundMusic
+    })
 
+    if (config.enableMusic && canPlayAudio.value && !audioContext.currentBackgroundMusic) {
+      console.log('🎵 自动开始播放背景音乐')
+      return await playBackgroundMusic()
+    }
+    
+    return false
+  }
 
   // 🔥 快捷播放方法
   const playChipSelectSound = () => playSound('chip-select')
@@ -303,18 +317,28 @@ function createAudioSystem() {
     saveConfig()
   }
 
+  // 🔥 修改：音效开关 - 立即生效
   const toggleSfx = (): void => {
     config.enableSfx = !config.enableSfx
+    console.log('🎵 音效开关切换:', config.enableSfx ? '开启' : '关闭')
     saveConfig()
   }
 
+  // 🔥 修改：背景音乐开关 - 立即播放/停止
   const toggleMusic = (): void => {
     config.enableMusic = !config.enableMusic
-    if (!config.enableMusic) {
-      stopBackgroundMusic()
+    console.log('🎵 背景音乐开关切换:', config.enableMusic ? '开启' : '关闭')
+    
+    if (config.enableMusic) {
+      // 开启背景音乐：立即播放
+      if (canPlayAudio.value) {
+        playBackgroundMusic()
+      }
     } else {
-      playBackgroundMusic()
+      // 关闭背景音乐：立即停止
+      stopBackgroundMusic()
     }
+    
     saveConfig()
   }
 
@@ -330,6 +354,7 @@ function createAudioSystem() {
   const saveConfig = (): void => {
     try {
       localStorage.setItem('sicbo_audio_config', JSON.stringify(config))
+      console.log('💾 音频配置已保存')
     } catch (error) {
       console.error('❌ 保存音频配置失败:', error)
     }
@@ -341,6 +366,7 @@ function createAudioSystem() {
       if (saved) {
         const savedConfig = JSON.parse(saved)
         Object.assign(config, savedConfig)
+        console.log('📂 音频配置已加载:', config)
       }
     } catch (error) {
       console.error('❌ 加载音频配置失败:', error)
@@ -376,6 +402,7 @@ function createAudioSystem() {
     stopBackgroundMusic,
     pauseBackgroundMusic,
     resumeBackgroundMusic,
+    startBackgroundMusicIfEnabled, // 🔥 新增方法
     
     // 音量和开关控制
     setMasterVolume,

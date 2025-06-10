@@ -49,14 +49,14 @@
             <div class="menu-item">
               <span class="item-label">背景音乐</span>
               <label class="switch">
-                <input type="checkbox" v-model="settings.backgroundMusic">
+                <input type="checkbox" v-model="backgroundMusicEnabled" @change="handleBackgroundMusicToggle">
                 <span class="slider"></span>
               </label>
             </div>
             <div class="menu-item">
               <span class="item-label">音效</span>
               <label class="switch">
-                <input type="checkbox" v-model="settings.soundEffects">
+                <input type="checkbox" v-model="soundEffectsEnabled" @change="handleSoundEffectsToggle">
                 <span class="slider"></span>
               </label>
             </div>
@@ -92,9 +92,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useGameData } from '@/composables/useGameData'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
+import { useAudio } from '@/composables/useAudio' // 🔥 新增：导入音频系统
 import { parseGameParams } from '@/utils/urlParams'
 import type { GameParams } from '@/types/api'
 
@@ -107,6 +108,16 @@ console.log('来路地址:', referrerUrl);
 const { userInfo, tableInfo, formattedBalance, refreshBalance } = useGameData()
 const realUserId = userInfo.value?.user_id || gameParams.value.user_id
 const realToken = gameParams.value.token
+
+// 🔥 新增：音频系统集成
+const { 
+  config: audioConfig, 
+  toggleMusic, 
+  toggleSfx, 
+  loadConfig: loadAudioConfig,
+  getAudioInfo
+} = useAudio()
+
 // WebSocket 事件监听
 const { onBalanceUpdate } = useWebSocketEvents()
 
@@ -114,10 +125,23 @@ const showSettings = ref(false)
 const settingsDropdown = ref<HTMLElement>()
 const isRefreshing = ref(false)
 
-// 设置选项
-const settings = reactive({
-  backgroundMusic: true,
-  soundEffects: true
+// 🔥 新增：音频设置的响应式计算属性
+const backgroundMusicEnabled = computed({
+  get: () => audioConfig.enableMusic,
+  set: (value) => {
+    if (value !== audioConfig.enableMusic) {
+      toggleMusic()
+    }
+  }
+})
+
+const soundEffectsEnabled = computed({
+  get: () => audioConfig.enableSfx,
+  set: (value) => {
+    if (value !== audioConfig.enableSfx) {
+      toggleSfx()
+    }
+  }
 })
 
 // 计算局号 - 可以从多个来源获取
@@ -126,8 +150,18 @@ const gameNumber = computed(() => {
   return tableInfo.value?.bureau_number || 'T001250115001'
 })
 
-const goBack = () => {
+// 🔥 新增：音频开关处理方法
+const handleBackgroundMusicToggle = () => {
+  console.log('🎵 用户切换背景音乐:', audioConfig.enableMusic ? '开启' : '关闭')
+  // 由于使用了 computed 的 setter，toggleMusic() 已经被调用
+}
 
+const handleSoundEffectsToggle = () => {
+  console.log('🎵 用户切换音效:', audioConfig.enableSfx ? '开启' : '关闭')
+  // 由于使用了 computed 的 setter，toggleSfx() 已经被调用
+}
+
+const goBack = () => {
   console.log('返回上级页面')
   const url = referrerUrl+'#/pages/index/index?user_id='+realUserId+'&token='+realToken
   window.location.href = url
@@ -189,7 +223,18 @@ onBalanceUpdate((data) => {
   // 余额会通过 WebSocket 自动更新到 useGameData 中
 })
 
+// 🔥 新增：组件挂载时加载音频配置
 onMounted(() => {
+  console.log('🔧 TopToolbar 组件已挂载')
+  
+  // 加载音频配置
+  loadAudioConfig()
+  
+  // 🔥 开发模式下输出音频状态
+  if (import.meta.env.DEV) {
+    console.log('🎵 当前音频设置状态:', getAudioInfo())
+  }
+  
   document.addEventListener('click', handleClickOutside)
 })
 

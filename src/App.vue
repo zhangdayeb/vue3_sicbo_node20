@@ -106,7 +106,7 @@ import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
 import { useGameLifecycle } from '@/composables/useGameLifecycle'
-import { initializeGlobalAudioSystem, unlockGlobalAudioContext } from '@/composables/useAudio'  // 🔥 使用简化后的全局方法
+import { initializeGlobalAudioSystem, unlockGlobalAudioContext, useAudio } from '@/composables/useAudio'  // 🔥 使用简化后的全局方法
 import { ENV_CONFIG } from '@/utils/envUtils'
 
 // 欢迎界面状态
@@ -115,6 +115,9 @@ const isStartingGame = ref(false)
 
 // 🔥 简化：音频系统状态
 const audioInitialized = ref(false)
+
+// 🔥 新增：音频系统实例引用
+const audioSystem = useAudio()
 
 // 🧠 集成游戏生命周期管理（大脑核心）
 const {
@@ -182,6 +185,35 @@ const showMessage = (type: 'success' | 'error' | 'info' | 'warning', text: strin
   }
 }
 
+// 🔥 新增：自动播放背景音乐检查
+const checkAndStartBackgroundMusic = async () => {
+  try {
+    console.log('🎵 检查是否需要自动播放背景音乐...')
+    
+    // 短暂延迟确保音频系统完全就绪
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    const audioInfo = audioSystem.getAudioInfo()
+    console.log('🎵 当前音频系统状态:', audioInfo)
+    
+    if (audioInfo.config.enableMusic && audioInfo.canPlayAudio && !audioInfo.isBackgroundMusicPlaying) {
+      console.log('🎵 背景音乐已开启且音频系统就绪，开始播放背景音乐')
+      const success = await audioSystem.startBackgroundMusicIfEnabled()
+      
+      if (success) {
+        console.log('✅ 背景音乐自动播放成功')
+        showMessage('success', '🎵 背景音乐已开始播放')
+      } else {
+        console.warn('⚠️ 背景音乐自动播放失败')
+      }
+    } else {
+      console.log('🔇 背景音乐未开启或音频系统未就绪，跳过自动播放')
+    }
+  } catch (error) {
+    console.error('❌ 检查背景音乐播放时出错:', error)
+  }
+}
+
 // 🔥 简化：启动游戏 - 使用简化后的音频系统
 const startGame = async () => {
   try {
@@ -223,6 +255,9 @@ const startGame = async () => {
     console.log('🎉 游戏启动完成！')
     showMessage('success', '🎲 欢迎来到骰宝游戏！')
     
+    // 🔥 步骤5：游戏初始化完成后检查背景音乐
+    await checkAndStartBackgroundMusic()
+    
   } catch (error: any) {
     console.error('❌ 游戏启动失败:', error)
     showMessage('error', `游戏启动失败: ${error.message}`)
@@ -253,10 +288,16 @@ watch(() => lifecycleState.connectionStatus, (newStatus, oldStatus) => {
   }
 })
 
-watch(isReady, (ready) => {
+// 🔥 新增：监听游戏就绪状态，自动播放背景音乐
+watch(isReady, async (ready) => {
   if (ready) {
     console.log('🎮 游戏已就绪，可以开始游戏！')
     showMessage('success', '🎲 骰宝游戏已就绪！')
+    
+    // 游戏就绪后再次检查背景音乐
+    setTimeout(async () => {
+      await checkAndStartBackgroundMusic()
+    }, 1000) // 延迟1秒确保所有系统都完全就绪
   }
 })
 

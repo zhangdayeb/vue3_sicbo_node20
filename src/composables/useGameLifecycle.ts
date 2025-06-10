@@ -37,6 +37,7 @@ interface GameLifecycleInstance {
   // 🔥 新增：音频相关方法
   getAudioStatus: () => any
   retryAudioInit: () => Promise<boolean>
+  startBackgroundMusicIfReady: () => Promise<boolean> // 🔥 新增方法
 }
 
 let globalLifecycleInstance: GameLifecycleInstance | null = null
@@ -56,7 +57,8 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     initializeAudio, 
     unlockAudioContext, 
     canPlayAudio,
-    getAudioInfo
+    getAudioInfo,
+    startBackgroundMusicIfEnabled // 🔥 新增：自动背景音乐播放方法
   } = useAudio()
 
   const state = reactive({
@@ -83,7 +85,8 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     maxAttempts: 3,
     lastInitTime: 0,
     initCooldown: 2000, // 2秒冷却时间
-    isRetrying: false
+    isRetrying: false,
+    backgroundMusicStarted: false // 🔥 新增：背景音乐启动标志
   })
 
   const setError = (error: string | Error) => {
@@ -142,6 +145,11 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
       onConnected: () => {
         state.connectionStatus = 'connected'
         state.initSteps.websocket = true
+        
+        // 🔥 新增：WebSocket连接成功后尝试启动背景音乐
+        setTimeout(async () => {
+          await startBackgroundMusicIfReady()
+        }, 1000)
       },
       onDisconnected: () => {
         state.connectionStatus = 'disconnected'
@@ -278,6 +286,49 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     }
   }
 
+  // 🔥 新增：检查并启动背景音乐的方法
+  const startBackgroundMusicIfReady = async (): Promise<boolean> => {
+    if (!enableAudio || audioState.backgroundMusicStarted) {
+      return false
+    }
+
+    try {
+      console.log('🎵 检查游戏生命周期是否就绪以启动背景音乐...')
+      
+      // 检查所有初始化步骤是否完成
+      const allStepsReady = state.initSteps.urlParams && 
+                           state.initSteps.httpApi && 
+                           state.initSteps.websocket && 
+                           state.initSteps.audio
+      
+      if (allStepsReady && state.isInitialized && canPlayAudio.value) {
+        console.log('🎵 游戏生命周期已就绪，尝试启动背景音乐')
+        
+        const success = await startBackgroundMusicIfEnabled()
+        
+        if (success) {
+          audioState.backgroundMusicStarted = true
+          console.log('✅ 背景音乐启动成功（来自游戏生命周期）')
+          return true
+        } else {
+          console.log('🔇 背景音乐未启动（可能用户设置为关闭）')
+          return false
+        }
+      } else {
+        console.log('🔇 游戏生命周期未完全就绪，暂不启动背景音乐:', {
+          allStepsReady,
+          isInitialized: state.isInitialized,
+          canPlayAudio: canPlayAudio.value,
+          steps: state.initSteps
+        })
+        return false
+      }
+    } catch (error) {
+      console.error('❌ 启动背景音乐时出错:', error)
+      return false
+    }
+  }
+
   // 🔥 修改：重试音频初始化方法
   const retryAudioInit = async (): Promise<boolean> => {
     if (!enableAudio) {
@@ -290,11 +341,16 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     // 重置尝试次数以允许重试
     audioState.initAttempts = 0
     audioState.isRetrying = false
+    audioState.backgroundMusicStarted = false // 🔥 重置背景音乐标志
     state.initSteps.audio = false
     
     const audioResult = await initializeAudioSystem()
     if (audioResult) {
       await unlockAudioContextSystem()
+      // 🔥 音频重试成功后尝试启动背景音乐
+      setTimeout(async () => {
+        await startBackgroundMusicIfReady()
+      }, 500)
     }
     
     return audioResult
@@ -310,6 +366,7 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
       maxAttempts: audioState.maxAttempts,
       isRetrying: audioState.isRetrying,
       lastInitTime: audioState.lastInitTime,
+      backgroundMusicStarted: audioState.backgroundMusicStarted, // 🔥 新增
       audioInfo: getAudioInfo(), // 🔥 使用简化音频系统的状态信息
       systemType: 'simplified'
     }
@@ -327,6 +384,9 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
         websocket: false,
         audio: false
       }
+
+      // 🔥 重置音频相关状态
+      audioState.backgroundMusicStarted = false
 
       console.log('🚀 开始游戏生命周期初始化...')
 
@@ -356,6 +416,12 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
 
       state.isInitialized = true
       console.log('✅ 游戏生命周期初始化完成')
+
+      // 🔥 步骤7：初始化完成后尝试启动背景音乐
+      console.log('🎵 步骤7: 检查并启动背景音乐')
+      setTimeout(async () => {
+        await startBackgroundMusicIfReady()
+      }, 1000) // 延迟1秒确保所有系统完全就绪
 
     } catch (error: any) {
       console.error('❌ 游戏生命周期初始化失败:', error)
@@ -403,6 +469,7 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     audioState.initAttempts = 0
     audioState.isRetrying = false
     audioState.lastInitTime = 0
+    audioState.backgroundMusicStarted = false // 🔥 重置背景音乐标志
   }
 
   const instance: GameLifecycleInstance = {
@@ -425,7 +492,8 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     
     // 🔥 新增：音频相关方法
     getAudioStatus,
-    retryAudioInit
+    retryAudioInit,
+    startBackgroundMusicIfReady // 🔥 新增方法
   }
 
   return instance
@@ -469,7 +537,8 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
       
       // 🔥 新增：音频相关方法
       getAudioStatus: globalLifecycleInstance.getAudioStatus,
-      retryAudioInit: globalLifecycleInstance.retryAudioInit
+      retryAudioInit: globalLifecycleInstance.retryAudioInit,
+      startBackgroundMusicIfReady: globalLifecycleInstance.startBackgroundMusicIfReady // 🔥 新增方法
     }
   }
   
@@ -504,7 +573,8 @@ export const useGameLifecycle = (options: GameLifecycleOptions = {}) => {
     
     // 🔥 新增：音频相关方法
     getAudioStatus: globalLifecycleInstance.getAudioStatus,
-    retryAudioInit: globalLifecycleInstance.retryAudioInit
+    retryAudioInit: globalLifecycleInstance.retryAudioInit,
+    startBackgroundMusicIfReady: globalLifecycleInstance.startBackgroundMusicIfReady // 🔥 新增方法
   }
 }
 
@@ -521,6 +591,7 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
     getInstance: () => globalLifecycleInstance,
     getAudioStatus: () => globalLifecycleInstance?.getAudioStatus(),
     retryAudio: () => globalLifecycleInstance?.retryAudioInit(),
+    startBackgroundMusic: () => globalLifecycleInstance?.startBackgroundMusicIfReady(),
     resetLifecycle: resetGameLifecycle
   }
   console.log('🐛 游戏生命周期调试工具已添加到 window.debugGameLifecycle')
