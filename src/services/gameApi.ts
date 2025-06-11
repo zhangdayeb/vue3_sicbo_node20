@@ -130,10 +130,8 @@ export class GameApiService {
       game_type: this.gameParams.game_type,
       page: params.page,
       page_size: params.pageSize,
-      status: params.status,
       start_date: params.start_date,
-      end_date: params.end_date,
-      bet_type: params.bet_type
+      end_date: params.end_date
     }
 
     const response = await httpClient.get<BettingHistoryResponse>('/sicbo/bet/history', requestParams)

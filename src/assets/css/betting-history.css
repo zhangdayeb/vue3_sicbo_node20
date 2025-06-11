@@ -1,63 +1,63 @@
 /* src/assets/css/betting-history.css */
-/* 投注记录组件专用样式文件 */
+/* 投注记录组件专用样式文件 - 优化版本 */
+/* 避免与 main.css 冲突，作用域限制在投注历史组件内 */
 
-/* ============= 全局变量定义 ============= */
-:root {
-  /* 主色调 */
-  --betting-primary: #2196f3;
-  --betting-secondary: #ffd700;
-  --betting-success: #4caf50;
-  --betting-danger: #f44336;
-  --betting-warning: #ff9800;
-  --betting-info: #00bcd4;
+/* ============= 组件专用变量（避免全局污染） ============= */
+.betting-history-container {
+  /* 只在投注历史容器内定义变量，避免全局冲突 */
+  --bh-primary: #2196f3;
+  --bh-secondary: #ffd700;
+  --bh-success: #4caf50;
+  --bh-danger: #f44336;
+  --bh-warning: #ff9800;
+  --bh-info: #00bcd4;
   
   /* 背景色 */
-  --betting-bg-primary: rgba(255, 255, 255, 0.05);
-  --betting-bg-secondary: rgba(255, 255, 255, 0.03);
-  --betting-bg-hover: rgba(255, 255, 255, 0.08);
-  --betting-bg-active: rgba(255, 255, 255, 0.12);
+  --bh-bg-primary: rgba(255, 255, 255, 0.05);
+  --bh-bg-secondary: rgba(255, 255, 255, 0.03);
+  --bh-bg-hover: rgba(255, 255, 255, 0.08);
+  --bh-bg-active: rgba(255, 255, 255, 0.12);
   
   /* 边框色 */
-  --betting-border-light: rgba(255, 255, 255, 0.1);
-  --betting-border-medium: rgba(255, 255, 255, 0.15);
-  --betting-border-strong: rgba(255, 255, 255, 0.25);
+  --bh-border-light: rgba(255, 255, 255, 0.1);
+  --bh-border-medium: rgba(255, 255, 255, 0.15);
+  --bh-border-strong: rgba(255, 255, 255, 0.25);
   
   /* 文字色 */
-  --betting-text-primary: #ffffff;
-  --betting-text-secondary: rgba(255, 255, 255, 0.8);
-  --betting-text-muted: rgba(255, 255, 255, 0.6);
-  --betting-text-disabled: rgba(255, 255, 255, 0.4);
+  --bh-text-primary: #ffffff;
+  --bh-text-secondary: rgba(255, 255, 255, 0.8);
+  --bh-text-muted: rgba(255, 255, 255, 0.6);
+  --bh-text-disabled: rgba(255, 255, 255, 0.4);
   
   /* 阴影 */
-  --betting-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.15);
-  --betting-shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.25);
-  --betting-shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --bh-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --bh-shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --bh-shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.35);
   
   /* 圆角 */
-  --betting-radius-small: 4px;
-  --betting-radius-medium: 6px;
-  --betting-radius-large: 8px;
-  --betting-radius-xlarge: 12px;
+  --bh-radius-small: 4px;
+  --bh-radius-medium: 6px;
+  --bh-radius-large: 8px;
+  --bh-radius-xlarge: 12px;
   
   /* 间距 */
-  --betting-space-xs: 4px;
-  --betting-space-sm: 8px;
-  --betting-space-md: 12px;
-  --betting-space-lg: 16px;
-  --betting-space-xl: 20px;
-  --betting-space-xxl: 24px;
+  --bh-space-xs: 4px;
+  --bh-space-sm: 8px;
+  --bh-space-md: 12px;
+  --bh-space-lg: 16px;
+  --bh-space-xl: 20px;
+  --bh-space-xxl: 24px;
   
   /* 动画时间 */
-  --betting-transition-fast: 0.15s;
-  --betting-transition-normal: 0.3s;
-  --betting-transition-slow: 0.5s;
+  --bh-transition-fast: 0.15s;
+  --bh-transition-normal: 0.3s;
+  --bh-transition-slow: 0.5s;
 }
 
-/* ============= 基础组件样式 ============= */
-
-/* 投注记录模态框 */
+/* ============= 投注记录模态框（高优先级隔离） ============= */
 .betting-history-modal {
   z-index: 9999;
+  isolation: isolate; /* 创建新的层叠上下文 */
 }
 
 .betting-history-modal .n-modal {
@@ -69,99 +69,106 @@
   background: linear-gradient(135deg, 
     rgba(26, 26, 26, 0.95) 0%, 
     rgba(35, 35, 35, 0.95) 100%);
-  border: 1px solid var(--betting-border-medium);
-  box-shadow: var(--betting-shadow-strong);
+  border: 1px solid var(--bh-border-medium);
+  box-shadow: var(--bh-shadow-strong);
+}
+
+/* ============= 基础容器样式 ============= */
+.betting-history-container {
+  font-family: inherit; /* 继承主应用字体 */
+  color: var(--bh-text-primary);
+  line-height: 1.5;
 }
 
 /* 记录项容器 */
-.betting-record-container {
+.betting-history-container .betting-record-container {
   display: flex;
   flex-direction: column;
-  gap: var(--betting-space-md);
-  padding: var(--betting-space-lg);
+  gap: var(--bh-space-md);
+  padding: var(--bh-space-lg);
   max-height: calc(100vh - 200px);
   overflow-y: auto;
   overflow-x: hidden;
 }
 
-/* 自定义滚动条 */
-.betting-record-container::-webkit-scrollbar {
+/* 专用滚动条样式（仅作用于投注历史） */
+.betting-history-container .betting-record-container::-webkit-scrollbar {
   width: 6px;
 }
 
-.betting-record-container::-webkit-scrollbar-track {
-  background: var(--betting-bg-secondary);
+.betting-history-container .betting-record-container::-webkit-scrollbar-track {
+  background: var(--bh-bg-secondary);
   border-radius: 3px;
 }
 
-.betting-record-container::-webkit-scrollbar-thumb {
-  background: var(--betting-border-medium);
+.betting-history-container .betting-record-container::-webkit-scrollbar-thumb {
+  background: var(--bh-border-medium);
   border-radius: 3px;
-  transition: background var(--betting-transition-fast);
+  transition: background var(--bh-transition-fast);
 }
 
-.betting-record-container::-webkit-scrollbar-thumb:hover {
-  background: var(--betting-border-strong);
+.betting-history-container .betting-record-container::-webkit-scrollbar-thumb:hover {
+  background: var(--bh-border-strong);
 }
 
 /* ============= 记录项样式 ============= */
-
-/* 记录项基础样式 */
-.betting-record-item {
+.betting-history-container .betting-record-item {
   position: relative;
-  background: var(--betting-bg-primary);
-  border: 1px solid var(--betting-border-light);
-  border-radius: var(--betting-radius-large);
-  transition: all var(--betting-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--bh-bg-primary);
+  border: 1px solid var(--bh-border-light);
+  border-radius: var(--bh-radius-large);
+  transition: all var(--bh-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  padding: var(--bh-space-md);
 }
 
-/* 记录项状态样式 */
-.betting-record-item::before {
+/* 记录项状态指示器 */
+.betting-history-container .betting-record-item::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   width: 4px;
   height: 100%;
-  background: var(--betting-border-light);
-  transition: background var(--betting-transition-fast);
+  background: var(--bh-border-light);
+  transition: background var(--bh-transition-fast);
 }
 
-.betting-record-item.win-record::before {
-  background: linear-gradient(to bottom, var(--betting-success), #66bb6a);
+.betting-history-container .betting-record-item.win-record::before {
+  background: linear-gradient(to bottom, var(--bh-success), #66bb6a);
 }
 
-.betting-record-item.loss-record::before {
-  background: linear-gradient(to bottom, var(--betting-danger), #ef5350);
+.betting-history-container .betting-record-item.loss-record::before {
+  background: linear-gradient(to bottom, var(--bh-danger), #ef5350);
 }
 
-.betting-record-item.pending-record::before {
-  background: linear-gradient(to bottom, var(--betting-warning), #ffb74d);
-  animation: pulseGlow 2s ease-in-out infinite;
+.betting-history-container .betting-record-item.pending-record::before {
+  background: linear-gradient(to bottom, var(--bh-warning), #ffb74d);
+  animation: bh-pulse-glow 2s ease-in-out infinite;
 }
 
-/* 悬停和激活状态 */
-.betting-record-item.clickable:hover {
-  background: var(--betting-bg-hover);
-  border-color: var(--betting-border-medium);
-  transform: translateY(-2px);
-  box-shadow: var(--betting-shadow-medium);
+/* 悬停状态（仅在支持hover的设备上） */
+@media (hover: hover) {
+  .betting-history-container .betting-record-item.clickable:hover {
+    background: var(--bh-bg-hover);
+    border-color: var(--bh-border-medium);
+    transform: translateY(-2px);
+    box-shadow: var(--bh-shadow-medium);
+  }
 }
 
-.betting-record-item.clickable:active {
+.betting-history-container .betting-record-item.clickable:active {
   transform: translateY(0);
-  box-shadow: var(--betting-shadow-light);
+  box-shadow: var(--bh-shadow-light);
 }
 
 /* ============= 状态徽章样式 ============= */
-
-.status-badge {
+.betting-history-container .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--betting-space-xs) var(--betting-space-sm);
-  border-radius: var(--betting-radius-xlarge);
+  padding: var(--bh-space-xs) var(--bh-space-sm);
+  border-radius: var(--bh-radius-xlarge);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -173,47 +180,46 @@
   text-align: center;
 }
 
-.status-badge.pending {
-  background: linear-gradient(135deg, var(--betting-warning), #ffb74d);
-  animation: statusPulse 2s ease-in-out infinite;
+.betting-history-container .status-badge.pending {
+  background: linear-gradient(135deg, var(--bh-warning), #ffb74d);
+  animation: bh-status-pulse 2s ease-in-out infinite;
 }
 
-.status-badge.win {
-  background: linear-gradient(135deg, var(--betting-success), #66bb6a);
+.betting-history-container .status-badge.win {
+  background: linear-gradient(135deg, var(--bh-success), #66bb6a);
 }
 
-.status-badge.lose {
-  background: linear-gradient(135deg, var(--betting-danger), #ef5350);
+.betting-history-container .status-badge.lose {
+  background: linear-gradient(135deg, var(--bh-danger), #ef5350);
 }
 
-.status-badge.cancelled {
+.betting-history-container .status-badge.cancelled {
   background: linear-gradient(135deg, #9e9e9e, #bdbdbd);
 }
 
-.status-badge.processing {
-  background: linear-gradient(135deg, var(--betting-info), #4dd0e1);
-  animation: statusPulse 1.5s ease-in-out infinite;
+.betting-history-container .status-badge.processing {
+  background: linear-gradient(135deg, var(--bh-info), #4dd0e1);
+  animation: bh-status-pulse 1.5s ease-in-out infinite;
 }
 
 /* ============= 骰子样式 ============= */
-
-.dice-container {
+.betting-history-container .dice-container {
   display: flex;
   align-items: center;
-  gap: var(--betting-space-xs);
-  padding: var(--betting-space-xs);
-  background: var(--betting-bg-secondary);
-  border-radius: var(--betting-radius-medium);
-  border: 1px solid var(--betting-border-light);
+  gap: var(--bh-space-xs);
+  padding: var(--bh-space-xs);
+  background: var(--bh-bg-secondary);
+  border-radius: var(--bh-radius-medium);
+  border: 1px solid var(--bh-border-light);
 }
 
-.dice-item {
+.betting-history-container .dice-item {
   position: relative;
   width: 24px;
   height: 24px;
   background: #ffffff;
   color: #000000;
-  border-radius: var(--betting-radius-small);
+  border-radius: var(--bh-radius-small);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,279 +229,242 @@
   box-shadow: 
     0 2px 4px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transition: transform var(--betting-transition-fast);
+  transition: transform var(--bh-transition-fast);
 }
 
-.dice-item:hover {
-  transform: scale(1.1);
+@media (hover: hover) {
+  .betting-history-container .dice-item:hover {
+    transform: scale(1.1);
+  }
 }
 
 /* 骰子颜色主题 */
-.dice-item.dice-1 { 
+.betting-history-container .dice-item.dice-1 { 
   background: linear-gradient(135deg, #ff4444, #e53935);
   color: #ffffff;
 }
 
-.dice-item.dice-2 { 
+.betting-history-container .dice-item.dice-2 { 
   background: linear-gradient(135deg, #ff8800, #fb8c00);
   color: #ffffff;
 }
 
-.dice-item.dice-3 { 
+.betting-history-container .dice-item.dice-3 { 
   background: linear-gradient(135deg, #ffcc00, #ffb300);
   color: #000000;
 }
 
-.dice-item.dice-4 { 
+.betting-history-container .dice-item.dice-4 { 
   background: linear-gradient(135deg, #44ff44, #43a047);
   color: #000000;
 }
 
-.dice-item.dice-5 { 
+.betting-history-container .dice-item.dice-5 { 
   background: linear-gradient(135deg, #00ccff, #0288d1);
   color: #000000;
 }
 
-.dice-item.dice-6 { 
+.betting-history-container .dice-item.dice-6 { 
   background: linear-gradient(135deg, #8844ff, #7b1fa2);
   color: #ffffff;
 }
 
-.dice-total {
-  margin-left: var(--betting-space-sm);
-  padding: 2px var(--betting-space-xs);
-  background: var(--betting-bg-primary);
-  border-radius: var(--betting-radius-small);
+.betting-history-container .dice-total {
+  margin-left: var(--bh-space-sm);
+  padding: 2px var(--bh-space-xs);
+  background: var(--bh-bg-primary);
+  border-radius: var(--bh-radius-small);
   font-size: 10px;
   font-weight: 600;
-  color: var(--betting-text-secondary);
-  border: 1px solid var(--betting-border-light);
+  color: var(--bh-text-secondary);
+  border: 1px solid var(--bh-border-light);
 }
 
 /* ============= 金额样式 ============= */
-
-.amount-display {
+.betting-history-container .amount-display {
   font-family: 'Courier New', 'SF Mono', Monaco, Consolas, monospace;
   font-weight: 600;
   letter-spacing: 0.5px;
 }
 
-.amount-bet {
-  color: var(--betting-primary);
+.betting-history-container .amount-bet {
+  color: var(--bh-primary);
 }
 
-.amount-win {
-  color: var(--betting-success);
+.betting-history-container .amount-win {
+  color: var(--bh-success);
 }
 
-.amount-loss {
-  color: var(--betting-danger);
+.betting-history-container .amount-loss {
+  color: var(--bh-danger);
 }
 
-.amount-neutral {
-  color: var(--betting-text-secondary);
+.betting-history-container .amount-neutral {
+  color: var(--bh-text-secondary);
 }
 
-/* 大金额突出显示 */
-.amount-large {
+.betting-history-container .amount-large {
   font-size: 1.1em;
   text-shadow: 0 0 8px currentColor;
-  animation: amountGlow 2s ease-in-out infinite;
+  animation: bh-amount-glow 2s ease-in-out infinite;
 }
 
 /* ============= 筛选组件样式 ============= */
-
-.filter-section {
-  background: var(--betting-bg-secondary);
-  border: 1px solid var(--betting-border-light);
-  border-radius: var(--betting-radius-large);
-  padding: var(--betting-space-lg);
-  margin-bottom: var(--betting-space-lg);
+.betting-history-container .filter-section {
+  background: var(--bh-bg-secondary);
+  border: 1px solid var(--bh-border-light);
+  border-radius: var(--bh-radius-large);
+  padding: var(--bh-space-lg);
+  margin-bottom: var(--bh-space-lg);
 }
 
-.filter-row {
+.betting-history-container .filter-row {
   display: grid;
-  gap: var(--betting-space-md);
-  margin-bottom: var(--betting-space-md);
+  gap: var(--bh-space-md);
+  margin-bottom: var(--bh-space-md);
 }
 
-.filter-item {
+.betting-history-container .filter-item {
   display: flex;
   flex-direction: column;
-  gap: var(--betting-space-xs);
+  gap: var(--bh-space-xs);
 }
 
-.filter-label {
+.betting-history-container .filter-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--betting-text-secondary);
+  color: var(--bh-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* 快速筛选按钮 */
-.quick-filter-buttons {
+.betting-history-container .quick-filter-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--betting-space-xs);
+  gap: var(--bh-space-xs);
 }
 
-.quick-filter-btn {
-  padding: var(--betting-space-xs) var(--betting-space-sm);
-  background: var(--betting-bg-primary);
-  border: 1px solid var(--betting-border-light);
-  border-radius: var(--betting-radius-medium);
-  color: var(--betting-text-secondary);
+.betting-history-container .quick-filter-btn {
+  padding: var(--bh-space-xs) var(--bh-space-sm);
+  background: var(--bh-bg-primary);
+  border: 1px solid var(--bh-border-light);
+  border-radius: var(--bh-radius-medium);
+  color: var(--bh-text-secondary);
   font-size: 12px;
   cursor: pointer;
-  transition: all var(--betting-transition-fast);
+  transition: all var(--bh-transition-fast);
 }
 
-.quick-filter-btn:hover {
-  background: var(--betting-bg-hover);
-  border-color: var(--betting-border-medium);
-  color: var(--betting-text-primary);
+@media (hover: hover) {
+  .betting-history-container .quick-filter-btn:hover {
+    background: var(--bh-bg-hover);
+    border-color: var(--bh-border-medium);
+    color: var(--bh-text-primary);
+  }
 }
 
-.quick-filter-btn.active {
-  background: var(--betting-primary);
-  border-color: var(--betting-primary);
+.betting-history-container .quick-filter-btn.active {
+  background: var(--bh-primary);
+  border-color: var(--bh-primary);
   color: #ffffff;
   box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
 }
 
 /* ============= 统计信息样式 ============= */
-
-.stats-section {
-  background: var(--betting-bg-secondary);
-  border: 1px solid var(--betting-border-light);
-  border-radius: var(--betting-radius-large);
-  padding: var(--betting-space-lg);
-  margin-bottom: var(--betting-space-lg);
+.betting-history-container .stats-section {
+  background: var(--bh-bg-secondary);
+  border: 1px solid var(--bh-border-light);
+  border-radius: var(--bh-radius-large);
+  padding: var(--bh-space-lg);
+  margin-bottom: var(--bh-space-lg);
 }
 
-.stats-grid {
+.betting-history-container .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: var(--betting-space-lg);
+  gap: var(--bh-space-lg);
   text-align: center;
 }
 
-.stat-item {
+.betting-history-container .stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--betting-space-xs);
+  gap: var(--bh-space-xs);
 }
 
-.stat-label {
+.betting-history-container .stat-label {
   font-size: 11px;
   font-weight: 500;
-  color: var(--betting-text-muted);
+  color: var(--bh-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.stat-value {
+.betting-history-container .stat-value {
   font-size: 16px;
   font-weight: 700;
   font-family: 'Courier New', monospace;
   letter-spacing: 0.5px;
 }
 
-.stat-value.positive {
-  color: var(--betting-success);
+.betting-history-container .stat-value.positive {
+  color: var(--bh-success);
   text-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
 }
 
-.stat-value.negative {
-  color: var(--betting-danger);
+.betting-history-container .stat-value.negative {
+  color: var(--bh-danger);
   text-shadow: 0 0 8px rgba(244, 67, 54, 0.3);
 }
 
-/* ============= 加载状态样式 ============= */
-
-.loading-section {
+/* ============= 加载和空状态 ============= */
+.betting-history-container .loading-section,
+.betting-history-container .empty-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--betting-space-md);
-  padding: var(--betting-space-xxl);
-  color: var(--betting-text-secondary);
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--betting-border-light);
-  border-top: 3px solid var(--betting-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.loading-text {
-  font-size: 14px;
-  color: var(--betting-text-muted);
-}
-
-/* 刷新指示器 */
-.refresh-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--betting-space-sm);
-  padding: var(--betting-space-md);
-  background: linear-gradient(135deg, 
-    rgba(33, 150, 243, 0.1), 
-    rgba(33, 150, 243, 0.05));
-  border: 1px solid rgba(33, 150, 243, 0.2);
-  border-radius: var(--betting-radius-medium);
-  color: var(--betting-primary);
-  font-size: 14px;
-  margin-bottom: var(--betting-space-md);
-  animation: fadeInOut 2s ease-in-out infinite;
-}
-
-/* ============= 空状态样式 ============= */
-
-.empty-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--betting-space-lg);
-  padding: var(--betting-space-xxl);
-  color: var(--betting-text-muted);
+  gap: var(--bh-space-lg);
+  padding: var(--bh-space-xxl);
+  color: var(--bh-text-secondary);
   text-align: center;
 }
 
-.empty-icon {
+.betting-history-container .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--bh-border-light);
+  border-top: 3px solid var(--bh-primary);
+  border-radius: 50%;
+  animation: bh-spin 1s linear infinite;
+}
+
+.betting-history-container .empty-icon {
   font-size: 48px;
   opacity: 0.5;
 }
 
-.empty-title {
+.betting-history-container .empty-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--betting-text-secondary);
+  color: var(--bh-text-secondary);
 }
 
-.empty-description {
+.betting-history-container .empty-description {
   font-size: 14px;
-  color: var(--betting-text-muted);
+  color: var(--bh-text-muted);
   max-width: 300px;
   line-height: 1.5;
 }
 
-/* ============= 动画定义 ============= */
-
-@keyframes spin {
+/* ============= 专用动画（避免全局冲突） ============= */
+@keyframes bh-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-@keyframes pulseGlow {
+@keyframes bh-pulse-glow {
   0%, 100% { 
     opacity: 1;
     box-shadow: 0 0 8px currentColor;
@@ -506,7 +475,7 @@
   }
 }
 
-@keyframes statusPulse {
+@keyframes bh-status-pulse {
   0%, 100% { 
     opacity: 1;
     transform: scale(1);
@@ -517,7 +486,7 @@
   }
 }
 
-@keyframes amountGlow {
+@keyframes bh-amount-glow {
   0%, 100% { 
     text-shadow: 0 0 8px currentColor;
   }
@@ -526,107 +495,71 @@
   }
 }
 
-@keyframes fadeInOut {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    max-height: 0;
-    transform: scaleY(0.8);
-  }
-  to {
-    opacity: 1;
-    max-height: 200px;
-    transform: scaleY(1);
-  }
-}
-
 /* ============= 响应式设计 ============= */
-
-/* 平板设备 */
 @media (max-width: 768px) {
-  :root {
-    --betting-space-xs: 3px;
-    --betting-space-sm: 6px;
-    --betting-space-md: 10px;
-    --betting-space-lg: 14px;
-    --betting-space-xl: 18px;
-    --betting-space-xxl: 20px;
+  .betting-history-container {
+    --bh-space-xs: 3px;
+    --bh-space-sm: 6px;
+    --bh-space-md: 10px;
+    --bh-space-lg: 14px;
+    --bh-space-xl: 18px;
+    --bh-space-xxl: 20px;
   }
   
-  .stats-grid {
+  .betting-history-container .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--betting-space-md);
+    gap: var(--bh-space-md);
   }
   
-  .filter-row {
+  .betting-history-container .filter-row {
     grid-template-columns: 1fr;
   }
   
-  .dice-item {
+  .betting-history-container .dice-item {
     width: 20px;
     height: 20px;
     font-size: 11px;
   }
-  
-  .quick-filter-buttons {
-    gap: var(--betting-space-xs);
-  }
 }
 
-/* 手机设备 */
 @media (max-width: 480px) {
-  .betting-record-container {
-    padding: var(--betting-space-md);
-    gap: var(--betting-space-sm);
+  .betting-history-container .betting-record-container {
+    padding: var(--bh-space-md);
+    gap: var(--bh-space-sm);
   }
   
-  .stats-grid {
+  .betting-history-container .stats-grid {
     grid-template-columns: 1fr;
-    gap: var(--betting-space-sm);
+    gap: var(--bh-space-sm);
   }
   
-  .stat-value {
+  .betting-history-container .stat-value {
     font-size: 14px;
   }
   
-  .dice-container {
+  .betting-history-container .dice-container {
     flex-wrap: wrap;
     justify-content: center;
   }
   
-  .dice-item {
+  .betting-history-container .dice-item {
     width: 18px;
     height: 18px;
     font-size: 10px;
   }
   
-  .status-badge {
+  .betting-history-container .status-badge {
     min-width: 50px;
     font-size: 10px;
-    padding: 2px var(--betting-space-xs);
+    padding: 2px var(--bh-space-xs);
   }
   
-  .quick-filter-buttons {
+  .betting-history-container .quick-filter-buttons {
     flex-direction: column;
-    gap: var(--betting-space-xs);
+    gap: var(--bh-space-xs);
   }
   
-  .quick-filter-btn {
+  .betting-history-container .quick-filter-btn {
     width: 100%;
     text-align: center;
   }
@@ -634,74 +567,48 @@
 
 /* 横屏模式优化 */
 @media (orientation: landscape) and (max-height: 500px) {
-  .betting-record-container {
+  .betting-history-container .betting-record-container {
     max-height: calc(100vh - 120px);
   }
   
-  .stats-grid {
+  .betting-history-container .stats-grid {
     grid-template-columns: repeat(4, 1fr);
   }
 }
 
-/* 高对比度模式 */
+/* 高对比度模式（继承主应用设置，但添加组件特定优化） */
 @media (prefers-contrast: high) {
-  :root {
-    --betting-border-light: rgba(255, 255, 255, 0.3);
-    --betting-border-medium: rgba(255, 255, 255, 0.5);
-    --betting-border-strong: rgba(255, 255, 255, 0.7);
-    --betting-bg-primary: rgba(255, 255, 255, 0.1);
-    --betting-bg-secondary: rgba(255, 255, 255, 0.05);
+  .betting-history-container {
+    --bh-border-light: rgba(255, 255, 255, 0.3);
+    --bh-border-medium: rgba(255, 255, 255, 0.5);
+    --bh-border-strong: rgba(255, 255, 255, 0.7);
+    --bh-bg-primary: rgba(255, 255, 255, 0.1);
+    --bh-bg-secondary: rgba(255, 255, 255, 0.05);
   }
   
-  .betting-record-item {
+  .betting-history-container .betting-record-item {
     border-width: 2px;
   }
   
-  .status-badge {
+  .betting-history-container .status-badge {
     font-weight: 700;
     border: 1px solid rgba(255, 255, 255, 0.3);
   }
 }
 
-/* 减少动画模式 */
+/* 减少动画模式（遵循主应用设置） */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  .betting-history-container * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
   
-  .dice-item:hover {
+  .betting-history-container .dice-item:hover {
     transform: none;
   }
   
-  .betting-record-item.clickable:hover {
+  .betting-history-container .betting-record-item.clickable:hover {
     transform: none;
   }
-}
-
-/* ============= 主题变量重写（可选） ============= */
-
-/* 绿色主题 */
-.betting-history-theme-green {
-  --betting-primary: #4caf50;
-  --betting-secondary: #81c784;
-}
-
-/* 蓝色主题 */
-.betting-history-theme-blue {
-  --betting-primary: #2196f3;
-  --betting-secondary: #64b5f6;
-}
-
-/* 紫色主题 */
-.betting-history-theme-purple {
-  --betting-primary: #9c27b0;
-  --betting-secondary: #ba68c8;
-}
-
-/* 橙色主题 */
-.betting-history-theme-orange {
-  --betting-primary: #ff9800;
-  --betting-secondary: #ffb74d;
 }
