@@ -59,19 +59,30 @@ export interface PaginationInfo {
   has_more: boolean            // 是否还有更多数据
 }
 
-// 投注记录响应数据
+// 🔥 修复：响应拦截器处理后的投注记录响应数据
 export interface BettingHistoryResponse {
-  records: BettingRecord[]
-  pagination: {
-    current_page: number
-    total_pages: number
-    total_records: number
-    page_size: number
-    has_more: boolean
+  records: BettingRecord[]     // 记录列表
+  pagination: PaginationInfo   // 分页信息
+}
+
+// 🔥 修复：响应拦截器处理后的投注记录详情响应
+export interface BettingDetailResponse {
+  // 响应拦截器已处理，直接返回 BettingRecord
+  // 不再包含 code, message, data 结构
+}
+
+// 🔥 新增：如果需要原始API响应格式的类型（用于其他未经拦截器处理的API）
+export interface RawBettingHistoryResponse {
+  code: number                 // 响应码
+  message: string              // 响应消息
+  data: {
+    records: BettingRecord[]   // 记录列表
+    pagination: PaginationInfo // 分页信息
   }
 }
-// 投注记录详情响应
-export interface BettingDetailResponse {
+
+// 🔥 新增：原始投注记录详情响应（用于其他未经拦截器处理的API）
+export interface RawBettingDetailResponse {
   code: number                 // 响应码
   message: string              // 响应消息
   data: BettingRecord          // 单条记录详情
@@ -113,4 +124,12 @@ export const STATUS_COLORS: Record<BettingStatus, string> = {
   lose: '#f44336',         // 红色
   cancelled: '#9e9e9e',    // 灰色
   processing: '#2196f3'    // 蓝色
+}
+
+// 🔥 新增：响应格式辅助类型
+export type ProcessedResponse<T> = T  // 经过响应拦截器处理的数据
+export type RawResponse<T> = {        // 原始API响应格式
+  code: number
+  message: string
+  data: T
 }

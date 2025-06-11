@@ -4,8 +4,7 @@ import { ref, computed, reactive } from 'vue'
 import { getGlobalApiService } from '@/services/gameApi'
 import type { 
   BettingRecord, 
-  BettingHistoryParams, 
-  BettingHistoryResponse
+  BettingHistoryParams
 } from '@/types/bettingHistory'
 
 export const useBettingHistoryStore = defineStore('bettingHistory', () => {
@@ -88,9 +87,11 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     return params
   }
   
-  // 获取投注记录
+  // 🔥 修复：获取投注记录（响应拦截器处理后的数据结构）
   const fetchRecords = async (page: number = 1, append: boolean = false): Promise<void> => {
     try {
+      console.log(`🔄 Store: 获取投注记录 - 页码: ${page}, 追加: ${append}`)
+      
       const params = buildQueryParams(page)
       
       // 设置加载状态
@@ -109,29 +110,73 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
       const apiService = getGlobalApiService()
       const response = await apiService.getBettingHistory(params)
       
-      // 处理响应数据
-      if (response.code === 200 || response.code === 1) {
-        const { records: newRecords, pagination } = response.data
-        
-        if (append || page === 1) {
-          // 刷新或首次加载，替换数据
-          records.value = newRecords
-        } else {
-          // 加载更多，追加数据
-          records.value = [...records.value, ...newRecords]
-        }
-        
-        // 更新分页信息
-        currentPage.value = pagination.current_page
-        totalPages.value = pagination.total_pages
-        totalRecords.value = pagination.total_records
-        hasMore.value = pagination.has_more
-        
+      console.log('📥 Store: API 响应完整信息:', {
+        response,
+        recordsLength: response.records?.length || 0,
+        hasPagination: !!response.pagination
+      })
+      
+      // 🔥 修复：响应拦截器已处理，直接解构数据（不再有 code 和 data）
+      const { records: newRecords = [], pagination = null } = response
+      
+      console.log('✅ Store: 解析后的记录数量:', newRecords.length)
+      console.log('📊 Store: 分页信息:', pagination)
+      
+      // 🔥 修复：数据清洗和映射
+      const cleanedRecords: BettingRecord[] = newRecords.map((record: any, index: number) => {
+        return {
+          id: record.id || record.ID || `${Date.now()}-${index}`,
+          game_number: record.game_number || record.gameNumber || `G${Date.now()}`,
+          table_id: record.table_id || record.tableId || '1',
+          user_id: record.user_id || record.userId || '1',
+          bet_time: record.bet_time || record.betTime || new Date().toISOString(),
+          settle_time: record.settle_time || record.settleTime,
+          
+          bet_details: Array.isArray(record.bet_details) ? record.bet_details : 
+                      Array.isArray(record.betDetails) ? record.betDetails : [],
+          total_bet_amount: Number(record.total_bet_amount || record.totalBetAmount || 0),
+          total_win_amount: Number(record.total_win_amount || record.totalWinAmount || 0),
+          net_amount: Number(record.net_amount || record.netAmount || 
+            (Number(record.total_win_amount || record.totalWinAmount || 0) - 
+             Number(record.total_bet_amount || record.totalBetAmount || 0))),
+          
+          dice_results: Array.isArray(record.dice_results) ? record.dice_results as [number, number, number] :
+                       Array.isArray(record.diceResults) ? record.diceResults as [number, number, number] : 
+                       undefined,
+          dice_total: record.dice_total || record.diceTotal || undefined,
+          
+          status: record.status || 'pending',
+          is_settled: Boolean(record.is_settled || record.isSettled || false),
+          
+          currency: record.currency || 'CNY'
+        } as BettingRecord
+      })
+      
+      // 更新记录
+      if (append && page > 1) {
+        // 加载更多，追加数据
+        records.value = [...records.value, ...cleanedRecords]
+        console.log('➕ Store: 追加数据，总记录数量:', records.value.length)
       } else {
-        throw new Error(response.message || '获取投注记录失败')
+        // 刷新或首次加载，替换数据
+        records.value = cleanedRecords
+        console.log('🔄 Store: 替换数据，新记录数量:', cleanedRecords.length)
       }
       
+      // 更新分页信息
+      currentPage.value = pagination?.current_page || page
+      totalPages.value = pagination?.total_pages || Math.ceil(records.value.length / pageSize.value)
+      totalRecords.value = pagination?.total_records || records.value.length
+      hasMore.value = pagination?.has_more || false
+      
+      console.log(`✅ Store: 数据加载完成`, {
+        totalRecords: records.value.length,
+        currentPage: currentPage.value,
+        hasMore: hasMore.value
+      })
+      
     } catch (error: any) {
+      console.error('❌ Store: 获取投注记录失败:', error)
       loadingState.error = error.message || '获取投注记录失败'
       throw error
     } finally {
@@ -144,6 +189,7 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
   
   // 应用日期筛选
   const applyDateFilter = async (range: { start: string | null; end: string | null }): Promise<void> => {
+    console.log('🔍 Store: 应用日期筛选:', range)
     dateFilter.start = range.start
     dateFilter.end = range.end
     await fetchRecords(1, false)
@@ -151,6 +197,7 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
   
   // 重置日期筛选
   const resetDateFilter = async (): Promise<void> => {
+    console.log('🔄 Store: 重置日期筛选')
     dateFilter.start = null
     dateFilter.end = null
     await fetchRecords(1, false)
@@ -158,13 +205,15 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
   
   // 刷新记录
   const refreshRecords = async (): Promise<void> => {
-    await fetchRecords(1, true)
+    console.log('🔄 Store: 刷新记录')
+    await fetchRecords(1, true)  // append: true 表示刷新
   }
   
   // 加载更多记录
   const loadMoreRecords = async (): Promise<void> => {
     if (canLoadMore.value) {
-      await fetchRecords(currentPage.value + 1, false)
+      console.log('📄 Store: 加载更多记录')
+      await fetchRecords(currentPage.value + 1, true)
     }
   }
   
@@ -173,9 +222,11 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     loadingState.error = null
   }
   
-  // 初始化
-  const init = (): void => {
-    // 重置状态
+  // 🔥 修复：初始化函数 - 重置状态 + 获取数据
+  const init = async (): Promise<void> => {
+    console.log('🚀 Store: 初始化投注记录')
+    
+    // 1. 重置状态
     records.value = []
     totalRecords.value = 0
     totalPages.value = 0
@@ -184,23 +235,20 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     dateFilter.start = null
     dateFilter.end = null
     clearError()
-  }
-  
-  // 获取记录详情
-  const getBettingDetail = async (recordId: string): Promise<BettingRecord> => {
+    
+    console.log('🔄 Store: 状态已重置')
+    
+    // 2. 获取初始数据
     try {
-      const apiService = getGlobalApiService()
-      const response = await apiService.getBettingDetail(recordId)
-      
-      if (response.code === 200 || response.code === 1) {
-        return response.data
-      } else {
-        throw new Error(response.message || '获取投注详情失败')
-      }
-    } catch (error: any) {
-      throw new Error(error.message || '获取投注详情失败')
+      console.log('📡 Store: 开始获取初始数据')
+      await fetchRecords(1, false)
+      console.log('✅ Store: 投注记录初始化完成')
+    } catch (error) {
+      console.error('❌ Store: 投注记录初始化失败:', error)
+      // 不抛出错误，让组件能正常打开，只是显示错误状态
     }
   }
+  
   
   return {
     // 状态
@@ -226,7 +274,6 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     refreshRecords,
     loadMoreRecords,
     clearError,
-    init,
-    getBettingDetail
+    init
   }
 })

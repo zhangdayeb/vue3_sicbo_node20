@@ -419,12 +419,7 @@ const fetchRecords = async (page: number = 1, append: boolean = false) => {
         
         currency: record.currency || 'CNY'
       }
-      
-      console.log('🔧 清洗记录:', {
-        原始: record,
-        清洗后: cleanedRecord
-      })
-      
+            
       return cleanedRecord
     })
     
@@ -556,18 +551,10 @@ watch(visible, async (newVisible) => {
   }
 })
 
-// 🔥 键盘事件处理 - 确保 ESC 键能关闭
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && visible.value) {
-    console.log('🔴 ESC 键关闭弹窗')
-    handleClose()
-  }
-}
 
 // 组件挂载
 onMounted(() => {
   console.log('🚀 BettingHistoryModal 组件挂载完成')
-  document.addEventListener('keydown', handleKeydown)
 })
 </script>
 
@@ -811,7 +798,7 @@ onMounted(() => {
   }
   
   .records-container {
-    max-height: calc(95vh - 260px);
+    max-height: calc(95vh - 360px);
   }
 }
 </style>
