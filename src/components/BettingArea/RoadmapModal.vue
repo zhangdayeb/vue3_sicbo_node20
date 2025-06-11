@@ -1,6 +1,6 @@
 <template>
   <teleport to="body">
-    <div v-if="visible" class="roadmap-modal-overlay" @click="handleOverlayClick">
+    <div v-if="modalVisible" class="roadmap-modal-overlay" @click="handleOverlayClick">
       <div class="roadmap-modal" @click.stop>
         <!-- 弹窗头部 -->
         <div class="modal-header">
@@ -20,29 +20,12 @@
         
         <!-- 弹窗内容 -->
         <div class="modal-content">
-          <!-- 加载状态 -->
-          <div v-if="isLoading" class="loading-container">
-            <div class="loading-spinner"></div>
-            <p class="loading-text">正在加载路纸数据...</p>
-          </div>
-          
-          <!-- 错误状态 -->
-          <div v-else-if="hasError" class="error-container">
-            <div class="error-icon">⚠️</div>
-            <p class="error-text">路纸加载失败</p>
-            <button class="retry-btn" @click="retryLoad">重新加载</button>
-          </div>
-          
-          <!-- iframe 内容 -->
-          <iframe
-            v-else
-            ref="roadmapIframe"
-            :src="roadmapUrl"
-            class="roadmap-iframe"
-            frameborder="0"
-            scrolling="auto"
-            @load="handleIframeLoad"
-            @error="handleIframeError"
+          <RoadmapChart 
+            ref="roadmapChart"
+            :table-id="tableId"
+            :auto-refresh="false"
+            @data-loaded="handleDataLoaded"
+            @data-error="handleDataError"
           />
         </div>
         
@@ -50,13 +33,21 @@
         <div class="modal-footer">
           <div class="footer-info">
             <span class="update-time">更新时间: {{ updateTime }}</span>
+            <span v-if="dataStatus" class="data-status" :class="dataStatus.type">
+              {{ dataStatus.message }}
+            </span>
           </div>
           <div class="footer-actions">
-            <button class="refresh-btn" @click="refreshRoadmap" :disabled="isLoading">
-              <svg viewBox="0 0 24 24" width="16" height="16">
+            <button 
+              class="refresh-btn" 
+              @click="refreshRoadmap" 
+              :disabled="isRefreshing"
+              title="刷新路纸数据"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" :class="{ 'spinning': isRefreshing }">
                 <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
               </svg>
-              刷新
+              {{ isRefreshing ? '刷新中' : '刷新' }}
             </button>
           </div>
         </div>
@@ -67,10 +58,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import RoadmapChart from './RoadmapChart.vue'
+import { useGameData } from '@/composables/useGameData'
+import type { HistoryData } from '@/types/roadmapTypes'
 
 interface Props {
   show: boolean
-  roadmapUrl: string
+  tableId?: string | number
 }
 
 const props = defineProps<Props>()
@@ -80,19 +74,32 @@ const emit = defineEmits<{
   'close': []
 }>()
 
-// 响应式状态
-const visible = ref(false)
-const isLoading = ref(true)
-const hasError = ref(false)
+// 响应式数据
 const updateTime = ref('')
-const roadmapIframe = ref<HTMLIFrameElement>()
+const isRefreshing = ref(false)
+const roadmapChart = ref<InstanceType<typeof RoadmapChart>>()
+const dataStatus = ref<{
+  type: 'success' | 'error' | 'warning'
+  message: string
+} | null>(null)
 
-// 计算属性
+// 获取游戏数据
+const { tableInfo } = useGameData()
+
+// 弹窗显示状态
 const modalVisible = computed({
   get: () => props.show,
   set: (value: boolean) => {
     emit('update:show', value)
   }
+})
+
+// 获取当前tableId
+const tableId = computed(() => {
+  return props.tableId?.toString() || 
+         tableInfo.value?.id?.toString() || 
+         tableInfo.value?.table_id?.toString() || 
+         'default'
 })
 
 // 更新时间
@@ -105,48 +112,50 @@ const updateCurrentTime = () => {
   })
 }
 
-// iframe 加载处理
-const handleIframeLoad = () => {
-  console.log('📊 路纸 iframe 加载完成')
-  isLoading.value = false
-  hasError.value = false
-  updateCurrentTime()
-}
-
-const handleIframeError = () => {
-  console.error('📊 路纸 iframe 加载失败')
-  isLoading.value = false
-  hasError.value = true
-}
-
-// 重新加载
-const retryLoad = () => {
-  console.log('🔄 重新加载路纸')
-  isLoading.value = true
-  hasError.value = false
+// 刷新路纸数据
+const refreshRoadmap = async () => {
+  if (isRefreshing.value || !roadmapChart.value) return
   
-  if (roadmapIframe.value) {
-    roadmapIframe.value.src = props.roadmapUrl
+  console.log('🔄 手动刷新路纸数据')
+  isRefreshing.value = true
+  dataStatus.value = null
+  
+  try {
+    await roadmapChart.value.refresh()
+  } catch (error) {
+    console.error('❌ 刷新失败:', error)
+  } finally {
+    isRefreshing.value = false
   }
 }
 
-// 刷新路纸
-const refreshRoadmap = () => {
-  console.log('🔄 刷新路纸数据')
-  if (roadmapIframe.value) {
-    isLoading.value = true
-    hasError.value = false
-    
-    // 添加时间戳强制刷新
-    const separator = props.roadmapUrl.includes('?') ? '&' : '?'
-    const refreshUrl = `${props.roadmapUrl}${separator}_t=${Date.now()}`
-    roadmapIframe.value.src = refreshUrl
+// 数据加载成功处理
+const handleDataLoaded = (data: HistoryData) => {
+  console.log('✅ 路纸数据加载成功:', data)
+  updateCurrentTime()
+  dataStatus.value = {
+    type: 'success',
+    message: `已加载 ${data.total} 条记录`
+  }
+  
+  // 3秒后清除状态信息
+  setTimeout(() => {
+    dataStatus.value = null
+  }, 3000)
+}
+
+// 数据加载错误处理
+const handleDataError = (error: string) => {
+  console.error('❌ 路纸数据加载失败:', error)
+  updateCurrentTime()
+  dataStatus.value = {
+    type: 'error',
+    message: '数据加载失败'
   }
 }
 
 // 关闭处理
 const handleClose = () => {
-  visible.value = false
   modalVisible.value = false
   emit('close')
 }
@@ -157,32 +166,46 @@ const handleOverlayClick = () => {
 
 // 键盘事件处理
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && visible.value) {
+  if (event.key === 'Escape' && modalVisible.value) {
     handleClose()
+  } else if (event.key === 'F5' && modalVisible.value) {
+    event.preventDefault()
+    refreshRoadmap()
   }
 }
 
 // 监听显示状态变化
 watch(() => props.show, (newVal) => {
-  visible.value = newVal
+  console.log('📊 路纸弹窗显示状态变化:', newVal)
   
   if (newVal) {
-    // 显示时重置状态
-    isLoading.value = true
-    hasError.value = false
+    // 显示时初始化
     updateCurrentTime()
+    dataStatus.value = null
     
     // 添加键盘监听
     document.addEventListener('keydown', handleKeydown)
     
     // 禁止背景滚动
     document.body.style.overflow = 'hidden'
+    
+    console.log('📊 路纸弹窗已显示，当前tableId:', tableId.value)
   } else {
     // 隐藏时清理
     document.removeEventListener('keydown', handleKeydown)
     
     // 恢复背景滚动
     document.body.style.overflow = ''
+    
+    console.log('📊 路纸弹窗已隐藏')
+  }
+}, { immediate: true })
+
+// 监听tableId变化，自动刷新数据
+watch(() => tableId.value, (newTableId, oldTableId) => {
+  if (newTableId !== oldTableId && modalVisible.value && roadmapChart.value) {
+    console.log('🔄 tableId变化，刷新路纸数据:', { old: oldTableId, new: newTableId })
+    refreshRoadmap()
   }
 })
 
@@ -195,6 +218,13 @@ onUnmounted(() => {
 // 挂载时初始化
 onMounted(() => {
   updateCurrentTime()
+  console.log('📊 RoadmapModal 组件已挂载')
+})
+
+// 暴露方法给父组件
+defineExpose({
+  refresh: refreshRoadmap,
+  close: handleClose
 })
 </script>
 
@@ -231,9 +261,10 @@ onMounted(() => {
   border: 2px solid #4a9f6e;
   border-radius: 12px;
   width: 90%;
-  max-width: 900px;
+  max-width: 1000px;
   height: 80%;
-  max-height: 600px;
+  max-height: 700px;
+  min-height: 500px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -258,6 +289,7 @@ onMounted(() => {
   padding: 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 .header-left {
@@ -318,82 +350,8 @@ onMounted(() => {
 
 .modal-content {
   flex: 1;
-  position: relative;
   overflow: hidden;
-}
-
-.roadmap-iframe {
-  width: 100%;
-  height: 100%;
-  background: white;
-  border-radius: 4px;
-}
-
-.loading-container,
-.error-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid #4a9f6e;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text,
-.error-text {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  margin: 0;
-}
-
-.error-icon {
-  font-size: 32px;
-}
-
-.retry-btn,
-.refresh-btn {
-  background: #4a9f6e;
-  border: 1px solid #5bb77c;
-  border-radius: 6px;
-  padding: 8px 16px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.retry-btn:hover,
-.refresh-btn:hover:not(:disabled) {
-  background: #27ae60;
-  transform: translateY(-1px);
-}
-
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  position: relative;
 }
 
 .modal-footer {
@@ -403,12 +361,13 @@ onMounted(() => {
   padding: 12px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 .footer-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .update-time {
@@ -416,9 +375,69 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.data-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.data-status.success {
+  background: rgba(39, 174, 96, 0.2);
+  color: #27ae60;
+  border: 1px solid rgba(39, 174, 96, 0.3);
+}
+
+.data-status.error {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.data-status.warning {
+  background: rgba(243, 156, 18, 0.2);
+  color: #f39c12;
+  border: 1px solid rgba(243, 156, 18, 0.3);
+}
+
 .footer-actions {
   display: flex;
   gap: 8px;
+}
+
+.refresh-btn {
+  background: #4a9f6e;
+  border: 1px solid #5bb77c;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: #27ae60;
+  transform: translateY(-1px);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* 响应式设计 */
@@ -444,6 +463,15 @@ onMounted(() => {
   .modal-footer {
     padding: 10px 16px;
   }
+  
+  .footer-info {
+    gap: 12px;
+  }
+  
+  .update-time,
+  .data-status {
+    font-size: 11px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -464,6 +492,21 @@ onMounted(() => {
     width: 32px;
     height: 32px;
     font-size: 20px;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .footer-info {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .footer-actions {
+    justify-content: center;
   }
 }
 </style>

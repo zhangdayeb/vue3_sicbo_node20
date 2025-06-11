@@ -200,5 +200,5 @@ export const initializeGameApi = async (params: GameParams) => {
     apiService,
     tableInfo,
     userInfo
-  }
+  } 
 }

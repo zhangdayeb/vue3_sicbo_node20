@@ -16,7 +16,6 @@
           路纸
         </n-button>
 
-
         <!-- 取消按钮 -->
         <n-button
           type="error"
@@ -85,7 +84,7 @@
     <RoadmapModal 
       v-if="showRoadmap"
       v-model:show="showRoadmap"
-      :roadmap-url="roadmapUrl"
+      :table-id="currentTableId"
       @close="handleRoadmapClose"
     />
   </div>
@@ -183,23 +182,9 @@ const message = useMessage()
 const isSubmitting = ref(false)
 const showRoadmap = ref(false)
 
-// 路纸相关
-const roadmapUrl = computed(() => {
-  try {
-    const baseUrl = userInfo.value?.sicbo_luzhu
-    const tableId = tableInfo.value?.id || tableInfo.value?.table_id
-    
-    if (baseUrl && tableId) {
-      const separator = baseUrl.includes('?') ? '&' : '?'
-      return `${baseUrl}${separator}table_id=${tableId}`
-    }
-    
-    // 默认地址（用于开发测试）
-    return `https://luzhusicbo.wuming888.com/sicbo.html?table_id=${tableId || 'default'}`
-  } catch (error) {
-    console.error('生成路纸地址失败:', error)
-    return 'https://luzhusicbo.wuming888.com/sicbo.html'
-  }
+// 路纸相关 - 获取当前tableId
+const currentTableId = computed(() => {
+  return tableInfo.value?.id || tableInfo.value?.table_id || 'default'
 })
 
 // 计算属性
@@ -320,7 +305,7 @@ const handleConfirm = () => {
 }
 
 const handleShowRoadmap = () => {
-  console.log('📊 打开路纸:', roadmapUrl.value)
+  console.log('📊 打开路纸，当前tableId:', currentTableId.value)
   showRoadmap.value = true
 }
 
@@ -334,7 +319,7 @@ onMounted(() => {
   console.log('🎯 ControlButtons 组件已挂载', {
     canConfirm: canConfirm.value,
     totalBetAmount: props.totalBetAmount,
-    roadmapUrl: roadmapUrl.value
+    currentTableId: currentTableId.value
   })
   
   if (import.meta.env.DEV && typeof window !== 'undefined') {
@@ -343,7 +328,7 @@ onMounted(() => {
       canCancel,
       canRebet,
       submitRealBets,
-      roadmapUrl,
+      currentTableId,
       showRoadmap: () => showRoadmap.value = true
     }
     console.log('🐛 控制按钮调试工具已添加到 window.debugControlButtons')
