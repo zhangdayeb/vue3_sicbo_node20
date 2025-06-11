@@ -134,13 +134,6 @@ const getCurrentTableId = (): string => {
          'default'
 }
 
-// 获取基础URL
-const getSicboBaseUrl = (): string => {
-  // 从当前域名推导，或者使用配置
-  const currentHost = window.location.origin
-  return currentHost // 假设API在同一域名下
-}
-
 // 加载路纸数据
 const loadData = async () => {
   console.log('🔄 开始加载路纸数据')
@@ -150,28 +143,17 @@ const loadData = async () => {
   
   try {
     const tableId = getCurrentTableId()
-    const sicboBaseUrl = getSicboBaseUrl()
-    const apiUrl = `${sicboBaseUrl}/sicbo/get_table/get_hg_data?tableId=${tableId}`
+    console.log('📡 请求路纸数据，tableId:', tableId)
     
-    console.log('📡 请求路纸数据:', { tableId, apiUrl })
+    // 🔥 使用统一的API服务
+    const { getGlobalApiService } = await import('@/services/gameApi')
+    const apiService = getGlobalApiService()
     
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-    
-    const data: RoadmapApiResponse = await response.json()
+    const data: RoadmapApiResponse = await apiService.getRoadmapData()
     console.log('📊 接收到路纸数据:', data)
     
-    if (data.code === 1) {
-      // 解析数据并转换为GameResult格式
-      const parsedResults = parseRoadmapData(data.data || {})
+    // 解析数据并转换为GameResult格式
+      const parsedResults = parseRoadmapData(data || {})
       gameResults.value = parsedResults
       
       const historyData: HistoryData = {
@@ -181,10 +163,6 @@ const loadData = async () => {
       
       emit('data-loaded', historyData)
       console.log('✅ 路纸数据加载成功，共', parsedResults.length, '条记录')
-      
-    } else {
-      throw new Error(data.message || '获取路纸数据失败')
-    }
     
   } catch (error: any) {
     console.error('❌ 路纸数据加载失败:', error)
@@ -198,49 +176,56 @@ const loadData = async () => {
 }
 
 // 解析路纸数据 - 这里需要根据实际API返回格式调整
+// 解析路纸数据 - 根据实际API返回格式调整
 const parseRoadmapData = (rawData: any): GameResult[] => {
   console.log('🔍 解析原始数据:', rawData)
   
-  // 示例：假设API返回格式为 { results: [[1,2,3], [4,5,6], ...] }
-  // 您需要根据实际API格式调整这个解析逻辑
-  
-  if (!rawData || !Array.isArray(rawData.results)) {
+  if (!rawData || typeof rawData !== 'object') {
     console.warn('⚠️ 数据格式不正确，使用模拟数据')
-    return generateMockData() // 生成一些模拟数据用于测试
+    return generateMockData()
   }
   
-  // 🔥 修复：直接使用导入的计算函数
   const results: GameResult[] = []
   
-  for (const item of rawData.results) {
+  // 🔥 修复：遍历所有 kX 键（k0, k1, k2, k3...）
+  const gameKeys = Object.keys(rawData).filter(key => key.startsWith('k')).sort()
+  
+  for (const key of gameKeys) {
     try {
-      let dice1: number, dice2: number, dice3: number
+      const gameDataStr = rawData[key]
       
-      // 根据实际数据格式解析
-      if (Array.isArray(item) && item.length >= 3) {
-        [dice1, dice2, dice3] = item
-      } else if (typeof item === 'object' && item.dice1 && item.dice2 && item.dice3) {
-        ({ dice1, dice2, dice3 } = item)
-      } else {
-        console.warn('⚠️ 跳过无效数据项:', item)
+      // 🔥 解析JSON字符串
+      if (typeof gameDataStr !== 'string') {
+        console.warn('⚠️ 跳过非字符串数据:', { key, data: gameDataStr })
         continue
       }
+      
+      const gameData = JSON.parse(gameDataStr)
+      console.log('📊 解析期次:', key, gameData)
+      
+      // 🔥 提取骰子数值：{"1":"1","2":"4","3":"5"}
+      const dice1 = parseInt(gameData["1"])
+      const dice2 = parseInt(gameData["2"]) 
+      const dice3 = parseInt(gameData["3"])
       
       // 验证骰子数值
       if (![dice1, dice2, dice3].every(d => d >= 1 && d <= 6)) {
-        console.warn('⚠️ 跳过无效骰子数值:', { dice1, dice2, dice3 })
+        console.warn('⚠️ 跳过无效骰子数值:', { key, dice1, dice2, dice3 })
         continue
       }
       
-      // 🔥 修复：直接调用计算函数
+      // 计算游戏结果
       const gameResult = calculateGameResult(dice1, dice2, dice3)
       results.push(gameResult)
       
+      console.log('✅ 成功解析期次:', key, `${dice1}-${dice2}-${dice3}`, `总和:${gameResult.sum}`)
+      
     } catch (error) {
-      console.warn('⚠️ 解析数据项失败:', item, error)
+      console.warn('⚠️ 解析期次失败:', { key, data: rawData[key] }, error)
     }
   }
   
+  console.log('✅ 总共解析', results.length, '条路纸记录')
   return results
 }
 

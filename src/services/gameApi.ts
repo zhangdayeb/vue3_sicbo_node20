@@ -113,9 +113,7 @@ export class GameApiService {
    */
   async getRoadmapData(): Promise<any> {
     const response = await httpClient.get('/sicbo/get_table/get_data', {
-      tableId: this.gameParams.table_id,
-      xue: 1,
-      gameType: this.gameParams.game_type
+      tableId: this.gameParams.table_id
     })
     return response
   }
