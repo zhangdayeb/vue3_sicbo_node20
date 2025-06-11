@@ -33,18 +33,26 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { useGameLifecycle } from '@/composables/useGameLifecycle'
+import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
 import VideoPlayer from '@/components/VideoPlayer/VideoPlayer.vue'
 import TopToolbar from '@/components/GameInfo/TopToolbar.vue'
 import GameStatus from '@/components/GameInfo/GameStatus.vue'
+import type { CountdownData } from '@/types/api'
 
 const gameStore = useGameStore()
 const { lifecycleState } = useGameLifecycle()
+const { onCountdown } = useWebSocketEvents()
 
 // 视频播放器引用
 const videoPlayerRef = ref()
 
 // 开发环境检测
 const isDevelopment = import.meta.env.DEV
+
+// 视频切换状态管理 - 简化版本
+const videoSwitchState = ref({
+  lastCountdown: 30,         // 上一次的倒计时值
+})
 
 // 使用 gameStore 中的视频地址，只有当地址有效时才渲染视频
 const videoUrls = computed(() => {
@@ -57,13 +65,43 @@ const hasValidVideoUrls = computed(() => {
   return videoUrls.value.far && videoUrls.value.near
 })
 
-// 计算切换触发条件
+// WebSocket倒计时事件处理 - 简化版本：只监听倒计时从1到0
+const handleCountdownEvent = (data: CountdownData) => {
+  console.log('收到倒计时事件:', data)
+  
+  const { countdown } = data
+  
+  // 检测倒计时从1变为0，触发切换到近景
+  if (videoSwitchState.value.lastCountdown === 1 && countdown === 0) {
+    console.log('🎬 倒计时从1到0，切换到近景视频')
+    
+    // 直接调用VideoPlayer的切换方法
+    if (videoPlayerRef.value && typeof videoPlayerRef.value.switchToNear === 'function') {
+      videoPlayerRef.value.switchToNear()
+    }
+  }
+  
+  // 更新上一次倒计时值
+  videoSwitchState.value.lastCountdown = countdown
+}
+
+// 计算切换触发条件（移除可能导致循环的日志）
 const shouldSwitchToNear = computed(() => {
-  // 当游戏状态从 betting 切换到 dealing 时触发
+  // 简化逻辑，避免在 computed 中进行复杂操作
   return gameStore.gameState.status === 'dealing'
 })
 
-// 监听游戏状态变化，同步到 gameStore（添加安全检查）
+// 单独的 watch 来监听状态变化并输出日志
+watch(() => gameStore.gameState.status, (newStatus, oldStatus) => {
+  console.log('shouldSwitchToNear 状态变化:', {
+    oldStatus,
+    newStatus,
+    shouldSwitch: newStatus === 'dealing',
+    timestamp: new Date().toLocaleTimeString()
+  })
+}, { immediate: false })
+
+// 监听游戏状态变化，同步到 gameStore（简化版本）
 watch(() => gameStore.gameState.status, (newStatus, oldStatus) => {
   console.log(`游戏状态变化: ${oldStatus} -> ${newStatus}`)
   
@@ -164,38 +202,12 @@ onMounted(() => {
     initializeVideoUrls()
   }, 100)
   
-  // 启动游戏状态模拟 (保持原有逻辑)
-  gameStore.updateGameStatus('waiting')
+  // 监听WebSocket倒计时事件
+  console.log('开始监听WebSocket倒计时事件...')
+  onCountdown(handleCountdownEvent)
   
-  setTimeout(() => {
-    gameStore.updateGameNumber('T00124060610001')
-    gameStore.updateGameStatus('betting')
-    gameStore.updateCountdown(30)
-    
-    const countdown = setInterval(() => {
-      if (gameStore.gameState.countdown > 0) {
-        gameStore.updateCountdown(gameStore.gameState.countdown - 1)
-      } else {
-        clearInterval(countdown)
-        
-        // 切换到 dealing 状态，这会触发视频切换
-        gameStore.updateGameStatus('dealing')
-        
-        setTimeout(() => {
-          gameStore.updateGameStatus('result')
-
-          setTimeout(() => {
-            gameStore.updateGameStatus('waiting')
-            setTimeout(() => {
-              gameStore.updateGameNumber('T00124060610002')
-              gameStore.updateGameStatus('betting')
-              gameStore.updateCountdown(30)
-            }, 3000)
-          }, 5000)
-        }, 3000)
-      }
-    }, 1000)
-  }, 2000)
+  // 移除模拟游戏状态的逻辑，改为依赖真实的WebSocket事件
+  console.log('视频切换逻辑已切换为基于WebSocket倒计时事件')
 })
 
 // 开发环境下暴露调试方法
@@ -208,7 +220,16 @@ if (isDevelopment) {
     getCurrentGameStatus: () => gameStore.gameState.status,
     getCurrentVideoMode: () => gameStore.gameState.currentVideoMode,
     getVideoPlayerRef: () => videoPlayerRef.value,
-    getGameStore: () => gameStore
+    getGameStore: () => gameStore,
+    getVideoSwitchState: () => videoSwitchState.value,  // 新增：获取切换状态
+    simulateCountdownChange: (from: number, to: number) => {  // 新增：模拟倒计时变化测试
+      videoSwitchState.value.lastCountdown = from
+      handleCountdownEvent({
+        countdown: to,
+        status: 'betting' as any,
+        game_number: 'TEST_' + Date.now()
+      })
+    }
   }
 }
 
