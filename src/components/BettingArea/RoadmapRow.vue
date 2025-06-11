@@ -47,15 +47,18 @@ const props = withDefaults(defineProps<Props>(), {
 const columnsContainer = ref<HTMLElement>()
 
 // 根据容器宽度计算能显示的列数
+// 在 RoadmapRow.vue 中修改
 const calculateVisibleColumns = () => {
-  if (!columnsContainer.value) return props.maxColumns
+  if (!columnsContainer.value) return Math.min(props.data.length, 20)
   
   const containerWidth = columnsContainer.value.clientWidth
-  const columnWidth = props.type === 'dice' ? 45 : 40  // 骰子列稍宽一些
-  const gap = 2  // 列间距
+  const columnWidth = 40  // 🔥 统一使用40px，不再区分骰子和其他类型
+  const gap = 2
   
   const maxColumns = Math.floor((containerWidth + gap) / (columnWidth + gap))
-  return Math.min(Math.max(1, maxColumns), props.maxColumns)
+  const actualColumns = Math.min(Math.max(6, maxColumns), props.data.length)
+  
+  return actualColumns
 }
 
 // 响应式计算可见结果
@@ -111,6 +114,9 @@ onUnmounted(() => {
 })
 </script>
 
+
+
+
 <style scoped>
 .roadmap-row {
   display: flex;
@@ -154,27 +160,40 @@ onUnmounted(() => {
   display: none;
 }
 
+/* 🔥 关键修复：统一所有单元格的宽度 */
 .result-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
   height: 36px;
   border-radius: 4px;
   flex-shrink: 0;
   transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+/* 🔥 强制所有类型使用相同宽度 */
+.cell-dice,
+.cell-size,
+.cell-parity,
+.cell-sum {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
 }
 
 /* 骰子样式 */
 .cell-dice {
   background: white;
   border: 1px solid #e1e5e9;
-  min-width: 42px;
 }
 
 .dice-image {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
@@ -218,6 +237,9 @@ onUnmounted(() => {
 
 .result-text {
   user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 响应式设计 */
@@ -235,17 +257,24 @@ onUnmounted(() => {
   }
   
   .result-cell {
-    min-width: 36px;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
     height: 32px;
   }
   
-  .cell-dice {
-    min-width: 38px;
+  .cell-dice,
+  .cell-size,
+  .cell-parity,
+  .cell-sum {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
   }
   
   .dice-image {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
   }
   
   .cell-size,
@@ -269,17 +298,24 @@ onUnmounted(() => {
   }
   
   .result-cell {
-    min-width: 32px;
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
     height: 28px;
   }
   
-  .cell-dice {
-    min-width: 34px;
+  .cell-dice,
+  .cell-size,
+  .cell-parity,
+  .cell-sum {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
   }
   
   .dice-image {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
   
   .cell-size,

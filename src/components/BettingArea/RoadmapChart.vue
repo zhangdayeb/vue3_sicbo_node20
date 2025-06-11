@@ -175,8 +175,7 @@ const loadData = async () => {
   }
 }
 
-// 解析路纸数据 - 这里需要根据实际API返回格式调整
-// 解析路纸数据 - 根据实际API返回格式调整
+// 解析路纸数据 - 确保数据一致性
 const parseRoadmapData = (rawData: any): GameResult[] => {
   console.log('🔍 解析原始数据:', rawData)
   
@@ -187,29 +186,46 @@ const parseRoadmapData = (rawData: any): GameResult[] => {
   
   const results: GameResult[] = []
   
-  // 🔥 修复：遍历所有 kX 键（k0, k1, k2, k3...）
-  const gameKeys = Object.keys(rawData).filter(key => key.startsWith('k')).sort()
+  // 🔥 修复：按数字排序，确保顺序正确
+  const gameKeys = Object.keys(rawData)
+    .filter(key => key.startsWith('k'))
+    .sort((a, b) => {
+      const numA = parseInt(a.substring(1))
+      const numB = parseInt(b.substring(1))
+      return numA - numB
+    })
+  
+  console.log('📋 发现期次:', gameKeys)
   
   for (const key of gameKeys) {
     try {
       const gameDataStr = rawData[key]
       
-      // 🔥 解析JSON字符串
       if (typeof gameDataStr !== 'string') {
         console.warn('⚠️ 跳过非字符串数据:', { key, data: gameDataStr })
         continue
       }
       
       const gameData = JSON.parse(gameDataStr)
-      console.log('📊 解析期次:', key, gameData)
       
-      // 🔥 提取骰子数值：{"1":"1","2":"4","3":"5"}
+      // 🔥 修复：更严格的数据验证
+      if (!gameData || typeof gameData !== 'object') {
+        console.warn('⚠️ 跳过无效JSON数据:', { key, gameData })
+        continue
+      }
+      
+      // 🔥 修复：确保所有必需的键都存在
+      if (!gameData["1"] || !gameData["2"] || !gameData["3"]) {
+        console.warn('⚠️ 跳过不完整数据:', { key, gameData })
+        continue
+      }
+      
       const dice1 = parseInt(gameData["1"])
       const dice2 = parseInt(gameData["2"]) 
       const dice3 = parseInt(gameData["3"])
       
       // 验证骰子数值
-      if (![dice1, dice2, dice3].every(d => d >= 1 && d <= 6)) {
+      if (![dice1, dice2, dice3].every(d => !isNaN(d) && d >= 1 && d <= 6)) {
         console.warn('⚠️ 跳过无效骰子数值:', { key, dice1, dice2, dice3 })
         continue
       }
@@ -221,13 +237,18 @@ const parseRoadmapData = (rawData: any): GameResult[] => {
       console.log('✅ 成功解析期次:', key, `${dice1}-${dice2}-${dice3}`, `总和:${gameResult.sum}`)
       
     } catch (error) {
-      console.warn('⚠️ 解析期次失败:', { key, data: rawData[key] }, error)
+      console.error('❌ 解析期次失败:', { key, data: rawData[key] }, error)
+      // 🔥 关键：遇到错误时跳过，而不是中断整个解析过程
+      continue
     }
   }
   
   console.log('✅ 总共解析', results.length, '条路纸记录')
+  console.log('📊 解析结果样例:', results.slice(0, 3))
+  
   return results
 }
+
 
 // 生成模拟数据（用于测试）
 const generateMockData = (): GameResult[] => {
