@@ -45,7 +45,6 @@
         <div class="dropdown-menu" :class="{ 'show': showSettings }">
           <!-- 音效设置 -->
           <div class="menu-section">
-            <div class="section-title">音效设置</div>
             <div class="menu-item">
               <span class="item-label">背景音乐</span>
               <label class="switch">
@@ -60,15 +59,7 @@
                 <span class="slider"></span>
               </label>
             </div>
-          </div>
           
-          <!-- 分割线 -->
-          <div class="menu-divider"></div>
-          
-          <!-- 功能链接 -->
-          <div class="menu-section">
-            <div class="section-title">功能</div>
-            
             <!-- 投注记录 -->
             <div class="menu-item clickable" @click="openBettingHistory">
               <span class="item-label">💰 投注记录</span>
@@ -79,8 +70,12 @@
               <span class="item-label">👑 会员中心</span>
               <span class="arrow">›</span>
             </div>
+            <div class="menu-item clickable" @click="contactServiceFeiJi">
+              <span class="item-label">🎧 飞机客服</span>
+              <span class="arrow">›</span>
+            </div>
             <div class="menu-item clickable" @click="contactService">
-              <span class="item-label">🎧 客服</span>
+              <span class="item-label">🎧 在线客服</span>
               <span class="arrow">›</span>
             </div>
           </div>
@@ -403,9 +398,21 @@ const goToVip = () => {
   }
 }
 
+
+const contactServiceFeiJi = () => {
+  try {
+    console.log('联系客服',userInfo.value?.app_feiji_url )
+    window.open(userInfo.value?.app_feiji_url, '_blank')
+    showSettings.value = false
+  } catch (error) {
+    console.error('❌ 联系客服失败:', error)
+  }
+}
+
 const contactService = () => {
   try {
-    console.log('联系客服')
+    console.log('联系客服',userInfo.value?.app_kefu_url )
+    window.open(userInfo.value?.app_kefu_url, '_blank')
     showSettings.value = false
   } catch (error) {
     console.error('❌ 联系客服失败:', error)
