@@ -1,0 +1,707 @@
+/* src/assets/css/betting-history.css */
+/* 投注记录组件专用样式文件 */
+
+/* ============= 全局变量定义 ============= */
+:root {
+  /* 主色调 */
+  --betting-primary: #2196f3;
+  --betting-secondary: #ffd700;
+  --betting-success: #4caf50;
+  --betting-danger: #f44336;
+  --betting-warning: #ff9800;
+  --betting-info: #00bcd4;
+  
+  /* 背景色 */
+  --betting-bg-primary: rgba(255, 255, 255, 0.05);
+  --betting-bg-secondary: rgba(255, 255, 255, 0.03);
+  --betting-bg-hover: rgba(255, 255, 255, 0.08);
+  --betting-bg-active: rgba(255, 255, 255, 0.12);
+  
+  /* 边框色 */
+  --betting-border-light: rgba(255, 255, 255, 0.1);
+  --betting-border-medium: rgba(255, 255, 255, 0.15);
+  --betting-border-strong: rgba(255, 255, 255, 0.25);
+  
+  /* 文字色 */
+  --betting-text-primary: #ffffff;
+  --betting-text-secondary: rgba(255, 255, 255, 0.8);
+  --betting-text-muted: rgba(255, 255, 255, 0.6);
+  --betting-text-disabled: rgba(255, 255, 255, 0.4);
+  
+  /* 阴影 */
+  --betting-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --betting-shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --betting-shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.35);
+  
+  /* 圆角 */
+  --betting-radius-small: 4px;
+  --betting-radius-medium: 6px;
+  --betting-radius-large: 8px;
+  --betting-radius-xlarge: 12px;
+  
+  /* 间距 */
+  --betting-space-xs: 4px;
+  --betting-space-sm: 8px;
+  --betting-space-md: 12px;
+  --betting-space-lg: 16px;
+  --betting-space-xl: 20px;
+  --betting-space-xxl: 24px;
+  
+  /* 动画时间 */
+  --betting-transition-fast: 0.15s;
+  --betting-transition-normal: 0.3s;
+  --betting-transition-slow: 0.5s;
+}
+
+/* ============= 基础组件样式 ============= */
+
+/* 投注记录模态框 */
+.betting-history-modal {
+  z-index: 9999;
+}
+
+.betting-history-modal .n-modal {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.betting-history-modal .n-card {
+  background: linear-gradient(135deg, 
+    rgba(26, 26, 26, 0.95) 0%, 
+    rgba(35, 35, 35, 0.95) 100%);
+  border: 1px solid var(--betting-border-medium);
+  box-shadow: var(--betting-shadow-strong);
+}
+
+/* 记录项容器 */
+.betting-record-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--betting-space-md);
+  padding: var(--betting-space-lg);
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 自定义滚动条 */
+.betting-record-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.betting-record-container::-webkit-scrollbar-track {
+  background: var(--betting-bg-secondary);
+  border-radius: 3px;
+}
+
+.betting-record-container::-webkit-scrollbar-thumb {
+  background: var(--betting-border-medium);
+  border-radius: 3px;
+  transition: background var(--betting-transition-fast);
+}
+
+.betting-record-container::-webkit-scrollbar-thumb:hover {
+  background: var(--betting-border-strong);
+}
+
+/* ============= 记录项样式 ============= */
+
+/* 记录项基础样式 */
+.betting-record-item {
+  position: relative;
+  background: var(--betting-bg-primary);
+  border: 1px solid var(--betting-border-light);
+  border-radius: var(--betting-radius-large);
+  transition: all var(--betting-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* 记录项状态样式 */
+.betting-record-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--betting-border-light);
+  transition: background var(--betting-transition-fast);
+}
+
+.betting-record-item.win-record::before {
+  background: linear-gradient(to bottom, var(--betting-success), #66bb6a);
+}
+
+.betting-record-item.loss-record::before {
+  background: linear-gradient(to bottom, var(--betting-danger), #ef5350);
+}
+
+.betting-record-item.pending-record::before {
+  background: linear-gradient(to bottom, var(--betting-warning), #ffb74d);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* 悬停和激活状态 */
+.betting-record-item.clickable:hover {
+  background: var(--betting-bg-hover);
+  border-color: var(--betting-border-medium);
+  transform: translateY(-2px);
+  box-shadow: var(--betting-shadow-medium);
+}
+
+.betting-record-item.clickable:active {
+  transform: translateY(0);
+  box-shadow: var(--betting-shadow-light);
+}
+
+/* ============= 状态徽章样式 ============= */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--betting-space-xs) var(--betting-space-sm);
+  border-radius: var(--betting-radius-xlarge);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  min-width: 60px;
+  text-align: center;
+}
+
+.status-badge.pending {
+  background: linear-gradient(135deg, var(--betting-warning), #ffb74d);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.status-badge.win {
+  background: linear-gradient(135deg, var(--betting-success), #66bb6a);
+}
+
+.status-badge.lose {
+  background: linear-gradient(135deg, var(--betting-danger), #ef5350);
+}
+
+.status-badge.cancelled {
+  background: linear-gradient(135deg, #9e9e9e, #bdbdbd);
+}
+
+.status-badge.processing {
+  background: linear-gradient(135deg, var(--betting-info), #4dd0e1);
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+/* ============= 骰子样式 ============= */
+
+.dice-container {
+  display: flex;
+  align-items: center;
+  gap: var(--betting-space-xs);
+  padding: var(--betting-space-xs);
+  background: var(--betting-bg-secondary);
+  border-radius: var(--betting-radius-medium);
+  border: 1px solid var(--betting-border-light);
+}
+
+.dice-item {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+  color: #000000;
+  border-radius: var(--betting-radius-small);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: none;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: transform var(--betting-transition-fast);
+}
+
+.dice-item:hover {
+  transform: scale(1.1);
+}
+
+/* 骰子颜色主题 */
+.dice-item.dice-1 { 
+  background: linear-gradient(135deg, #ff4444, #e53935);
+  color: #ffffff;
+}
+
+.dice-item.dice-2 { 
+  background: linear-gradient(135deg, #ff8800, #fb8c00);
+  color: #ffffff;
+}
+
+.dice-item.dice-3 { 
+  background: linear-gradient(135deg, #ffcc00, #ffb300);
+  color: #000000;
+}
+
+.dice-item.dice-4 { 
+  background: linear-gradient(135deg, #44ff44, #43a047);
+  color: #000000;
+}
+
+.dice-item.dice-5 { 
+  background: linear-gradient(135deg, #00ccff, #0288d1);
+  color: #000000;
+}
+
+.dice-item.dice-6 { 
+  background: linear-gradient(135deg, #8844ff, #7b1fa2);
+  color: #ffffff;
+}
+
+.dice-total {
+  margin-left: var(--betting-space-sm);
+  padding: 2px var(--betting-space-xs);
+  background: var(--betting-bg-primary);
+  border-radius: var(--betting-radius-small);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--betting-text-secondary);
+  border: 1px solid var(--betting-border-light);
+}
+
+/* ============= 金额样式 ============= */
+
+.amount-display {
+  font-family: 'Courier New', 'SF Mono', Monaco, Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.amount-bet {
+  color: var(--betting-primary);
+}
+
+.amount-win {
+  color: var(--betting-success);
+}
+
+.amount-loss {
+  color: var(--betting-danger);
+}
+
+.amount-neutral {
+  color: var(--betting-text-secondary);
+}
+
+/* 大金额突出显示 */
+.amount-large {
+  font-size: 1.1em;
+  text-shadow: 0 0 8px currentColor;
+  animation: amountGlow 2s ease-in-out infinite;
+}
+
+/* ============= 筛选组件样式 ============= */
+
+.filter-section {
+  background: var(--betting-bg-secondary);
+  border: 1px solid var(--betting-border-light);
+  border-radius: var(--betting-radius-large);
+  padding: var(--betting-space-lg);
+  margin-bottom: var(--betting-space-lg);
+}
+
+.filter-row {
+  display: grid;
+  gap: var(--betting-space-md);
+  margin-bottom: var(--betting-space-md);
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--betting-space-xs);
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--betting-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 快速筛选按钮 */
+.quick-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--betting-space-xs);
+}
+
+.quick-filter-btn {
+  padding: var(--betting-space-xs) var(--betting-space-sm);
+  background: var(--betting-bg-primary);
+  border: 1px solid var(--betting-border-light);
+  border-radius: var(--betting-radius-medium);
+  color: var(--betting-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--betting-transition-fast);
+}
+
+.quick-filter-btn:hover {
+  background: var(--betting-bg-hover);
+  border-color: var(--betting-border-medium);
+  color: var(--betting-text-primary);
+}
+
+.quick-filter-btn.active {
+  background: var(--betting-primary);
+  border-color: var(--betting-primary);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
+}
+
+/* ============= 统计信息样式 ============= */
+
+.stats-section {
+  background: var(--betting-bg-secondary);
+  border: 1px solid var(--betting-border-light);
+  border-radius: var(--betting-radius-large);
+  padding: var(--betting-space-lg);
+  margin-bottom: var(--betting-space-lg);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: var(--betting-space-lg);
+  text-align: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--betting-space-xs);
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--betting-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+.stat-value.positive {
+  color: var(--betting-success);
+  text-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+}
+
+.stat-value.negative {
+  color: var(--betting-danger);
+  text-shadow: 0 0 8px rgba(244, 67, 54, 0.3);
+}
+
+/* ============= 加载状态样式 ============= */
+
+.loading-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--betting-space-md);
+  padding: var(--betting-space-xxl);
+  color: var(--betting-text-secondary);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--betting-border-light);
+  border-top: 3px solid var(--betting-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: var(--betting-text-muted);
+}
+
+/* 刷新指示器 */
+.refresh-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--betting-space-sm);
+  padding: var(--betting-space-md);
+  background: linear-gradient(135deg, 
+    rgba(33, 150, 243, 0.1), 
+    rgba(33, 150, 243, 0.05));
+  border: 1px solid rgba(33, 150, 243, 0.2);
+  border-radius: var(--betting-radius-medium);
+  color: var(--betting-primary);
+  font-size: 14px;
+  margin-bottom: var(--betting-space-md);
+  animation: fadeInOut 2s ease-in-out infinite;
+}
+
+/* ============= 空状态样式 ============= */
+
+.empty-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--betting-space-lg);
+  padding: var(--betting-space-xxl);
+  color: var(--betting-text-muted);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--betting-text-secondary);
+}
+
+.empty-description {
+  font-size: 14px;
+  color: var(--betting-text-muted);
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* ============= 动画定义 ============= */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { 
+    opacity: 1;
+    box-shadow: 0 0 8px currentColor;
+  }
+  50% { 
+    opacity: 0.7;
+    box-shadow: 0 0 16px currentColor;
+  }
+}
+
+@keyframes statusPulse {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes amountGlow {
+  0%, 100% { 
+    text-shadow: 0 0 8px currentColor;
+  }
+  50% { 
+    text-shadow: 0 0 16px currentColor, 0 0 24px currentColor;
+  }
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: scaleY(0.8);
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+    transform: scaleY(1);
+  }
+}
+
+/* ============= 响应式设计 ============= */
+
+/* 平板设备 */
+@media (max-width: 768px) {
+  :root {
+    --betting-space-xs: 3px;
+    --betting-space-sm: 6px;
+    --betting-space-md: 10px;
+    --betting-space-lg: 14px;
+    --betting-space-xl: 18px;
+    --betting-space-xxl: 20px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--betting-space-md);
+  }
+  
+  .filter-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .dice-item {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+  
+  .quick-filter-buttons {
+    gap: var(--betting-space-xs);
+  }
+}
+
+/* 手机设备 */
+@media (max-width: 480px) {
+  .betting-record-container {
+    padding: var(--betting-space-md);
+    gap: var(--betting-space-sm);
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: var(--betting-space-sm);
+  }
+  
+  .stat-value {
+    font-size: 14px;
+  }
+  
+  .dice-container {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .dice-item {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+  
+  .status-badge {
+    min-width: 50px;
+    font-size: 10px;
+    padding: 2px var(--betting-space-xs);
+  }
+  
+  .quick-filter-buttons {
+    flex-direction: column;
+    gap: var(--betting-space-xs);
+  }
+  
+  .quick-filter-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* 横屏模式优化 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .betting-record-container {
+    max-height: calc(100vh - 120px);
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  :root {
+    --betting-border-light: rgba(255, 255, 255, 0.3);
+    --betting-border-medium: rgba(255, 255, 255, 0.5);
+    --betting-border-strong: rgba(255, 255, 255, 0.7);
+    --betting-bg-primary: rgba(255, 255, 255, 0.1);
+    --betting-bg-secondary: rgba(255, 255, 255, 0.05);
+  }
+  
+  .betting-record-item {
+    border-width: 2px;
+  }
+  
+  .status-badge {
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .dice-item:hover {
+    transform: none;
+  }
+  
+  .betting-record-item.clickable:hover {
+    transform: none;
+  }
+}
+
+/* ============= 主题变量重写（可选） ============= */
+
+/* 绿色主题 */
+.betting-history-theme-green {
+  --betting-primary: #4caf50;
+  --betting-secondary: #81c784;
+}
+
+/* 蓝色主题 */
+.betting-history-theme-blue {
+  --betting-primary: #2196f3;
+  --betting-secondary: #64b5f6;
+}
+
+/* 紫色主题 */
+.betting-history-theme-purple {
+  --betting-primary: #9c27b0;
+  --betting-secondary: #ba68c8;
+}
+
+/* 橙色主题 */
+.betting-history-theme-orange {
+  --betting-primary: #ff9800;
+  --betting-secondary: #ffb74d;
+}

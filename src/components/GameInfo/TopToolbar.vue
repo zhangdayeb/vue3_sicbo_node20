@@ -68,7 +68,8 @@
           <!-- 功能链接 -->
           <div class="menu-section">
             <div class="section-title">功能</div>
-            <div class="menu-item clickable">
+            <!-- 🔥 修改：投注记录点击事件 -->
+            <div class="menu-item clickable" @click="openBettingHistory">
               <span class="item-label">💰 投注记录</span>
               <span class="arrow">›</span>
             </div>
@@ -84,6 +85,12 @@
         </div>
       </div>
     </div>
+
+    <!-- 🔥 新增：投注记录弹窗 -->
+    <BettingHistoryModal 
+      v-model:show="showBettingHistory"
+      @close="handleBettingHistoryClose"
+    />
   </div>
 </template>
 
@@ -91,7 +98,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useGameData } from '@/composables/useGameData'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
-import { useAudio } from '@/composables/useAudio' // 🔥 新增：导入音频系统
+import { useAudio } from '@/composables/useAudio'
+import { useBettingHistoryStore } from '@/stores/bettingHistoryStore' // 🔥 新增：导入投注记录store
+import BettingHistoryModal from '@/components/BettingHistory/BettingHistoryModal.vue' // 🔥 新增：导入投注记录弹窗
 import { parseGameParams } from '@/utils/urlParams'
 import type { GameParams } from '@/types/api'
 
@@ -105,7 +114,10 @@ const { userInfo, tableInfo, formattedBalance, refreshBalance } = useGameData()
 const realUserId = userInfo.value?.user_id || gameParams.value.user_id
 const realToken = gameParams.value.token
 
-// 🔥 新增：音频系统集成
+// 🔥 新增：投注记录store
+const bettingHistoryStore = useBettingHistoryStore()
+
+// 音频系统集成
 const { 
   config: audioConfig, 
   toggleMusic, 
@@ -121,7 +133,10 @@ const showSettings = ref(false)
 const settingsDropdown = ref<HTMLElement>()
 const isRefreshing = ref(false)
 
-// 🔥 新增：音频设置的响应式计算属性
+// 🔥 新增：投注记录弹窗控制
+const showBettingHistory = ref(false)
+
+// 音频设置的响应式计算属性
 const backgroundMusicEnabled = computed({
   get: () => audioConfig.enableMusic,
   set: (value) => {
@@ -146,7 +161,7 @@ const gameNumber = computed(() => {
   return tableInfo.value?.bureau_number || 'T001250115001'
 })
 
-// 🔥 新增：音频开关处理方法
+// 音频开关处理方法
 const handleBackgroundMusicToggle = () => {
   console.log('🎵 用户切换背景音乐:', audioConfig.enableMusic ? '开启' : '关闭')
   // 由于使用了 computed 的 setter，toggleMusic() 已经被调用
@@ -181,6 +196,29 @@ const handleRefreshBalance = async () => {
   }
 }
 
+// 🔥 新增：打开投注记录弹窗
+const openBettingHistory = () => {
+  console.log('🎯 打开投注记录弹窗')
+  
+  // 关闭设置菜单
+  showSettings.value = false
+  
+  // 显示投注记录弹窗
+  showBettingHistory.value = true
+  
+  // 初始化投注记录store（如果还没有初始化）
+  if (!bettingHistoryStore.records.length && !bettingHistoryStore.loadingState.loading) {
+    console.log('🎯 初始化投注记录数据')
+    bettingHistoryStore.init()
+  }
+}
+
+// 🔥 新增：投注记录弹窗关闭处理
+const handleBettingHistoryClose = () => {
+  console.log('🎯 投注记录弹窗已关闭')
+  showBettingHistory.value = false
+}
+
 // 功能跳转
 const goToVip = () => {
   console.log('跳转到会员中心')
@@ -194,11 +232,21 @@ const contactService = () => {
   showSettings.value = false
 }
 
-
 // 点击外部关闭下拉菜单
 const handleClickOutside = (event: Event) => {
   if (settingsDropdown.value && !settingsDropdown.value.contains(event.target as Node)) {
     showSettings.value = false
+  }
+}
+
+// 🔥 新增：键盘事件处理（ESC关闭弹窗）
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    if (showBettingHistory.value) {
+      showBettingHistory.value = false
+    } else if (showSettings.value) {
+      showSettings.value = false
+    }
   }
 }
 
@@ -208,24 +256,53 @@ onBalanceUpdate((data) => {
   // 余额会通过 WebSocket 自动更新到 useGameData 中
 })
 
-// 🔥 新增：组件挂载时加载音频配置
+// 组件挂载时加载音频配置
 onMounted(() => {
   console.log('🔧 TopToolbar 组件已挂载')
   
   // 加载音频配置
   loadAudioConfig()
   
-  // 🔥 开发模式下输出音频状态
+  // 🔥 新增：初始化投注记录store
+  console.log('🎯 初始化投注记录store')
+  bettingHistoryStore.init()
+  
+  // 开发模式下输出音频状态
   if (import.meta.env.DEV) {
     console.log('🎵 当前音频设置状态:', getAudioInfo())
+    console.log('🎯 投注记录store状态:', {
+      records: bettingHistoryStore.records.length,
+      loading: bettingHistoryStore.loadingState.loading,
+      error: bettingHistoryStore.loadingState.error
+    })
   }
   
+  // 添加事件监听器
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
+  // 清理事件监听器
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeydown)
+  
+  console.log('🔧 TopToolbar 组件已卸载')
 })
+
+// 🔥 新增：开发模式下暴露调试信息
+if (import.meta.env.DEV) {
+  (window as any).debugTopToolbar = {
+    showBettingHistory,
+    showSettings,
+    bettingHistoryStore,
+    openBettingHistory,
+    handleBettingHistoryClose,
+    gameParams: gameParams.value,
+    userInfo: userInfo.value,
+    tableInfo: tableInfo.value
+  }
+}
 </script>
 
 <style scoped>
@@ -529,5 +606,83 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(16px);
+}
+
+/* 🔥 新增：投注记录弹窗样式覆盖 */
+:deep(.betting-history-modal) {
+  z-index: 2000; /* 确保在顶部工具栏之上 */
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .top-toolbar {
+    height: 36px;
+    padding: 0 10px;
+  }
+  
+  .back-btn {
+    height: 24px;
+    min-width: 28px;
+    font-size: 12px;
+  }
+  
+  .settings-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .info-section {
+    gap: 1px;
+  }
+  
+  .game-number,
+  .balance-amount {
+    font-size: 10px;
+  }
+  
+  .info-label {
+    font-size: 9px;
+    min-width: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .left-section {
+    gap: 8px;
+  }
+  
+  .right-section {
+    gap: 6px;
+  }
+  
+  .table-name {
+    font-size: 12px;
+  }
+  
+  .bet-limits {
+    font-size: 9px;
+  }
+  
+  .dropdown-menu {
+    min-width: 160px;
+    right: -10px; /* 向左偏移，避免超出屏幕 */
+  }
+}
+
+/* 🔥 新增：动画效果 */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 弹窗打开时的动画 */
+:deep(.betting-history-modal .n-modal) {
+  animation: fadeInScale 0.3s ease-out;
 }
 </style>
