@@ -68,20 +68,16 @@
           <!-- 功能链接 -->
           <div class="menu-section">
             <div class="section-title">功能</div>
-            <!-- <div class="menu-item clickable" @click="goToRecharge">
-              <span class="item-label">💰 充值</span>
+            <div class="menu-item clickable">
+              <span class="item-label">💰 投注记录</span>
               <span class="arrow">›</span>
-            </div> -->
+            </div>
             <div class="menu-item clickable" @click="goToVip">
               <span class="item-label">👑 会员中心</span>
               <span class="arrow">›</span>
             </div>
             <div class="menu-item clickable" @click="contactService">
               <span class="item-label">🎧 客服</span>
-              <span class="arrow">›</span>
-            </div>
-            <div class="menu-item clickable" @click="goToHelp">
-              <span class="item-label">❓ 帮助</span>
               <span class="arrow">›</span>
             </div>
           </div>
@@ -186,13 +182,6 @@ const handleRefreshBalance = async () => {
 }
 
 // 功能跳转
-const goToRecharge = () => {
-  console.log('跳转到充值页面')
-  showSettings.value = false
-  const url = referrerUrl+'#/pages/user/chongzhi?user_id='+realUserId+'&token='+realToken
-  window.location.href = url
-}
-
 const goToVip = () => {
   console.log('跳转到会员中心')
   showSettings.value = false
@@ -205,10 +194,6 @@ const contactService = () => {
   showSettings.value = false
 }
 
-const goToHelp = () => {
-  console.log('跳转到帮助页面')
-  showSettings.value = false
-}
 
 // 点击外部关闭下拉菜单
 const handleClickOutside = (event: Event) => {
