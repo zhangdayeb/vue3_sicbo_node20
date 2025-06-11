@@ -61,14 +61,15 @@ export interface PaginationInfo {
 
 // 投注记录响应数据
 export interface BettingHistoryResponse {
-  code: number                 // 响应码
-  message: string              // 响应消息
-  data: {
-    records: BettingRecord[]   // 记录列表
-    pagination: PaginationInfo // 分页信息
+  records: BettingRecord[]
+  pagination: {
+    current_page: number
+    total_pages: number
+    total_records: number
+    page_size: number
+    has_more: boolean
   }
 }
-
 // 投注记录详情响应
 export interface BettingDetailResponse {
   code: number                 // 响应码

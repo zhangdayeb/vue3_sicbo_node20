@@ -1,5 +1,4 @@
-const cleanedRecord: BettingRecord = {
-              // 🔥 修复：使用API<template>
+<template>
   <n-modal
     v-model:show="visible"
     :style="modalStyle"
@@ -21,7 +20,8 @@ const cleanedRecord: BettingRecord = {
               circle 
               @click="toggleFilter"
               :type="hasActiveFilter ? 'primary' : 'default'"
-              class="filter-btn"
+              class="action-btn filter-btn"
+              title="筛选"
             >
               <template #icon>
                 <n-icon>
@@ -38,7 +38,8 @@ const cleanedRecord: BettingRecord = {
               circle 
               @click="handleRefresh"
               :loading="isLoading"
-              class="refresh-btn"
+              class="action-btn refresh-btn"
+              title="刷新"
             >
               <template #icon>
                 <n-icon>
@@ -49,12 +50,12 @@ const cleanedRecord: BettingRecord = {
               </template>
             </n-button>
             
-            <!-- 🔥 重点修复：关闭按钮，添加多种关闭方式 -->
+            <!-- 关闭按钮 -->
             <n-button 
               quaternary 
               circle 
               @click="handleClose"
-              class="close-btn"
+              class="action-btn close-btn"
               title="关闭"
             >
               <template #icon>
@@ -81,7 +82,7 @@ const cleanedRecord: BettingRecord = {
       <!-- 记录列表 -->
       <div class="records-section">
         <!-- 加载中 -->
-        <div v-if="isLoading" class="loading-container">
+        <div v-if="isLoading && allRecords.length === 0" class="loading-container">
           <n-spin size="large">
             <template #description>
               正在加载投注记录...
@@ -94,8 +95,8 @@ const cleanedRecord: BettingRecord = {
           <n-result status="error" title="加载失败" :description="error">
             <template #footer>
               <n-space>
-                <n-button @click="handleRetry" type="primary">重试</n-button>
-                <n-button @click="handleClose" quaternary>关闭</n-button>
+                <n-button @click="handleRetry" type="primary" class="action-button">重试</n-button>
+                <n-button @click="handleClose" quaternary class="action-button">关闭</n-button>
               </n-space>
             </template>
           </n-result>
@@ -105,7 +106,7 @@ const cleanedRecord: BettingRecord = {
         <div v-else-if="isEmpty" class="empty-container">
           <n-empty description="暂无投注记录" size="large">
             <template #icon>
-              <n-icon size="48">
+              <n-icon size="48" color="#666">
                 <svg viewBox="0 0 24 24">
                   <path fill="currentColor" d="M9 11h6v2H9v-2zm0-4h6v2H9V7zm0 8h6v2H9v-2z"/>
                 </svg>
@@ -113,8 +114,8 @@ const cleanedRecord: BettingRecord = {
             </template>
             <template #extra>
               <n-space>
-                <n-button @click="handleRefresh" type="primary" ghost>刷新数据</n-button>
-                <n-button @click="handleClose" quaternary>关闭</n-button>
+                <n-button @click="handleRefresh" type="primary" ghost class="action-button">刷新数据</n-button>
+                <n-button @click="handleClose" quaternary class="action-button">关闭</n-button>
               </n-space>
             </template>
           </n-empty>
@@ -123,6 +124,7 @@ const cleanedRecord: BettingRecord = {
         <!-- 记录内容 -->
         <div v-else class="records-list">
           <div class="records-container">
+            <!-- 🔥 修复：确保记录正确显示 -->
             <BettingHistoryItem
               v-for="record in displayRecords"
               :key="record.id"
@@ -135,34 +137,44 @@ const cleanedRecord: BettingRecord = {
             />
           </div>
           
-          <!-- 加载更多 -->
-          <div v-if="canLoadMore" class="load-more-container">
-            <n-button 
-              block 
-              @click="handleLoadMore"
-              :loading="loadingMore"
-              class="load-more-btn"
-            >
-              {{ loadingMore ? '加载中...' : '加载更多' }}
-            </n-button>
-          </div>
+          <!-- 分页控制 -->
+          <div class="pagination-section">
+            <!-- 加载更多 -->
+            <div v-if="canLoadMore" class="load-more-container">
+              <n-button 
+                block 
+                @click="handleLoadMore"
+                :loading="loadingMore"
+                class="load-more-btn action-button"
+                size="large"
+              >
+                {{ loadingMore ? '加载中...' : '加载更多' }}
+              </n-button>
+            </div>
 
-          <!-- 数据统计 -->
-          <div class="records-footer">
-            <n-divider>
-              共 {{ totalRecords }} 条记录
-            </n-divider>
+            <!-- 分页信息 -->
+            <div class="pagination-info">
+              <n-space justify="center" align="center">
+                <span class="page-text">第 {{ currentPage }} 页，共 {{ totalRecords }} 条记录</span>
+              </n-space>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 🔥 底部关闭按钮（额外保险） -->
+      <!-- 底部操作区 -->
       <template #action>
-        <n-space justify="end">
-          <n-button @click="handleClose" type="primary">
-            关闭
-          </n-button>
-        </n-space>
+        <div class="modal-footer">
+          <n-space justify="space-between" align="center">
+            <span class="stats-text" v-if="!isEmpty">
+              已显示 {{ displayRecords.length }} 条记录
+            </span>
+            <span v-else></span>
+            <n-button @click="handleClose" type="primary" class="action-button close-button">
+              关闭
+            </n-button>
+          </n-space>
+        </div>
       </template>
     </n-card>
   </n-modal>
@@ -187,30 +199,16 @@ import BettingHistoryFilter from './BettingHistoryFilter.vue'
 import { getGlobalApiService } from '@/services/gameApi'
 import type { BettingRecord } from '@/types/bettingHistory'
 
-// 定义 API 响应类型
-interface ApiResponse {
-  code: number
-  message: string
-  data?: any
-  pagination?: {
+// 🔥 修改：响应拦截器处理后的数据结构
+interface BettingHistoryResponse {
+  records: BettingRecord[]
+  pagination: {
     current_page: number
     total_pages: number
     total_records: number
     page_size: number
     has_more: boolean
   }
-}
-
-interface ApiResponseData {
-  records?: BettingRecord[]
-  pagination?: {
-    current_page: number
-    total_pages: number
-    total_records: number
-    page_size: number
-    has_more: boolean
-  }
-  [key: string]: any
 }
 
 // Props
@@ -276,7 +274,14 @@ const modalStyle = computed(() => ({
   maxHeight: '900px'
 }))
 
+// 🔥 修复：添加详细的调试日志
 const filteredRecords = computed(() => {
+  console.log('🔍 filteredRecords 计算开始:', {
+    allRecordsLength: allRecords.value.length,
+    dateFilterStart: dateFilter.value.start,
+    dateFilterEnd: dateFilter.value.end
+  })
+  
   let records = [...allRecords.value]
   
   if (dateFilter.value.start || dateFilter.value.end) {
@@ -293,17 +298,31 @@ const filteredRecords = computed(() => {
       
       return true
     })
+    console.log('🔍 应用日期筛选后记录数量:', records.length)
   }
   
+  console.log('🎯 filteredRecords 最终结果:', records.length)
   return records
 })
 
 const displayRecords = computed(() => {
+  console.log('🎯 displayRecords 计算:', {
+    filteredRecordsLength: filteredRecords.value.length,
+    isLoading: isLoading.value,
+    error: error.value
+  })
   return filteredRecords.value
 })
 
 const isEmpty = computed(() => {
-  return filteredRecords.value.length === 0 && !isLoading.value
+  const result = displayRecords.value.length === 0 && !isLoading.value && !error.value
+  console.log('🎯 isEmpty 计算:', {
+    displayRecordsLength: displayRecords.value.length,
+    isLoading: isLoading.value,
+    error: error.value,
+    result
+  })
+  return result
 })
 
 const canLoadMore = computed(() => {
@@ -333,7 +352,7 @@ const toggleFilter = () => {
   showFilter.value = !showFilter.value
 }
 
-// API 调用
+// 🔥 修复：API 调用函数
 const fetchRecords = async (page: number = 1, append: boolean = false) => {
   try {
     console.log(`🔄 获取投注记录 - 页码: ${page}, 追加: ${append}`)
@@ -356,150 +375,86 @@ const fetchRecords = async (page: number = 1, append: boolean = false) => {
     
     console.log('📤 API 请求参数:', params)
     
-    // 🔥 添加请求前的调试信息
-    console.log('🔍 开始API调用...')
+    const response: BettingHistoryResponse = await apiService.getBettingHistory(params)
     
-    const response: ApiResponse = await apiService.getBettingHistory(params)
-    
-    // 🔥 详细的响应分析
+    // 🔥 修正：响应拦截器已处理，直接解析业务数据
     console.log('📥 API 响应完整信息:', {
       response,
-      responseKeys: Object.keys(response || {}),
-      code: response?.code,
-      message: response?.message,
-      dataType: typeof response?.data,
-      dataIsArray: Array.isArray(response?.data),
-      dataLength: Array.isArray(response?.data) ? response.data.length : 'N/A',
-      hasPagination: !!response?.pagination,
-      rawResponse: response
+      recordsLength: response.records?.length || 0,
+      hasPagination: !!response.pagination
     })
     
-    // 🔥 修复：更灵活的成功判断
-    const isSuccess = response?.code === 200 || 
-                     response?.code === 1 || 
-                     (response?.message === 'ok' && response?.data !== undefined)
+    // 🔥 直接从 response 获取数据（不需要 .data）
+    const { records = [], pagination = null } = response
     
-    console.log('🔍 API成功判断:', { 
-      isSuccess, 
-      code: response?.code, 
-      codeType: typeof response?.code,
-      message: response?.message 
+    console.log('✅ 解析后的记录数量:', records.length)
+    console.log('📊 分页信息:', pagination)
+    
+    // 🔥 修复：数据清洗和映射
+    const cleanedRecords: BettingRecord[] = records.map((record: any, index: number) => {
+      // 🔥 修复：使用API实际字段名称
+      const cleanedRecord: BettingRecord = {
+        id: record.id || record.ID || `${Date.now()}-${index}`,
+        game_number: record.game_number || record.gameNumber || `G${Date.now()}`,
+        table_id: record.table_id || record.tableId || '1',
+        user_id: record.user_id || record.userId || '1',
+        bet_time: record.bet_time || record.betTime || new Date().toISOString(),
+        settle_time: record.settle_time || record.settleTime,
+        
+        bet_details: Array.isArray(record.bet_details) ? record.bet_details : 
+                    Array.isArray(record.betDetails) ? record.betDetails : [],
+        total_bet_amount: Number(record.total_bet_amount || record.totalBetAmount || 0),
+        total_win_amount: Number(record.total_win_amount || record.totalWinAmount || 0),
+        net_amount: Number(record.net_amount || record.netAmount || 
+          (Number(record.total_win_amount || record.totalWinAmount || 0) - 
+           Number(record.total_bet_amount || record.totalBetAmount || 0))),
+        
+        dice_results: Array.isArray(record.dice_results) ? record.dice_results as [number, number, number] :
+                     Array.isArray(record.diceResults) ? record.diceResults as [number, number, number] : 
+                     undefined,
+        dice_total: record.dice_total || record.diceTotal || undefined,
+        
+        status: record.status || 'pending',
+        is_settled: Boolean(record.is_settled || record.isSettled || false),
+        
+        currency: record.currency || 'CNY'
+      }
+      
+      console.log('🔧 清洗记录:', {
+        原始: record,
+        清洗后: cleanedRecord
+      })
+      
+      return cleanedRecord
     })
     
-    if (isSuccess) {
-      let records: any[] = []
-      let pagination: any = null
-      
-      // 🔥 修复：根据实际API响应结构解析数据
-      console.log('🔍 API响应结构分析:', {
-        data: response.data,
-        dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
-        hasRecords: response.data?.records ? true : false,
-        recordsLength: response.data?.records?.length || 0,
-        hasPagination: response.data?.pagination ? true : false
-      })
-      
-      if (response.data && typeof response.data === 'object' && response.data.records) {
-        // ✅ 正确的API结构：data.records 是数组，data.pagination 是分页信息
-        records = response.data.records
-        pagination = response.data.pagination
-        console.log('✅ 使用 data.records 格式解析:', { 
-          recordsCount: records.length, 
-          pagination 
-        })
-      } else if (Array.isArray(response.data)) {
-        // 备用：如果data直接是数组
-        records = response.data
-        pagination = response.pagination || {
-          current_page: page,
-          total_pages: Math.ceil(response.data.length / pageSize.value),
-          total_records: response.data.length,
-          has_more: page < Math.ceil(response.data.length / pageSize.value)
-        }
-        console.log('✅ 使用数组格式解析:', { recordsCount: records.length, pagination })
-      } else {
-        console.warn('⚠️ 未知的数据结构:', response.data)
-        records = []
-        pagination = response.data?.pagination || null
-      }
-      
-      console.log('✅ 解析后的记录数量:', records.length)
-      console.log('📊 分页信息:', pagination)
-      
-      // 🔥 修复：如果没有记录但API成功，不要抛出错误
-      if (records.length === 0) {
-        console.log('ℹ️ API返回空记录，这是正常情况')
-        // 清空数据但不报错
-        if (page === 1 || !append) {
-          allRecords.value = []
-        }
-        currentPage.value = pagination?.current_page || page
-        totalRecords.value = pagination?.total_records || 0
-        hasMore.value = pagination?.has_more || false
-        return // 直接返回，不继续处理
-      }
-      
-      const cleanedRecords: BettingRecord[] = records.map((record: any, index: number) => {
-        return {
-          id: record.id || record.ID || `${Date.now()}-${index}`,
-          game_number: record.game_number || record.gameNumber || `G${Date.now()}`,
-          table_id: record.table_id || record.tableId || '1',
-          user_id: record.user_id || record.userId || '1',
-          bet_time: record.bet_time || record.betTime || new Date().toISOString(),
-          settle_time: record.settle_time || record.settleTime,
-          
-          bet_details: Array.isArray(record.bet_details) ? record.bet_details : 
-                      Array.isArray(record.betDetails) ? record.betDetails : [],
-          total_bet_amount: Number(record.total_bet_amount || record.totalBetAmount || 0),
-          total_win_amount: Number(record.total_win_amount || record.totalWinAmount || 0),
-          net_amount: Number(record.net_amount || record.netAmount || 
-            (Number(record.total_win_amount || record.totalWinAmount || 0) - 
-             Number(record.total_bet_amount || record.totalBetAmount || 0))),
-          
-          dice_results: Array.isArray(record.dice_results) ? record.dice_results as [number, number, number] :
-                       Array.isArray(record.diceResults) ? record.diceResults as [number, number, number] : 
-                       undefined,
-          dice_total: record.dice_total || record.diceTotal || undefined,
-          
-          status: record.status || 'pending',
-          is_settled: Boolean(record.is_settled || record.isSettled || false),
-          
-          currency: record.currency || 'CNY'
-        } as BettingRecord
-      })
-      
-      if (page === 1 || !append) {
-        allRecords.value = cleanedRecords
-      } else {
-        allRecords.value = [...allRecords.value, ...cleanedRecords]
-      }
-      
-      currentPage.value = pagination?.current_page || page
-      totalRecords.value = pagination?.total_records || cleanedRecords.length
-      hasMore.value = pagination?.has_more || false
-      
-      console.log(`✅ 数据加载完成 - 总记录: ${allRecords.value.length}`)
-      
+    // 更新记录
+    if (page === 1 || !append) {
+      allRecords.value = cleanedRecords
+      console.log('🔄 替换数据，新记录数量:', cleanedRecords.length)
     } else {
-      // 🔥 API返回了错误码
-      const errorMessage = response.message || '获取投注记录失败'
-      console.error('❌ API返回错误:', { code: response.code, message: errorMessage })
-      throw new Error(errorMessage)
+      allRecords.value = [...allRecords.value, ...cleanedRecords]
+      console.log('➕ 追加数据，总记录数量:', allRecords.value.length)
     }
+    
+    // 更新分页信息
+    currentPage.value = pagination?.current_page || page
+    totalRecords.value = pagination?.total_records || cleanedRecords.length
+    hasMore.value = pagination?.has_more || false
+    
+    console.log(`✅ 数据加载完成 - 总记录: ${allRecords.value.length}`)
+    console.log('🎯 最终状态:', {
+      allRecordsLength: allRecords.value.length,
+      totalRecords: totalRecords.value,
+      currentPage: currentPage.value,
+      hasMore: hasMore.value
+    })
     
   } catch (err: any) {
     console.error('❌ 获取投注记录失败:', err)
-    console.error('❌ 错误详情:', {
-      message: err.message,
-      stack: err.stack,
-      response: err.response
-    })
-    
-    // 🔥 修复：更详细的错误信息
-    const errorMsg = err.response?.data?.message || err.message || '获取投注记录失败'
+    const errorMsg = err.message || '获取投注记录失败'
     error.value = errorMsg
     message.error(`获取数据失败: ${errorMsg}`)
-    throw err
   } finally {
     isLoading.value = false
     loadingMore.value = false
@@ -576,12 +531,15 @@ const handleRecordClick = (record: BettingRecord) => {
 
 // 初始化数据
 const initializeData = async () => {
+  console.log('🚀 初始化数据开始')
   if (allRecords.value.length === 0 && !isLoading.value) {
     try {
       await fetchRecords(1, false)
     } catch (error: any) {
       console.error('初始化数据失败:', error)
     }
+  } else {
+    console.log('ℹ️ 数据已存在，跳过初始化')
   }
 }
 
@@ -611,11 +569,6 @@ onMounted(() => {
   console.log('🚀 BettingHistoryModal 组件挂载完成')
   document.addEventListener('keydown', handleKeydown)
 })
-
-// 组件卸载
-// onUnmounted(() => {
-//   document.removeEventListener('keydown', handleKeydown)
-// })
 </script>
 
 <style scoped>
@@ -629,6 +582,8 @@ onMounted(() => {
   flex-direction: column;
   background: #1a1a1a;
   color: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .modal-header {
@@ -653,6 +608,51 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 🔥 优化：统一的按钮样式 */
+.action-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.filter-btn {
+  background: rgba(24, 144, 255, 0.1) !important;
+  color: #1890ff !important;
+}
+
+.filter-btn:hover {
+  background: rgba(24, 144, 255, 0.2) !important;
+  box-shadow: 0 8px 25px rgba(24, 144, 255, 0.4) !important;
+}
+
+.refresh-btn {
+  background: rgba(82, 196, 26, 0.1) !important;
+  color: #52c41a !important;
+}
+
+.refresh-btn:hover {
+  background: rgba(82, 196, 26, 0.2) !important;
+  box-shadow: 0 8px 25px rgba(82, 196, 26, 0.4) !important;
+}
+
+.close-btn {
+  background: rgba(255, 77, 79, 0.1) !important;
+  color: #ff4d4f !important;
+}
+
+.close-btn:hover {
+  background: rgba(255, 77, 79, 0.2) !important;
+  box-shadow: 0 8px 25px rgba(255, 77, 79, 0.4) !important;
 }
 
 .filter-section {
@@ -687,45 +687,131 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
-  max-height: calc(90vh - 200px);
+  max-height: calc(90vh - 280px);
 }
 
 .record-item {
   margin-bottom: 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.record-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
 .record-item:last-child {
   margin-bottom: 0;
 }
 
-.load-more-container {
+/* 🔥 优化：分页区域样式 */
+.pagination-section {
   margin-top: 16px;
-  padding: 0 4px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
-.records-footer {
-  margin-top: 16px;
+.load-more-container {
+  margin-bottom: 12px;
+}
+
+.pagination-info {
   text-align: center;
-  flex-shrink: 0;
+}
+
+.page-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 🔥 优化：通用按钮样式 */
+.action-button {
+  height: 40px !important;
+  padding: 0 20px !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.action-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.load-more-btn {
+  background: linear-gradient(135deg, #1890ff, #722ed1) !important;
+  border: none !important;
+  color: white !important;
+  font-size: 16px !important;
+}
+
+.load-more-btn:hover {
+  background: linear-gradient(135deg, #40a9ff, #9254de) !important;
+  box-shadow: 0 8px 25px rgba(24, 144, 255, 0.5) !important;
+}
+
+.close-button {
+  background: linear-gradient(135deg, #ff4d4f, #ff7875) !important;
+  border: none !important;
+  min-width: 100px !important;
+}
+
+.close-button:hover {
+  background: linear-gradient(135deg, #ff7875, #ffa39e) !important;
+  box-shadow: 0 8px 25px rgba(255, 77, 79, 0.5) !important;
+}
+
+/* 🔥 优化：底部样式 */
+.modal-footer {
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.stats-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* 滚动条样式 */
 .records-container::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .records-container::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .records-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
+  background: linear-gradient(135deg, #1890ff, #722ed1);
+  border-radius: 4px;
 }
 
 .records-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, #40a9ff, #9254de);
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .modal-card {
+    height: 95vh;
+  }
+  
+  .action-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .header-right {
+    gap: 6px;
+  }
+  
+  .records-container {
+    max-height: calc(95vh - 260px);
+  }
 }
 </style>
