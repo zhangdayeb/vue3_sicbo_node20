@@ -177,21 +177,15 @@ const safeBetLimits = computed(() => {
     const table = tableInfo.value
     if (table) {
       const limit = table.right_money_banker_player || 
-                   table.betLimit || 
-                   table.maxBet ||
-                   table.limit
-      
-      if (typeof limit === 'number') {
-        return limit.toLocaleString()
-      }
-      if (typeof limit === 'string') {
-        return limit
-      }
+                   table.limits?.max ||
+                   table.max_bet ||
+                   20000
+      return `20-${limit.toLocaleString()}`
     }
-    return '1-5000'
+    return '20-20,000'
   } catch (error) {
     console.error('❌ 获取投注限额失败:', error)
-    return '1-5000'
+    return '20-20,000'
   }
 })
 
@@ -200,64 +194,31 @@ const safeGameNumber = computed(() => {
     const table = tableInfo.value
     const user = userInfo.value
     
-    const gameNumber = table?.bureau_number || 
-                      table?.gameNumber || 
-                      table?.game_number ||
-                      user?.current_game_number ||
-                      user?.gameNumber
-    
-    if (gameNumber && gameNumber !== 'T001240606-----') {
-      return gameNumber
+    if (table?.bureau_number) {
+      return table.bureau_number
     }
     
-    // 生成基于当前时间的局号
-    const now = new Date()
-    const year = now.getFullYear().toString().slice(-2)
-    const month = (now.getMonth() + 1).toString().padStart(2, '0')
-    const day = now.getDate().toString().padStart(2, '0')
-    const hour = now.getHours().toString().padStart(2, '0')
-    const minute = now.getMinutes().toString().padStart(2, '0')
+    if (user?.current_game_number) {
+      return user.current_game_number
+    }
     
-    return `T${year}${month}${day}${hour}${minute}001`
+    return generateMockGameNumber()
   } catch (error) {
     console.error('❌ 获取游戏局号失败:', error)
-    return 'T250115001'
+    return generateMockGameNumber()
   }
 })
 
 const safeBalance = computed(() => {
   try {
-    // 首先尝试使用 formattedBalance
-    if (formattedBalance.value && formattedBalance.value !== '---') {
-      return formattedBalance.value
-    }
-    
-    // 尝试从 userInfo 获取原始余额数据
-    const user = userInfo.value
-    if (user) {
-      const balance = user.money_balance || 
-                     user.balance || 
-                     user.amount ||
-                     user.cash
-      
-      if (typeof balance === 'number') {
-        if (balance >= 10000) {
-          return `${(balance / 10000).toFixed(1)}万`
-        } else if (balance >= 1000) {
-          return `${(balance / 1000).toFixed(1)}K`
-        } else {
-          return balance.toLocaleString('zh-CN', { minimumFractionDigits: 2 })
-        }
-      }
-    }
-    
-    return '---'
+    return formattedBalance.value || '余额获取中...'
   } catch (error) {
     console.error('❌ 获取用户余额失败:', error)
-    return '---'
+    return '余额获取中...'
   }
 })
 
+// 音频开关的安全访问
 const safeBgmEnabled = computed({
   get: () => {
     try {
@@ -269,12 +230,9 @@ const safeBgmEnabled = computed({
   },
   set: (value: boolean) => {
     try {
-      if (toggleMusic && typeof toggleMusic === 'function') {
-        toggleMusic()
-        console.log('🎵 背景音乐切换:', value ? '开启' : '关闭')
-      }
+      audioConfig.enableMusic = value
     } catch (error) {
-      console.error('❌ 切换背景音乐失败:', error)
+      console.error('❌ 设置背景音乐状态失败:', error)
     }
   }
 })
@@ -290,68 +248,62 @@ const safeSfxEnabled = computed({
   },
   set: (value: boolean) => {
     try {
-      if (toggleSfx && typeof toggleSfx === 'function') {
-        toggleSfx()
-        console.log('🎵 音效切换:', value ? '开启' : '关闭')
-      }
+      audioConfig.enableSfx = value
     } catch (error) {
-      console.error('❌ 切换音效失败:', error)
+      console.error('❌ 设置音效状态失败:', error)
     }
   }
 })
 
-// 方法
-const handleBackgroundMusicToggle = () => {
-  try {
-    console.log('🎵 用户切换背景音乐')
-  } catch (error) {
-    console.error('❌ 处理背景音乐切换失败:', error)
-  }
+// 生成模拟游戏编号
+const generateMockGameNumber = () => {
+  const now = new Date()
+  const year = now.getFullYear().toString().slice(-2)
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hour = String(now.getHours()).padStart(2, '0')
+  const minute = String(now.getMinutes()).padStart(2, '0')
+  const second = String(now.getSeconds()).padStart(2, '0')
+  
+  return `${year}${month}${day}${hour}${minute}${second}`
 }
 
-const handleSoundEffectsToggle = () => {
-  try {
-    console.log('🎵 用户切换音效')
-  } catch (error) {
-    console.error('❌ 处理音效切换失败:', error)
-  }
-}
-
+// 事件处理方法
 const goBack = () => {
   try {
-    console.log('返回上级页面')
-    const realUserId = userInfo.value?.user_id || gameParams.value.user_id
-    const realToken = gameParams.value.token
-    const url = `${referrerUrl}#/pages/index/index?user_id=${realUserId}&token=${realToken}`
-    console.log('🔗 跳转URL:', url)
-    window.location.href = url
+    console.log('🔙 用户点击返回按钮')
+    
+    if (referrerUrl && referrerUrl !== 'about:blank') {
+      console.log('🔗 返回到来源页面:', referrerUrl)
+      window.location.href = referrerUrl
+    } else {
+      console.log('📱 关闭当前窗口')
+      window.close()
+    }
   } catch (error) {
-    console.error('❌ 返回上级页面失败:', error)
+    console.error('❌ 返回操作失败:', error)
+    window.close()
   }
 }
 
 const toggleSettings = () => {
   try {
     showSettings.value = !showSettings.value
+    console.log('⚙️ 切换设置面板:', showSettings.value)
   } catch (error) {
-    console.error('❌ 切换设置菜单失败:', error)
+    console.error('❌ 切换设置面板失败:', error)
   }
 }
 
 const handleRefreshBalance = async () => {
-  if (isRefreshing.value) return
-  
   try {
-    isRefreshing.value = true
-    console.log('🔄 开始刷新余额...')
+    if (isRefreshing.value) return
     
-    if (refreshBalance && typeof refreshBalance === 'function') {
-      await refreshBalance()
-      console.log('✅ 余额刷新成功，新余额:', safeBalance.value)
-    } else {
-      console.warn('⚠️ refreshBalance 方法不可用')
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    }
+    console.log('💰 开始刷新余额')
+    isRefreshing.value = true
+    
+    await refreshBalance()
+    console.log('✅ 余额刷新完成')
   } catch (error) {
     console.error('❌ 刷新余额失败:', error)
   } finally {
@@ -361,15 +313,9 @@ const handleRefreshBalance = async () => {
 
 const openBettingHistory = () => {
   try {
-    console.log('🎯 打开投注记录弹窗')
-    showSettings.value = false
+    console.log('📋 打开投注记录')
     showBettingHistory.value = true
-    
-    // 初始化投注记录
-    if (!bettingHistoryStore.records.length && !bettingHistoryStore.loadingState.loading) {
-      console.log('🎯 初始化投注记录数据')
-      bettingHistoryStore.init()
-    }
+    showSettings.value = false
   } catch (error) {
     console.error('❌ 打开投注记录失败:', error)
   }
@@ -377,18 +323,38 @@ const openBettingHistory = () => {
 
 const handleBettingHistoryClose = () => {
   try {
-    console.log('🎯 投注记录弹窗已关闭')
     showBettingHistory.value = false
+    console.log('📋 关闭投注记录')
   } catch (error) {
     console.error('❌ 关闭投注记录失败:', error)
   }
 }
 
+const handleBackgroundMusicToggle = () => {
+  try {
+    console.log('🎵 切换背景音乐:', safeBgmEnabled.value)
+    if (toggleMusic && typeof toggleMusic === 'function') {
+      toggleMusic()
+    }
+  } catch (error) {
+    console.error('❌ 切换背景音乐失败:', error)
+  }
+}
+
+const handleSoundEffectsToggle = () => {
+  try {
+    console.log('🔊 切换音效:', safeSfxEnabled.value)
+    if (toggleSfx && typeof toggleSfx === 'function') {
+      toggleSfx()
+    }
+  } catch (error) {
+    console.error('❌ 切换音效失败:', error)
+  }
+}
+
 const goToVip = () => {
   try {
-    console.log('跳转到会员中心')
-    showSettings.value = false
-    const realUserId = userInfo.value?.user_id || gameParams.value.user_id
+    const realUserId = gameParams.value.user_id
     const realToken = gameParams.value.token
     const url = `${referrerUrl}#/pages/user/user?user_id=${realUserId}&token=${realToken}`
     console.log('🔗 会员中心URL:', url)
@@ -397,7 +363,6 @@ const goToVip = () => {
     console.error('❌ 跳转会员中心失败:', error)
   }
 }
-
 
 const contactServiceFeiJi = () => {
   try {
@@ -514,37 +479,52 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 容器：移除统一背景，改为定位容器 */
 .top-toolbar {
   position: absolute;
   top: 10px;
   left: 10px;
   right: 10px;
   height: 40px;
-  background: rgba(0, 0, 0, 0.85);
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 0;
   color: white;
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 15;
+  /* 移除原有的背景、边框、模糊效果 */
 }
 
+/* 左侧区域：独立背景和圆角 */
 .left-section {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
+  flex: 0 0 auto;
   overflow: hidden;
+  /* 新增：独立背景样式 */
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 40px;
+  min-width: 200px;
 }
 
+/* 右侧区域：独立背景和圆角 */
 .right-section {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  /* 新增：独立背景样式 */
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 40px;
 }
 
 .back-btn {
@@ -721,15 +701,6 @@ onUnmounted(() => {
   padding: 10px;
 }
 
-.section-title {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 .menu-item {
   display: flex;
   align-items: center;
@@ -755,12 +726,6 @@ onUnmounted(() => {
 .arrow {
   color: rgba(255, 255, 255, 0.6);
   font-size: 14px;
-}
-
-.menu-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 0 10px;
 }
 
 /* 开关按钮样式 */
@@ -813,6 +778,16 @@ input:checked + .slider:before {
 @media (max-width: 768px) {
   .top-toolbar {
     height: 36px;
+  }
+  
+  .left-section {
+    height: 36px;
+    padding: 0 10px;
+    min-width: 160px;
+  }
+  
+  .right-section {
+    height: 36px;
     padding: 0 10px;
   }
   
@@ -845,6 +820,7 @@ input:checked + .slider:before {
 @media (max-width: 480px) {
   .left-section {
     gap: 8px;
+    min-width: 140px;
   }
   
   .right-section {
