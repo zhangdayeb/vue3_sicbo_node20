@@ -6,7 +6,7 @@
     :close-on-esc="true"
     class="betting-history-modal"
   >
-    <n-card class="modal-card" :title="null" :bordered="false">
+    <n-card class="modal-card" title="投注记录" :bordered="false">
       <template #header>
         <div class="modal-header">
           <div class="header-left">
