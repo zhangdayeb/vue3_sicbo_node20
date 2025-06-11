@@ -3,6 +3,20 @@
     <n-config-provider :theme-overrides="gameTheme">
       <!-- 主要控制按钮组 -->
       <n-button-group class="main-controls">
+        <!-- 路纸按钮 -->
+        <n-button
+          type="info"
+          size="large"
+          @click="handleShowRoadmap"
+          class="control-button roadmap-button"
+        >
+          <template #icon>
+            <n-icon><GridIcon /></n-icon>
+          </template>
+          路纸
+        </n-button>
+
+
         <!-- 取消按钮 -->
         <n-button
           type="error"
@@ -41,19 +55,6 @@
             :max="999"
             class="button-badge"
           />
-        </n-button>
-
-        <!-- 路纸按钮 -->
-        <n-button
-          type="info"
-          size="large"
-          @click="handleShowRoadmap"
-          class="control-button roadmap-button"
-        >
-          <template #icon>
-            <n-icon><GridIcon /></n-icon>
-          </template>
-          路纸
         </n-button>
         
         <!-- 确认投注按钮 -->
