@@ -82,7 +82,7 @@ const refreshVideo = () => {
 
 .video-controls {
   position: absolute;
-  top: 10px;
+  top: 60px;
   right: 10px;
   display: flex;
   gap: 8px;

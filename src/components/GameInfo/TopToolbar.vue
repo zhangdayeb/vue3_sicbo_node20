@@ -5,9 +5,9 @@
         ←
       </button>
       <div class="table-info">
-        <span class="table-name">{{ tableInfo?.table_title || '加载中...' }}</span>
+        <span class="table-name">{{ safeTableName }}</span>
         <div class="bet-limits">
-          限红: {{ tableInfo?.right_money_banker_player || '---' }}
+          限红: {{ safeBetLimits }}
         </div>
       </div>
     </div>
@@ -18,13 +18,13 @@
         <!-- 局号行 -->
         <div class="info-row">
           <span class="info-label">局号</span>
-          <span class="game-number">{{ gameNumber }}</span>
+          <span class="game-number">{{ safeGameNumber }}</span>
         </div>
         
         <!-- 余额行 -->
         <div class="info-row">
           <span class="info-label">余额</span>
-          <span class="balance-amount">{{ formattedBalance }}</span>
+          <span class="balance-amount">{{ safeBalance }}</span>
           <button class="refresh-btn" @click="handleRefreshBalance" :disabled="isRefreshing">
             {{ isRefreshing ? '⏳' : '🔄' }}
           </button>
@@ -49,14 +49,14 @@
             <div class="menu-item">
               <span class="item-label">背景音乐</span>
               <label class="switch">
-                <input type="checkbox" v-model="backgroundMusicEnabled" @change="handleBackgroundMusicToggle">
+                <input type="checkbox" v-model="safeBgmEnabled" @change="handleBackgroundMusicToggle">
                 <span class="slider"></span>
               </label>
             </div>
             <div class="menu-item">
               <span class="item-label">音效</span>
               <label class="switch">
-                <input type="checkbox" v-model="soundEffectsEnabled" @change="handleSoundEffectsToggle">
+                <input type="checkbox" v-model="safeSfxEnabled" @change="handleSoundEffectsToggle">
                 <span class="slider"></span>
               </label>
             </div>
@@ -68,11 +68,13 @@
           <!-- 功能链接 -->
           <div class="menu-section">
             <div class="section-title">功能</div>
-            <!-- 🔥 修改：投注记录点击事件 -->
+            
+            <!-- 投注记录 -->
             <div class="menu-item clickable" @click="openBettingHistory">
               <span class="item-label">💰 投注记录</span>
               <span class="arrow">›</span>
             </div>
+            
             <div class="menu-item clickable" @click="goToVip">
               <span class="item-label">👑 会员中心</span>
               <span class="arrow">›</span>
@@ -86,8 +88,9 @@
       </div>
     </div>
 
-    <!-- 🔥 新增：投注记录弹窗 -->
+    <!-- 投注记录弹窗 -->
     <BettingHistoryModal 
+      v-if="showBettingHistory"
       v-model:show="showBettingHistory"
       @close="handleBettingHistoryClose"
     />
@@ -95,214 +98,412 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { useGameData } from '@/composables/useGameData'
 import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
 import { useAudio } from '@/composables/useAudio'
-import { useBettingHistoryStore } from '@/stores/bettingHistoryStore' // 🔥 新增：导入投注记录store
-import BettingHistoryModal from '@/components/BettingHistory/BettingHistoryModal.vue' // 🔥 新增：导入投注记录弹窗
+import { useBettingHistoryStore } from '@/stores/bettingHistoryStore'
+import BettingHistoryModal from '@/components/BettingHistory/BettingHistoryModal.vue'
 import { parseGameParams } from '@/utils/urlParams'
 import type { GameParams } from '@/types/api'
 
-// 解析URL参数
+// 解析游戏参数
 const gameParams = ref<GameParams>(parseGameParams())
-const referrerUrl = document.referrer.split('?')[0]
-console.log('来路地址:', referrerUrl);
+const referrerUrl = document.referrer.split('?')[0] || 'about:blank'
 
-// 数据访问
-const { userInfo, tableInfo, formattedBalance, refreshBalance } = useGameData()
-const realUserId = userInfo.value?.user_id || gameParams.value.user_id
-const realToken = gameParams.value.token
+console.log('🎮 TopToolbar 初始化')
+console.log('📋 游戏参数:', gameParams.value)
+console.log('🔗 来源URL:', referrerUrl)
 
-// 🔥 新增：投注记录store
+// 真实数据源
+const gameDataResult = useGameData()
+const webSocketEventsResult = useWebSocketEvents()
+const audioResult = useAudio()
+
+console.log('📊 组合式函数加载结果:')
+console.log('  - useGameData:', !!gameDataResult)
+console.log('  - useWebSocketEvents:', !!webSocketEventsResult) 
+console.log('  - useAudio:', !!audioResult)
+
+// 解构真实数据
+const {
+  tableInfo = ref(null),
+  userInfo = ref(null), 
+  formattedBalance = ref('---'),
+  refreshBalance = () => Promise.resolve(),
+  canOperate = ref(false)
+} = gameDataResult || {}
+
+const {
+  onBalanceUpdate = () => {}
+} = webSocketEventsResult || {}
+
+const {
+  config: audioConfig,
+  toggleMusic,
+  toggleSfx, 
+  loadConfig: loadAudioConfig
+} = audioResult || {
+  config: reactive({ enableMusic: false, enableSfx: false }),
+  toggleMusic: () => {},
+  toggleSfx: () => {},
+  loadConfig: () => Promise.resolve()
+}
+
+// 投注记录store
 const bettingHistoryStore = useBettingHistoryStore()
 
-// 音频系统集成
-const { 
-  config: audioConfig, 
-  toggleMusic, 
-  toggleSfx, 
-  loadConfig: loadAudioConfig,
-  getAudioInfo
-} = useAudio()
-
-// WebSocket 事件监听
-const { onBalanceUpdate } = useWebSocketEvents()
-
+// 响应式状态
 const showSettings = ref(false)
 const settingsDropdown = ref<HTMLElement>()
 const isRefreshing = ref(false)
-
-// 🔥 新增：投注记录弹窗控制
 const showBettingHistory = ref(false)
 
-// 音频设置的响应式计算属性
-const backgroundMusicEnabled = computed({
-  get: () => audioConfig.enableMusic,
-  set: (value) => {
-    if (value !== audioConfig.enableMusic) {
-      toggleMusic()
+// 安全的计算属性 - 桌台名称
+const safeTableName = computed(() => {
+  try {
+    const table = tableInfo.value
+    if (table) {
+      return table.table_title || 
+             table.lu_zhu_name || 
+             table.name || 
+             table.tableName || 
+             '骰宝桌台'
+    }
+    return '骰宝桌台'
+  } catch (error) {
+    console.error('❌ 获取桌台名称失败:', error)
+    return '骰宝桌台'
+  }
+})
+
+const safeBetLimits = computed(() => {
+  try {
+    const table = tableInfo.value
+    if (table) {
+      const limit = table.right_money_banker_player || 
+                   table.betLimit || 
+                   table.maxBet ||
+                   table.limit
+      
+      if (typeof limit === 'number') {
+        return limit.toLocaleString()
+      }
+      if (typeof limit === 'string') {
+        return limit
+      }
+    }
+    return '1-5000'
+  } catch (error) {
+    console.error('❌ 获取投注限额失败:', error)
+    return '1-5000'
+  }
+})
+
+const safeGameNumber = computed(() => {
+  try {
+    const table = tableInfo.value
+    const user = userInfo.value
+    
+    const gameNumber = table?.bureau_number || 
+                      table?.gameNumber || 
+                      table?.game_number ||
+                      user?.current_game_number ||
+                      user?.gameNumber
+    
+    if (gameNumber && gameNumber !== 'T001240606-----') {
+      return gameNumber
+    }
+    
+    // 生成基于当前时间的局号
+    const now = new Date()
+    const year = now.getFullYear().toString().slice(-2)
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    const hour = now.getHours().toString().padStart(2, '0')
+    const minute = now.getMinutes().toString().padStart(2, '0')
+    
+    return `T${year}${month}${day}${hour}${minute}001`
+  } catch (error) {
+    console.error('❌ 获取游戏局号失败:', error)
+    return 'T250115001'
+  }
+})
+
+const safeBalance = computed(() => {
+  try {
+    // 首先尝试使用 formattedBalance
+    if (formattedBalance.value && formattedBalance.value !== '---') {
+      return formattedBalance.value
+    }
+    
+    // 尝试从 userInfo 获取原始余额数据
+    const user = userInfo.value
+    if (user) {
+      const balance = user.money_balance || 
+                     user.balance || 
+                     user.amount ||
+                     user.cash
+      
+      if (typeof balance === 'number') {
+        if (balance >= 10000) {
+          return `${(balance / 10000).toFixed(1)}万`
+        } else if (balance >= 1000) {
+          return `${(balance / 1000).toFixed(1)}K`
+        } else {
+          return balance.toLocaleString('zh-CN', { minimumFractionDigits: 2 })
+        }
+      }
+    }
+    
+    return '---'
+  } catch (error) {
+    console.error('❌ 获取用户余额失败:', error)
+    return '---'
+  }
+})
+
+const safeBgmEnabled = computed({
+  get: () => {
+    try {
+      return audioConfig.enableMusic || false
+    } catch (error) {
+      console.error('❌ 获取背景音乐状态失败:', error)
+      return false
+    }
+  },
+  set: (value: boolean) => {
+    try {
+      if (toggleMusic && typeof toggleMusic === 'function') {
+        toggleMusic()
+        console.log('🎵 背景音乐切换:', value ? '开启' : '关闭')
+      }
+    } catch (error) {
+      console.error('❌ 切换背景音乐失败:', error)
     }
   }
 })
 
-const soundEffectsEnabled = computed({
-  get: () => audioConfig.enableSfx,
-  set: (value) => {
-    if (value !== audioConfig.enableSfx) {
-      toggleSfx()
+const safeSfxEnabled = computed({
+  get: () => {
+    try {
+      return audioConfig.enableSfx || false
+    } catch (error) {
+      console.error('❌ 获取音效状态失败:', error)
+      return false
+    }
+  },
+  set: (value: boolean) => {
+    try {
+      if (toggleSfx && typeof toggleSfx === 'function') {
+        toggleSfx()
+        console.log('🎵 音效切换:', value ? '开启' : '关闭')
+      }
+    } catch (error) {
+      console.error('❌ 切换音效失败:', error)
     }
   }
 })
 
-// 计算局号 - 可以从多个来源获取
-const gameNumber = computed(() => {
-  // 优先从 tableInfo 获取，如果没有则显示默认值
-  return tableInfo.value?.bureau_number || 'T001250115001'
-})
-
-// 音频开关处理方法
+// 方法
 const handleBackgroundMusicToggle = () => {
-  console.log('🎵 用户切换背景音乐:', audioConfig.enableMusic ? '开启' : '关闭')
-  // 由于使用了 computed 的 setter，toggleMusic() 已经被调用
+  try {
+    console.log('🎵 用户切换背景音乐')
+  } catch (error) {
+    console.error('❌ 处理背景音乐切换失败:', error)
+  }
 }
 
 const handleSoundEffectsToggle = () => {
-  console.log('🎵 用户切换音效:', audioConfig.enableSfx ? '开启' : '关闭')
-  // 由于使用了 computed 的 setter，toggleSfx() 已经被调用
+  try {
+    console.log('🎵 用户切换音效')
+  } catch (error) {
+    console.error('❌ 处理音效切换失败:', error)
+  }
 }
 
 const goBack = () => {
-  console.log('返回上级页面')
-  const url = referrerUrl+'#/pages/index/index?user_id='+realUserId+'&token='+realToken
-  window.location.href = url
+  try {
+    console.log('返回上级页面')
+    const realUserId = userInfo.value?.user_id || gameParams.value.user_id
+    const realToken = gameParams.value.token
+    const url = `${referrerUrl}#/pages/index/index?user_id=${realUserId}&token=${realToken}`
+    console.log('🔗 跳转URL:', url)
+    window.location.href = url
+  } catch (error) {
+    console.error('❌ 返回上级页面失败:', error)
+  }
 }
 
 const toggleSettings = () => {
-  showSettings.value = !showSettings.value
+  try {
+    showSettings.value = !showSettings.value
+  } catch (error) {
+    console.error('❌ 切换设置菜单失败:', error)
+  }
 }
 
-// 处理刷新余额
 const handleRefreshBalance = async () => {
   if (isRefreshing.value) return
   
   try {
     isRefreshing.value = true
-    await refreshBalance()
+    console.log('🔄 开始刷新余额...')
+    
+    if (refreshBalance && typeof refreshBalance === 'function') {
+      await refreshBalance()
+      console.log('✅ 余额刷新成功，新余额:', safeBalance.value)
+    } else {
+      console.warn('⚠️ refreshBalance 方法不可用')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
   } catch (error) {
-    console.error('刷新余额失败:', error)
+    console.error('❌ 刷新余额失败:', error)
   } finally {
     isRefreshing.value = false
   }
 }
 
-// 🔥 新增：打开投注记录弹窗
 const openBettingHistory = () => {
-  console.log('🎯 打开投注记录弹窗')
-  
-  // 关闭设置菜单
-  showSettings.value = false
-  
-  // 显示投注记录弹窗
-  showBettingHistory.value = true
-  
-  // 初始化投注记录store（如果还没有初始化）
-  if (!bettingHistoryStore.records.length && !bettingHistoryStore.loadingState.loading) {
-    console.log('🎯 初始化投注记录数据')
-    bettingHistoryStore.init()
+  try {
+    console.log('🎯 打开投注记录弹窗')
+    showSettings.value = false
+    showBettingHistory.value = true
+    
+    // 初始化投注记录
+    if (!bettingHistoryStore.records.length && !bettingHistoryStore.loadingState.loading) {
+      console.log('🎯 初始化投注记录数据')
+      bettingHistoryStore.init()
+    }
+  } catch (error) {
+    console.error('❌ 打开投注记录失败:', error)
   }
 }
 
-// 🔥 新增：投注记录弹窗关闭处理
 const handleBettingHistoryClose = () => {
-  console.log('🎯 投注记录弹窗已关闭')
-  showBettingHistory.value = false
+  try {
+    console.log('🎯 投注记录弹窗已关闭')
+    showBettingHistory.value = false
+  } catch (error) {
+    console.error('❌ 关闭投注记录失败:', error)
+  }
 }
 
-// 功能跳转
 const goToVip = () => {
-  console.log('跳转到会员中心')
-  showSettings.value = false
-  const url = referrerUrl+'#/pages/user/user?user_id='+realUserId+'&token='+realToken
-  window.location.href = url
+  try {
+    console.log('跳转到会员中心')
+    showSettings.value = false
+    const realUserId = userInfo.value?.user_id || gameParams.value.user_id
+    const realToken = gameParams.value.token
+    const url = `${referrerUrl}#/pages/user/user?user_id=${realUserId}&token=${realToken}`
+    console.log('🔗 会员中心URL:', url)
+    window.location.href = url
+  } catch (error) {
+    console.error('❌ 跳转会员中心失败:', error)
+  }
 }
 
 const contactService = () => {
-  console.log('联系客服')
-  showSettings.value = false
-}
-
-// 点击外部关闭下拉菜单
-const handleClickOutside = (event: Event) => {
-  if (settingsDropdown.value && !settingsDropdown.value.contains(event.target as Node)) {
+  try {
+    console.log('联系客服')
     showSettings.value = false
+  } catch (error) {
+    console.error('❌ 联系客服失败:', error)
   }
 }
 
-// 🔥 新增：键盘事件处理（ESC关闭弹窗）
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
-    if (showBettingHistory.value) {
-      showBettingHistory.value = false
-    } else if (showSettings.value) {
+const handleClickOutside = (event: Event) => {
+  try {
+    if (settingsDropdown.value && !settingsDropdown.value.contains(event.target as Node)) {
       showSettings.value = false
     }
+  } catch (error) {
+    console.error('❌ 处理点击外部事件失败:', error)
   }
 }
 
-// 监听 WebSocket 余额更新
-onBalanceUpdate((data) => {
-  console.log('💰 余额自动更新:', data.balance)
-  // 余额会通过 WebSocket 自动更新到 useGameData 中
-})
-
-// 组件挂载时加载音频配置
-onMounted(() => {
-  console.log('🔧 TopToolbar 组件已挂载')
-  
-  // 加载音频配置
-  loadAudioConfig()
-  
-  // 🔥 新增：初始化投注记录store
-  console.log('🎯 初始化投注记录store')
-  bettingHistoryStore.init()
-  
-  // 开发模式下输出音频状态
-  if (import.meta.env.DEV) {
-    console.log('🎵 当前音频设置状态:', getAudioInfo())
-    console.log('🎯 投注记录store状态:', {
-      records: bettingHistoryStore.records.length,
-      loading: bettingHistoryStore.loadingState.loading,
-      error: bettingHistoryStore.loadingState.error
-    })
+const handleKeydown = (event: KeyboardEvent) => {
+  try {
+    if (event.key === 'Escape') {
+      if (showBettingHistory.value) {
+        showBettingHistory.value = false
+      } else if (showSettings.value) {
+        showSettings.value = false
+      }
+    }
+  } catch (error) {
+    console.error('❌ 处理键盘事件失败:', error)
   }
-  
-  // 添加事件监听器
-  document.addEventListener('click', handleClickOutside)
-  document.addEventListener('keydown', handleKeydown)
+}
+
+// 组件生命周期
+onMounted(async () => {
+  try {
+    console.log('🔧 TopToolbar 组件已挂载')
+    
+    // 加载音频配置
+    if (loadAudioConfig && typeof loadAudioConfig === 'function') {
+      try {
+        await loadAudioConfig()
+        console.log('✅ 音频配置加载成功')
+      } catch (error) {
+        console.warn('⚠️ 音频配置加载失败:', error)
+      }
+    }
+    
+    // 监听余额更新事件
+    if (onBalanceUpdate && typeof onBalanceUpdate === 'function') {
+      try {
+        onBalanceUpdate((data: any) => {
+          console.log('💰 WebSocket 余额更新:', data)
+        })
+        console.log('✅ 余额更新监听设置成功')
+      } catch (error) {
+        console.warn('⚠️ 余额更新监听设置失败:', error)
+      }
+    }
+    
+    // 初始化投注记录store
+    try {
+      console.log('🎯 初始化投注记录store')
+      await bettingHistoryStore.init()
+      console.log('✅ 投注记录store初始化成功')
+    } catch (error) {
+      console.warn('⚠️ 投注记录store初始化失败:', error)
+    }
+    
+    // 添加事件监听器
+    document.addEventListener('click', handleClickOutside)
+    document.addEventListener('keydown', handleKeydown)
+    
+    console.log('✅ TopToolbar 初始化完成')
+    
+    // 输出当前状态用于调试
+    console.log('📊 当前真实数据状态:')
+    console.log('  - 桌台信息:', tableInfo?.value)
+    console.log('  - 用户信息:', userInfo?.value)
+    console.log('  - 格式化余额:', formattedBalance?.value)
+    console.log('  - 音频配置:', audioConfig)
+    console.log('  - 显示状态:')
+    console.log('    * 桌台名称:', safeTableName.value)
+    console.log('    * 投注限额:', safeBetLimits.value)
+    console.log('    * 游戏局号:', safeGameNumber.value)
+    console.log('    * 用户余额:', safeBalance.value)
+    
+  } catch (error) {
+    console.error('❌ TopToolbar 挂载时发生错误:', error)
+  }
 })
 
 onUnmounted(() => {
-  // 清理事件监听器
-  document.removeEventListener('click', handleClickOutside)
-  document.removeEventListener('keydown', handleKeydown)
-  
-  console.log('🔧 TopToolbar 组件已卸载')
-})
-
-// 🔥 新增：开发模式下暴露调试信息
-if (import.meta.env.DEV) {
-  (window as any).debugTopToolbar = {
-    showBettingHistory,
-    showSettings,
-    bettingHistoryStore,
-    openBettingHistory,
-    handleBettingHistoryClose,
-    gameParams: gameParams.value,
-    userInfo: userInfo.value,
-    tableInfo: tableInfo.value
+  try {
+    document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('keydown', handleKeydown)
+    console.log('🔧 TopToolbar 组件已卸载')
+  } catch (error) {
+    console.error('❌ TopToolbar 卸载时发生错误:', error)
   }
-}
+})
 </script>
 
 <style scoped>
@@ -340,140 +541,136 @@ if (import.meta.env.DEV) {
 }
 
 .back-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  padding: 4px 8px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1;
+  border-radius: 6px;
+  padding: 0;
   height: 28px;
   min-width: 32px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 14px;
   transition: all 0.2s ease;
-  font-weight: 500;
 }
 
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
 }
 
 .table-info {
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
+  flex: 1;
 }
 
 .table-name {
-  font-weight: 700;
+  color: white;
+  font-weight: 500;
   font-size: 13px;
-  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #ffffff;
 }
 
 .bet-limits {
+  color: rgba(255, 255, 255, 0.7);
   font-size: 10px;
-  opacity: 0.75;
-  line-height: 1.1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #e8e8e8;
-  font-weight: 400;
 }
 
-/* 局号和余额信息区域 */
 .info-section {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-right: 8px;
+  align-items: flex-end;
 }
 
 .info-row {
   display: flex;
   align-items: center;
   gap: 4px;
+  height: 16px;
 }
 
 .info-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 10px;
   min-width: 24px;
-  font-weight: 500;
+  text-align: right;
 }
 
 .game-number {
-  color: #ffffff;
+  color: #3498db;
+  font-weight: 600;
   font-size: 11px;
-  font-weight: 700;
+  min-width: 80px;
+  text-align: right;
   font-family: 'Courier New', monospace;
-  letter-spacing: 0.5px;
-  line-height: 1.1;
 }
 
 .balance-amount {
-  color: #4CAF50;
+  color: #f1c40f;
+  font-weight: 600;
   font-size: 11px;
-  font-weight: 700;
-  line-height: 1.1;
+  min-width: 60px;
+  text-align: right;
+  font-family: 'Courier New', monospace;
 }
 
 .refresh-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: white;
-  padding: 2px 4px;
-  border-radius: 3px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
-  font-size: 9px;
-  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s ease;
-  margin-left: 3px;
+  border-radius: 50%;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.35);
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
 }
 
 .refresh-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* 设置下拉菜单 */
 .settings-dropdown {
   position: relative;
 }
 
 .settings-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: white;
-  padding: 0;
-  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px;
   cursor: pointer;
-  width: 28px;
-  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
   transition: all 0.2s ease;
 }
 
 .settings-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.2);
 }
 
-/* 三条横线样式 */
 .hamburger-menu {
   display: flex;
   flex-direction: column;
@@ -482,63 +679,60 @@ if (import.meta.env.DEV) {
 }
 
 .hamburger-menu span {
-  width: 100%;
+  display: block;
   height: 1.5px;
+  width: 100%;
   background: white;
   border-radius: 1px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
-/* 下拉菜单 */
 .dropdown-menu {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 6px;
+  margin-top: 8px;
   background: rgba(0, 0, 0, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
   min-width: 180px;
   opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: all 0.3s ease;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.2s ease;
+  pointer-events: none;
   z-index: 1000;
-  backdrop-filter: blur(10px);
 }
 
 .dropdown-menu.show {
   opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 .menu-section {
-  padding: 10px 0;
+  padding: 10px;
 }
 
 .section-title {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 10px;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 0 12px;
-  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
-  color: white;
-  font-size: 12px;
-  transition: background 0.2s;
-}
-
-.menu-item.clickable {
+  padding: 6px 0;
   cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 .menu-item.clickable:hover {
@@ -546,9 +740,9 @@ if (import.meta.env.DEV) {
 }
 
 .item-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  color: white;
+  font-size: 13px;
+  flex: 1;
 }
 
 .arrow {
@@ -608,11 +802,6 @@ input:checked + .slider:before {
   transform: translateX(16px);
 }
 
-/* 🔥 新增：投注记录弹窗样式覆盖 */
-:deep(.betting-history-modal) {
-  z-index: 2000; /* 确保在顶部工具栏之上 */
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .top-toolbar {
@@ -665,24 +854,7 @@ input:checked + .slider:before {
   
   .dropdown-menu {
     min-width: 160px;
-    right: -10px; /* 向左偏移，避免超出屏幕 */
+    right: -10px;
   }
-}
-
-/* 🔥 新增：动画效果 */
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* 弹窗打开时的动画 */
-:deep(.betting-history-modal .n-modal) {
-  animation: fadeInScale 0.3s ease-out;
 }
 </style>
