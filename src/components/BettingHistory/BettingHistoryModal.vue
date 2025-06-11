@@ -1,10 +1,12 @@
-<template>
+const cleanedRecord: BettingRecord = {
+              // 🔥 修复：使用API<template>
   <n-modal
     v-model:show="visible"
     :style="modalStyle"
-    :mask-closable="false"
+    :mask-closable="true"
     :close-on-esc="true"
     class="betting-history-modal"
+    @close="handleModalClose"
   >
     <n-card class="modal-card" title="投注记录" :bordered="false">
       <template #header>
@@ -17,7 +19,7 @@
             <n-button 
               quaternary 
               circle 
-              @click="showFilter = !showFilter"
+              @click="toggleFilter"
               :type="hasActiveFilter ? 'primary' : 'default'"
               class="filter-btn"
             >
@@ -35,7 +37,7 @@
               quaternary 
               circle 
               @click="handleRefresh"
-              :loading="historyStore.isLoading"
+              :loading="isLoading"
               class="refresh-btn"
             >
               <template #icon>
@@ -47,12 +49,13 @@
               </template>
             </n-button>
             
-            <!-- 关闭按钮 -->
+            <!-- 🔥 重点修复：关闭按钮，添加多种关闭方式 -->
             <n-button 
               quaternary 
               circle 
-              @click="closeModal"
+              @click="handleClose"
               class="close-btn"
+              title="关闭"
             >
               <template #icon>
                 <n-icon>
@@ -69,43 +72,16 @@
       <!-- 筛选区域 -->
       <BettingHistoryFilter 
         v-if="showFilter"
-        :loading="historyStore.isLoading"
+        :loading="isLoading"
         @apply="handleApplyFilter"
         @reset="handleResetFilter"
         class="filter-section"
       />
 
-      <!-- 统计信息 -->
-      <div v-if="!historyStore.isEmpty" class="stats-section">
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-label">总投注</div>
-            <div class="stat-value bet-amount">{{ formatAmount(historyStore.currentPageStats.totalBet) }}</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">总中奖</div>
-            <div class="stat-value win-amount">{{ formatAmount(historyStore.currentPageStats.totalWin) }}</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">净盈亏</div>
-            <div 
-              class="stat-value net-amount"
-              :class="{ 'profit': historyStore.currentPageStats.netAmount > 0, 'loss': historyStore.currentPageStats.netAmount < 0 }"
-            >
-              {{ formatNetAmount(historyStore.currentPageStats.netAmount) }}
-            </div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">胜率</div>
-            <div class="stat-value win-rate">{{ historyStore.currentPageStats.winRate }}%</div>
-          </div>
-        </div>
-      </div>
-
       <!-- 记录列表 -->
       <div class="records-section">
         <!-- 加载中 -->
-        <div v-if="historyStore.loadingState.loading" class="loading-container">
+        <div v-if="isLoading" class="loading-container">
           <n-spin size="large">
             <template #description>
               正在加载投注记录...
@@ -113,80 +89,87 @@
           </n-spin>
         </div>
 
-        <!-- 空状态 -->
-        <div v-else-if="historyStore.isEmpty" class="empty-container">
-          <n-empty description="暂无投注记录" size="large">
-            <template #icon>
-              <n-icon size="48">
-                <svg viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                </svg>
-              </n-icon>
-            </template>
-            <template #extra>
-              <n-button @click="handleRefresh" type="primary" ghost>
-                刷新数据
-              </n-button>
-            </template>
-          </n-empty>
-        </div>
-
         <!-- 错误状态 -->
-        <div v-else-if="historyStore.loadingState.error" class="error-container">
-          <n-result status="error" title="加载失败" :description="historyStore.loadingState.error">
+        <div v-else-if="error" class="error-container">
+          <n-result status="error" title="加载失败" :description="error">
             <template #footer>
               <n-space>
-                <n-button @click="handleRetry" type="primary">
-                  重试
-                </n-button>
-                <n-button @click="closeModal" quaternary>
-                  关闭
-                </n-button>
+                <n-button @click="handleRetry" type="primary">重试</n-button>
+                <n-button @click="handleClose" quaternary>关闭</n-button>
               </n-space>
             </template>
           </n-result>
         </div>
 
-        <!-- 记录列表 -->
+        <!-- 空状态 -->
+        <div v-else-if="isEmpty" class="empty-container">
+          <n-empty description="暂无投注记录" size="large">
+            <template #icon>
+              <n-icon size="48">
+                <svg viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M9 11h6v2H9v-2zm0-4h6v2H9V7zm0 8h6v2H9v-2z"/>
+                </svg>
+              </n-icon>
+            </template>
+            <template #extra>
+              <n-space>
+                <n-button @click="handleRefresh" type="primary" ghost>刷新数据</n-button>
+                <n-button @click="handleClose" quaternary>关闭</n-button>
+              </n-space>
+            </template>
+          </n-empty>
+        </div>
+
+        <!-- 记录内容 -->
         <div v-else class="records-list">
           <div class="records-container">
             <BettingHistoryItem
-              v-for="record in historyStore.records"
+              v-for="record in displayRecords"
               :key="record.id"
               :record="record"
-              @view-detail="handleViewDetail"
-              @rebet="handleRebet"
+              :expandable="true"
+              :show-actions="false"
+              :clickable="true"
+              @click="handleRecordClick"
               class="record-item"
             />
           </div>
-
+          
           <!-- 加载更多 -->
-          <div v-if="historyStore.canLoadMore" class="load-more-container">
+          <div v-if="canLoadMore" class="load-more-container">
             <n-button 
+              block 
               @click="handleLoadMore"
-              :loading="historyStore.loadingState.loadingMore"
-              block
-              size="large"
-              quaternary
+              :loading="loadingMore"
+              class="load-more-btn"
             >
-              {{ historyStore.loadingState.loadingMore ? '加载中...' : '加载更多' }}
+              {{ loadingMore ? '加载中...' : '加载更多' }}
             </n-button>
           </div>
 
           <!-- 数据统计 -->
           <div class="records-footer">
             <n-divider>
-              共 {{ historyStore.totalRecords }} 条记录
+              共 {{ totalRecords }} 条记录
             </n-divider>
           </div>
         </div>
       </div>
+
+      <!-- 🔥 底部关闭按钮（额外保险） -->
+      <template #action>
+        <n-space justify="end">
+          <n-button @click="handleClose" type="primary">
+            关闭
+          </n-button>
+        </n-space>
+      </template>
     </n-card>
   </n-modal>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { 
   NModal, 
   NCard, 
@@ -194,16 +177,41 @@ import {
   NIcon, 
   NSpin, 
   NEmpty, 
-  NResult, 
-  NSpace, 
+  NResult,
   NDivider,
-  useDialog,
+  NSpace,
   useMessage
 } from 'naive-ui'
-import { useBettingHistoryStore } from '@/stores/bettingHistoryStore'
 import BettingHistoryItem from './BettingHistoryItem.vue'
 import BettingHistoryFilter from './BettingHistoryFilter.vue'
+import { getGlobalApiService } from '@/services/gameApi'
 import type { BettingRecord } from '@/types/bettingHistory'
+
+// 定义 API 响应类型
+interface ApiResponse {
+  code: number
+  message: string
+  data?: any
+  pagination?: {
+    current_page: number
+    total_pages: number
+    total_records: number
+    page_size: number
+    has_more: boolean
+  }
+}
+
+interface ApiResponseData {
+  records?: BettingRecord[]
+  pagination?: {
+    current_page: number
+    total_pages: number
+    total_records: number
+    page_size: number
+    has_more: boolean
+  }
+  [key: string]: any
+}
 
 // Props
 interface Props {
@@ -221,22 +229,44 @@ const emit = defineEmits<{
 }>()
 
 // 组合式函数
-const historyStore = useBettingHistoryStore()
-const dialog = useDialog()
 const message = useMessage()
 
-// 响应式数据
+// 🔥 响应式数据 - 确保关闭功能正常
 const visible = computed({
-  get: () => props.show,
-  set: (value) => emit('update:show', value)
+  get: () => {
+    console.log('🎯 visible get:', props.show)
+    return props.show
+  },
+  set: (value) => {
+    console.log('🎯 visible set:', value)
+    emit('update:show', value)
+    if (!value) {
+      emit('close')
+    }
+  }
 })
 
 const showFilter = ref(false)
+const isLoading = ref(false)
+const loadingMore = ref(false)
+const error = ref<string | null>(null)
+
+// 数据状态
+const allRecords = ref<BettingRecord[]>([])
+const totalRecords = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const hasMore = ref(true)
+
+// 日期筛选
+const dateFilter = ref({
+  start: null as string | null,
+  end: null as string | null
+})
 
 // 计算属性
 const hasActiveFilter = computed(() => {
-  return historyStore.dateFilter.start !== null ||
-         historyStore.dateFilter.end !== null
+  return dateFilter.value.start !== null || dateFilter.value.end !== null
 })
 
 const modalStyle = computed(() => ({
@@ -246,30 +276,244 @@ const modalStyle = computed(() => ({
   maxHeight: '900px'
 }))
 
-// 格式化方法
-const formatAmount = (amount: number): string => {
-  return `¥${amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const filteredRecords = computed(() => {
+  let records = [...allRecords.value]
+  
+  if (dateFilter.value.start || dateFilter.value.end) {
+    records = records.filter(record => {
+      const recordDate = new Date(record.bet_time).toISOString().split('T')[0]
+      
+      if (dateFilter.value.start && recordDate < dateFilter.value.start) {
+        return false
+      }
+      
+      if (dateFilter.value.end && recordDate > dateFilter.value.end) {
+        return false
+      }
+      
+      return true
+    })
+  }
+  
+  return records
+})
+
+const displayRecords = computed(() => {
+  return filteredRecords.value
+})
+
+const isEmpty = computed(() => {
+  return filteredRecords.value.length === 0 && !isLoading.value
+})
+
+const canLoadMore = computed(() => {
+  return hasMore.value && !isLoading.value && !loadingMore.value && !error.value
+})
+
+// 🔥 关闭相关方法 - 多重保险
+const handleClose = () => {
+  console.log('🔴 handleClose 调用')
+  try {
+    showFilter.value = false
+    visible.value = false
+  } catch (err) {
+    console.error('关闭弹窗时出错:', err)
+    // 强制触发关闭
+    emit('update:show', false)
+    emit('close')
+  }
 }
 
-const formatNetAmount = (amount: number): string => {
-  const formatted = formatAmount(Math.abs(amount))
-  if (amount > 0) {
-    return `+${formatted}`
-  } else if (amount < 0) {
-    return `-${formatted}`
+const handleModalClose = () => {
+  console.log('🔴 handleModalClose 调用')
+  handleClose()
+}
+
+const toggleFilter = () => {
+  showFilter.value = !showFilter.value
+}
+
+// API 调用
+const fetchRecords = async (page: number = 1, append: boolean = false) => {
+  try {
+    console.log(`🔄 获取投注记录 - 页码: ${page}, 追加: ${append}`)
+    
+    if (page === 1) {
+      isLoading.value = true
+    } else {
+      loadingMore.value = true
+    }
+    
+    error.value = null
+    
+    const apiService = getGlobalApiService()
+    const params = {
+      page,
+      pageSize: pageSize.value,
+      ...(dateFilter.value.start && { start_date: dateFilter.value.start }),
+      ...(dateFilter.value.end && { end_date: dateFilter.value.end })
+    }
+    
+    console.log('📤 API 请求参数:', params)
+    
+    // 🔥 添加请求前的调试信息
+    console.log('🔍 开始API调用...')
+    
+    const response: ApiResponse = await apiService.getBettingHistory(params)
+    
+    // 🔥 详细的响应分析
+    console.log('📥 API 响应完整信息:', {
+      response,
+      responseKeys: Object.keys(response || {}),
+      code: response?.code,
+      message: response?.message,
+      dataType: typeof response?.data,
+      dataIsArray: Array.isArray(response?.data),
+      dataLength: Array.isArray(response?.data) ? response.data.length : 'N/A',
+      hasPagination: !!response?.pagination,
+      rawResponse: response
+    })
+    
+    // 🔥 修复：更灵活的成功判断
+    const isSuccess = response?.code === 200 || 
+                     response?.code === 1 || 
+                     (response?.message === 'ok' && response?.data !== undefined)
+    
+    console.log('🔍 API成功判断:', { 
+      isSuccess, 
+      code: response?.code, 
+      codeType: typeof response?.code,
+      message: response?.message 
+    })
+    
+    if (isSuccess) {
+      let records: any[] = []
+      let pagination: any = null
+      
+      // 🔥 修复：根据实际API响应结构解析数据
+      console.log('🔍 API响应结构分析:', {
+        data: response.data,
+        dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
+        hasRecords: response.data?.records ? true : false,
+        recordsLength: response.data?.records?.length || 0,
+        hasPagination: response.data?.pagination ? true : false
+      })
+      
+      if (response.data && typeof response.data === 'object' && response.data.records) {
+        // ✅ 正确的API结构：data.records 是数组，data.pagination 是分页信息
+        records = response.data.records
+        pagination = response.data.pagination
+        console.log('✅ 使用 data.records 格式解析:', { 
+          recordsCount: records.length, 
+          pagination 
+        })
+      } else if (Array.isArray(response.data)) {
+        // 备用：如果data直接是数组
+        records = response.data
+        pagination = response.pagination || {
+          current_page: page,
+          total_pages: Math.ceil(response.data.length / pageSize.value),
+          total_records: response.data.length,
+          has_more: page < Math.ceil(response.data.length / pageSize.value)
+        }
+        console.log('✅ 使用数组格式解析:', { recordsCount: records.length, pagination })
+      } else {
+        console.warn('⚠️ 未知的数据结构:', response.data)
+        records = []
+        pagination = response.data?.pagination || null
+      }
+      
+      console.log('✅ 解析后的记录数量:', records.length)
+      console.log('📊 分页信息:', pagination)
+      
+      // 🔥 修复：如果没有记录但API成功，不要抛出错误
+      if (records.length === 0) {
+        console.log('ℹ️ API返回空记录，这是正常情况')
+        // 清空数据但不报错
+        if (page === 1 || !append) {
+          allRecords.value = []
+        }
+        currentPage.value = pagination?.current_page || page
+        totalRecords.value = pagination?.total_records || 0
+        hasMore.value = pagination?.has_more || false
+        return // 直接返回，不继续处理
+      }
+      
+      const cleanedRecords: BettingRecord[] = records.map((record: any, index: number) => {
+        return {
+          id: record.id || record.ID || `${Date.now()}-${index}`,
+          game_number: record.game_number || record.gameNumber || `G${Date.now()}`,
+          table_id: record.table_id || record.tableId || '1',
+          user_id: record.user_id || record.userId || '1',
+          bet_time: record.bet_time || record.betTime || new Date().toISOString(),
+          settle_time: record.settle_time || record.settleTime,
+          
+          bet_details: Array.isArray(record.bet_details) ? record.bet_details : 
+                      Array.isArray(record.betDetails) ? record.betDetails : [],
+          total_bet_amount: Number(record.total_bet_amount || record.totalBetAmount || 0),
+          total_win_amount: Number(record.total_win_amount || record.totalWinAmount || 0),
+          net_amount: Number(record.net_amount || record.netAmount || 
+            (Number(record.total_win_amount || record.totalWinAmount || 0) - 
+             Number(record.total_bet_amount || record.totalBetAmount || 0))),
+          
+          dice_results: Array.isArray(record.dice_results) ? record.dice_results as [number, number, number] :
+                       Array.isArray(record.diceResults) ? record.diceResults as [number, number, number] : 
+                       undefined,
+          dice_total: record.dice_total || record.diceTotal || undefined,
+          
+          status: record.status || 'pending',
+          is_settled: Boolean(record.is_settled || record.isSettled || false),
+          
+          currency: record.currency || 'CNY'
+        } as BettingRecord
+      })
+      
+      if (page === 1 || !append) {
+        allRecords.value = cleanedRecords
+      } else {
+        allRecords.value = [...allRecords.value, ...cleanedRecords]
+      }
+      
+      currentPage.value = pagination?.current_page || page
+      totalRecords.value = pagination?.total_records || cleanedRecords.length
+      hasMore.value = pagination?.has_more || false
+      
+      console.log(`✅ 数据加载完成 - 总记录: ${allRecords.value.length}`)
+      
+    } else {
+      // 🔥 API返回了错误码
+      const errorMessage = response.message || '获取投注记录失败'
+      console.error('❌ API返回错误:', { code: response.code, message: errorMessage })
+      throw new Error(errorMessage)
+    }
+    
+  } catch (err: any) {
+    console.error('❌ 获取投注记录失败:', err)
+    console.error('❌ 错误详情:', {
+      message: err.message,
+      stack: err.stack,
+      response: err.response
+    })
+    
+    // 🔥 修复：更详细的错误信息
+    const errorMsg = err.response?.data?.message || err.message || '获取投注记录失败'
+    error.value = errorMsg
+    message.error(`获取数据失败: ${errorMsg}`)
+    throw err
+  } finally {
+    isLoading.value = false
+    loadingMore.value = false
   }
-  return formatted
 }
 
 // 事件处理
-const closeModal = () => {
-  visible.value = false
-  emit('close')
-}
-
 const handleApplyFilter = async (dateRange: { start: string | null; end: string | null }) => {
   try {
-    await historyStore.applyDateFilter(dateRange)
+    console.log('🔍 应用日期筛选:', dateRange)
+    dateFilter.value = { ...dateRange }
+    currentPage.value = 1
+    hasMore.value = true
+    await fetchRecords(1, false)
     showFilter.value = false
     message.success('日期筛选已应用')
   } catch (error: any) {
@@ -279,17 +523,24 @@ const handleApplyFilter = async (dateRange: { start: string | null; end: string 
 
 const handleResetFilter = async () => {
   try {
-    await historyStore.resetDateFilter()
+    console.log('🔄 重置筛选条件')
+    dateFilter.value = { start: null, end: null }
+    currentPage.value = 1
+    hasMore.value = true
+    await fetchRecords(1, false)
     showFilter.value = false
-    message.success('日期筛选已重置')
+    message.success('筛选条件已重置')
   } catch (error: any) {
-    message.error(`重置筛选失败: ${error.message}`)
+    message.error(`重置失败: ${error.message}`)
   }
 }
 
 const handleRefresh = async () => {
   try {
-    await historyStore.refreshRecords()
+    console.log('🔄 刷新投注记录')
+    currentPage.value = 1
+    hasMore.value = true
+    await fetchRecords(1, false)
     message.success('数据已刷新')
   } catch (error: any) {
     message.error(`刷新失败: ${error.message}`)
@@ -297,8 +548,11 @@ const handleRefresh = async () => {
 }
 
 const handleLoadMore = async () => {
+  if (!canLoadMore.value) return
+  
   try {
-    await historyStore.loadMoreRecords()
+    console.log('📄 加载更多记录')
+    await fetchRecords(currentPage.value + 1, true)
   } catch (error: any) {
     message.error(`加载更多失败: ${error.message}`)
   }
@@ -306,89 +560,62 @@ const handleLoadMore = async () => {
 
 const handleRetry = async () => {
   try {
-    historyStore.clearError()
-    await historyStore.fetchRecords(1, false)
-    message.success('重试成功')
+    console.log('🔄 重试加载数据')
+    error.value = null
+    currentPage.value = 1
+    hasMore.value = true
+    await fetchRecords(1, false)
   } catch (error: any) {
-    message.error(`重试失败: ${error.message}`)
+    console.error('重试失败:', error)
   }
 }
 
-const handleViewDetail = (record: BettingRecord) => {
-  dialog.info({
-    title: '投注详情',
-    content: () => {
-      return `
-        <div style="line-height: 1.6;">
-          <div><strong>局号:</strong> ${record.game_number}</div>
-          <div><strong>投注时间:</strong> ${record.bet_time}</div>
-          <div><strong>投注金额:</strong> ${formatAmount(record.total_bet_amount)}</div>
-          <div><strong>中奖金额:</strong> ${formatAmount(record.total_win_amount)}</div>
-          <div><strong>净盈亏:</strong> <span style="color: ${record.net_amount >= 0 ? '#4caf50' : '#f44336'}">
-            ${formatNetAmount(record.net_amount)}
-          </span></div>
-          ${record.dice_results ? `<div><strong>开奖结果:</strong> ${record.dice_results.join(', ')} (总点数: ${record.dice_total})</div>` : ''}
-          <div><strong>状态:</strong> ${getStatusText(record.status)}</div>
-        </div>
-      `
-    },
-    positiveText: '确定'
-  })
+const handleRecordClick = (record: BettingRecord) => {
+  console.log('🎯 点击记录:', record.game_number)
 }
 
-const handleRebet = (record: BettingRecord) => {
-  message.info('复投功能开发中...')
-}
-
-const getStatusText = (status: string): string => {
-  const statusMap: Record<string, string> = {
-    'pending': '待开奖',
-    'win': '已中奖',
-    'lose': '未中奖',
-    'cancelled': '已取消',
-    'processing': '处理中'
-  }
-  return statusMap[status] || '未知'
-}
-
-// 键盘事件处理
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && visible.value) {
-    closeModal()
-  }
-}
-
-// 初始化数据加载
+// 初始化数据
 const initializeData = async () => {
-  if (!historyStore.records.length && !historyStore.loadingState.loading) {
+  if (allRecords.value.length === 0 && !isLoading.value) {
     try {
-      await historyStore.fetchRecords(1, false)
+      await fetchRecords(1, false)
     } catch (error: any) {
-      console.error('初始化投注记录失败:', error)
+      console.error('初始化数据失败:', error)
     }
   }
 }
 
 // 监听弹窗显示状态
 watch(visible, async (newVisible) => {
+  console.log('🎯 visible 变化:', newVisible)
   if (newVisible) {
+    console.log('🎯 投注记录弹窗打开')
     await nextTick()
     await initializeData()
-    document.addEventListener('keydown', handleKeydown)
   } else {
-    document.removeEventListener('keydown', handleKeydown)
+    console.log('🎯 投注记录弹窗关闭')
     showFilter.value = false
   }
 })
 
-// 组件挂载和卸载
+// 🔥 键盘事件处理 - 确保 ESC 键能关闭
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && visible.value) {
+    console.log('🔴 ESC 键关闭弹窗')
+    handleClose()
+  }
+}
+
+// 组件挂载
 onMounted(() => {
-  historyStore.init()
+  console.log('🚀 BettingHistoryModal 组件挂载完成')
+  document.addEventListener('keydown', handleKeydown)
 })
 
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown)
-})
+// 组件卸载
+// onUnmounted(() => {
+//   document.removeEventListener('keydown', handleKeydown)
+// })
 </script>
 
 <style scoped>
@@ -432,56 +659,6 @@ onUnmounted(() => {
   margin-bottom: 16px;
 }
 
-.stats-section {
-  margin-bottom: 16px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 16px;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 4px;
-}
-
-.stat-value {
-  font-size: 16px;
-  font-weight: 600;
-  font-family: 'Courier New', monospace;
-}
-
-.stat-value.bet-amount {
-  color: #2196f3;
-}
-
-.stat-value.win-amount {
-  color: #4caf50;
-}
-
-.stat-value.net-amount.profit {
-  color: #4caf50;
-}
-
-.stat-value.net-amount.loss {
-  color: #f44336;
-}
-
-.stat-value.win-rate {
-  color: #ff9800;
-}
-
 .records-section {
   flex: 1;
   display: flex;
@@ -510,6 +687,7 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
+  max-height: calc(90vh - 200px);
 }
 
 .record-item {
@@ -523,11 +701,13 @@ onUnmounted(() => {
 .load-more-container {
   margin-top: 16px;
   padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .records-footer {
   margin-top: 16px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 /* 滚动条样式 */

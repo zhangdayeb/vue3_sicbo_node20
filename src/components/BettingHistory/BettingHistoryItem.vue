@@ -1,6 +1,6 @@
 <template>
-  <div class="betting-record-item" :class="recordClasses" @click="handleClick">
-    <!-- 头部信息 -->
+  <div :class="recordClasses" @click="handleClick">
+    <!-- 记录头部 -->
     <div class="record-header">
       <div class="header-left">
         <div class="game-number">{{ record.game_number }}</div>
@@ -10,58 +10,47 @@
         <div class="status-badge" :style="{ backgroundColor: getStatusColor(record.status) }">
           {{ getStatusText(record.status) }}
         </div>
-        <n-icon v-if="canExpand" class="expand-icon" :class="{ 'expanded': expanded }">
-          <svg viewBox="0 0 24 24">
-            <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-          </svg>
-        </n-icon>
+        <div v-if="canExpand" class="expand-icon" :class="{ expanded }">
+          ▼
+        </div>
       </div>
     </div>
 
-    <!-- 主要信息 -->
+    <!-- 记录主体 -->
     <div class="record-main">
+      <!-- 投注信息 -->
       <div class="amount-section">
         <div class="amount-row">
-          <span class="amount-label">投注</span>
+          <span class="amount-label">投注:</span>
           <span class="amount-value bet-amount">¥{{ formatMoney(record.total_bet_amount) }}</span>
         </div>
-        <div class="amount-row">
-          <span class="amount-label">中奖</span>
+        
+        <!-- 只在已开奖时显示中奖金额 -->
+        <div v-if="record.status !== 'pending'" class="amount-row">
+          <span class="amount-label">中奖:</span>
           <span class="amount-value win-amount">¥{{ formatMoney(record.total_win_amount) }}</span>
-        </div>
-        <div class="amount-row">
-          <span class="amount-label">净额</span>
-          <span 
-            class="amount-value net-amount"
-            :class="{ 'profit': record.net_amount > 0, 'loss': record.net_amount < 0 }"
-          >
-            {{ formatNetAmount(record.net_amount) }}
-          </span>
         </div>
       </div>
 
       <!-- 开奖结果 -->
-      <div v-if="record.dice_results && record.dice_results.length === 3" class="dice-section">
-        <div class="dice-label">开奖</div>
+      <div v-if="record.dice_results" class="dice-section">
+        <div class="dice-label">开奖结果</div>
         <div class="dice-container">
           <div 
             v-for="(dice, index) in record.dice_results" 
             :key="index" 
             class="dice-item"
-            :class="`dice-${dice}`"
           >
             {{ dice }}
           </div>
-          <div class="dice-total">
-            总: {{ record.dice_total }}
-          </div>
+          <div class="dice-total">= {{ record.dice_total }}</div>
         </div>
       </div>
     </div>
 
-    <!-- 投注详情 (可展开) -->
-    <div v-if="expanded && canExpand" class="record-details">
-      <div class="details-title">投注详情</div>
+    <!-- 🔥 展开的投注详情 -->
+    <div v-if="expanded && record.bet_details && record.bet_details.length > 0" class="record-details">
+      <div class="details-title">投注明细</div>
       <div class="bet-details-list">
         <div 
           v-for="(detail, index) in record.bet_details" 
@@ -70,12 +59,12 @@
           :class="{ 'win': detail.is_win }"
         >
           <div class="detail-left">
-            <span class="bet-type-name">{{ detail.bet_type_name }}</span>
-            <span class="bet-odds">{{ detail.odds }}</span>
+            <div class="bet-type-name">{{ detail.bet_type_name || getBetTypeName(detail.bet_type) }}</div>
+            <div class="bet-odds">{{ detail.odds || '1:1' }}</div>
           </div>
           <div class="detail-right">
             <div class="detail-amount">¥{{ formatMoney(detail.bet_amount) }}</div>
-            <div v-if="detail.is_win" class="detail-win">
+            <div v-if="detail.win_amount > 0" class="detail-win">
               +¥{{ formatMoney(detail.win_amount) }}
             </div>
           </div>
@@ -90,50 +79,11 @@
         </div>
       </div>
     </div>
-
-    <!-- 操作按钮 -->
-    <div v-if="showActions" class="record-actions">
-      <n-space size="small">
-        <n-button 
-          size="small" 
-          quaternary 
-          @click.stop="handleViewDetail"
-          class="action-btn detail-btn"
-        >
-          <template #icon>
-            <n-icon>
-              <svg viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-              </svg>
-            </n-icon>
-          </template>
-          详情
-        </n-button>
-        <n-button 
-          v-if="canRebet" 
-          size="small" 
-          type="primary" 
-          ghost 
-          @click.stop="handleRebet"
-          class="action-btn rebet-btn"
-        >
-          <template #icon>
-            <n-icon>
-              <svg viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
-              </svg>
-            </n-icon>
-          </template>
-          复投
-        </n-button>
-      </n-space>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { NIcon, NButton, NSpace } from 'naive-ui'
 import type { BettingRecord } from '@/types/bettingHistory'
 
 // Props
@@ -147,7 +97,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   expandable: true,
-  showActions: true,
+  showActions: false, // 🔥 默认不显示操作按钮
   clickable: true,
   theme: 'default'
 })
@@ -155,8 +105,6 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 const emit = defineEmits<{
   'click': [record: BettingRecord]
-  'view-detail': [record: BettingRecord]
-  'rebet': [record: BettingRecord]
 }>()
 
 // 响应式数据
@@ -167,17 +115,13 @@ const canExpand = computed(() => {
   return props.expandable && props.record.bet_details && props.record.bet_details.length > 0
 })
 
-const canRebet = computed(() => {
-  return props.record.status === 'win' || props.record.status === 'lose'
-})
-
 const recordClasses = computed(() => {
   return [
     'betting-record-item',
     {
       'clickable': props.clickable,
-      'win-record': props.record.net_amount > 0,
-      'loss-record': props.record.net_amount < 0,
+      'win-record': props.record.total_win_amount > 0,
+      'lose-record': props.record.total_win_amount === 0 && props.record.status !== 'pending',
       'pending-record': props.record.status === 'pending',
       'cancelled-record': props.record.status === 'cancelled',
       'processing-record': props.record.status === 'processing',
@@ -189,16 +133,6 @@ const recordClasses = computed(() => {
 // 方法
 const formatMoney = (amount: number): string => {
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const formatNetAmount = (amount: number): string => {
-  const formatted = formatMoney(Math.abs(amount))
-  if (amount > 0) {
-    return `+¥${formatted}`
-  } else if (amount < 0) {
-    return `-¥${formatted}`
-  }
-  return `¥${formatted}`
 }
 
 const formatDateTime = (dateString: string): string => {
@@ -233,19 +167,51 @@ const getStatusColor = (status: string): string => {
   return colorMap[status] || '#9e9e9e'
 }
 
-const handleClick = () => {
-  if (props.clickable && canExpand.value) {
-    expanded.value = !expanded.value
+// 🔥 投注类型名称映射
+const getBetTypeName = (betType: string): string => {
+  const typeMap: Record<string, string> = {
+    'big': '大',
+    'small': '小',
+    'odd': '单',
+    'even': '双',
+    'total-4': '总和4',
+    'total-5': '总和5',
+    'total-6': '总和6',
+    'total-7': '总和7',
+    'total-8': '总和8',
+    'total-9': '总和9',
+    'total-10': '总和10',
+    'total-11': '总和11',
+    'total-12': '总和12',
+    'total-13': '总和13',
+    'total-14': '总和14',
+    'total-15': '总和15',
+    'total-16': '总和16',
+    'total-17': '总和17',
+    'triple-1': '三同号1',
+    'triple-2': '三同号2',
+    'triple-3': '三同号3',
+    'triple-4': '三同号4',
+    'triple-5': '三同号5',
+    'triple-6': '三同号6',
+    'any-triple': '全围',
+    'pair-1': '对子1',
+    'pair-2': '对子2',
+    'pair-3': '对子3',
+    'pair-4': '对子4',
+    'pair-5': '对子5',
+    'pair-6': '对子6'
   }
-  emit('click', props.record)
+  return typeMap[betType] || betType
 }
 
-const handleViewDetail = () => {
-  emit('view-detail', props.record)
-}
-
-const handleRebet = () => {
-  emit('rebet', props.record)
+const handleClick = () => {
+  if (props.clickable) {
+    if (canExpand.value) {
+      expanded.value = !expanded.value
+    }
+    emit('click', props.record)
+  }
 }
 </script>
 
@@ -272,11 +238,12 @@ const handleRebet = () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* 🔥 优化状态指示 - 左边框颜色 */
 .betting-record-item.win-record {
   border-left: 4px solid #4caf50;
 }
 
-.betting-record-item.loss-record {
+.betting-record-item.lose-record {
   border-left: 4px solid #f44336;
 }
 
@@ -340,6 +307,7 @@ const handleRebet = () => {
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
+  font-size: 12px;
 }
 
 .expand-icon:hover {
@@ -391,14 +359,6 @@ const handleRebet = () => {
 
 .amount-value.win-amount {
   color: #4caf50;
-}
-
-.amount-value.net-amount.profit {
-  color: #4caf50;
-}
-
-.amount-value.net-amount.loss {
-  color: #f44336;
 }
 
 .dice-section {
@@ -558,11 +518,5 @@ const handleRebet = () => {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Courier New', monospace;
-}
-
-.record-actions {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 </style>
