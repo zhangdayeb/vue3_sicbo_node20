@@ -4,11 +4,11 @@
     <div class="record-header">
       <div class="header-left">
         <div class="game-number">{{ record.game_number }}</div>
-        <div class="bet-time">{{ record.formattedBetTime }}</div>
+        <div class="bet-time">{{ formatDateTime(record.bet_time) }}</div>
       </div>
       <div class="header-right">
-        <div class="status-badge" :style="{ backgroundColor: record.statusColor }">
-          {{ record.statusText }}
+        <div class="status-badge" :style="{ backgroundColor: getStatusColor(record.status) }">
+          {{ getStatusText(record.status) }}
         </div>
         <n-icon v-if="canExpand" class="expand-icon" :class="{ 'expanded': expanded }">
           <svg viewBox="0 0 24 24">
@@ -33,9 +33,9 @@
           <span class="amount-label">净额</span>
           <span 
             class="amount-value net-amount"
-            :class="{ 'profit': record.isProfit, 'loss': record.isLoss }"
+            :class="{ 'profit': record.net_amount > 0, 'loss': record.net_amount < 0 }"
           >
-            {{ record.formattedNetAmount }}
+            {{ formatNetAmount(record.net_amount) }}
           </span>
         </div>
       </div>
@@ -86,7 +86,7 @@
       <div v-if="record.settle_time" class="settle-info">
         <div class="settle-time">
           <span class="settle-label">结算时间:</span>
-          <span class="settle-value">{{ record.formattedSettleTime }}</span>
+          <span class="settle-value">{{ formatDateTime(record.settle_time) }}</span>
         </div>
       </div>
     </div>
@@ -126,23 +126,6 @@
           </template>
           复投
         </n-button>
-        <n-button 
-          v-if="record.status === 'pending'" 
-          size="small" 
-          type="warning" 
-          ghost 
-          @click.stop="handleCancel"
-          class="action-btn cancel-btn"
-        >
-          <template #icon>
-            <n-icon>
-              <svg viewBox="0 0 24 24">
-                <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-              </svg>
-            </n-icon>
-          </template>
-          取消
-        </n-button>
       </n-space>
     </div>
   </div>
@@ -150,25 +133,12 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { NIcon, NButton, NSpace, useMessage } from 'naive-ui'
+import { NIcon, NButton, NSpace } from 'naive-ui'
 import type { BettingRecord } from '@/types/bettingHistory'
 
-// 🔥 创建扩展类型
-type FormattedBettingRecord = BettingRecord & {
-  formattedBetTime?: string
-  formattedSettleTime?: string | null
-  formattedNetAmount?: string
-  formattedTotalBet?: string
-  formattedTotalWin?: string
-  statusText?: string
-  statusColor?: string
-  isProfit?: boolean
-  isLoss?: boolean
-}
-
-// Props - 使用新的类型
+// Props
 interface Props {
-  record: FormattedBettingRecord
+  record: BettingRecord
   expandable?: boolean
   showActions?: boolean
   clickable?: boolean
@@ -182,105 +152,100 @@ const props = withDefaults(defineProps<Props>(), {
   theme: 'default'
 })
 
-// Emits - 🔥 也使用扩展类型
+// Emits
 const emit = defineEmits<{
-  'detail': [record: FormattedBettingRecord]
-  'rebet': [record: FormattedBettingRecord]
-  'cancel': [record: FormattedBettingRecord]
-  'click': [record: FormattedBettingRecord]
+  'click': [record: BettingRecord]
+  'view-detail': [record: BettingRecord]
+  'rebet': [record: BettingRecord]
 }>()
-
-// 组合式函数
-const message = useMessage()
 
 // 响应式数据
 const expanded = ref(false)
 
 // 计算属性
 const canExpand = computed(() => {
-  return props.expandable && 
-         props.record.bet_details && 
-         props.record.bet_details.length > 0
+  return props.expandable && props.record.bet_details && props.record.bet_details.length > 0
 })
 
 const canRebet = computed(() => {
-  return (props.record.status === 'win' || props.record.status === 'lose') &&
-         props.record.bet_details &&
-         props.record.bet_details.length > 0
+  return props.record.status === 'win' || props.record.status === 'lose'
 })
 
-const recordClasses = computed(() => ({
-  'clickable': props.clickable,
-  'expandable': canExpand.value,
-  'expanded': expanded.value,
-  'win-record': props.record.isProfit,
-  'loss-record': props.record.isLoss,
-  'pending-record': props.record.status === 'pending',
-  'cancelled-record': props.record.status === 'cancelled',
-  'processing-record': props.record.status === 'processing',
-  [`theme-${props.theme}`]: true
-}))
+const recordClasses = computed(() => {
+  return [
+    'betting-record-item',
+    {
+      'clickable': props.clickable,
+      'win-record': props.record.net_amount > 0,
+      'loss-record': props.record.net_amount < 0,
+      'pending-record': props.record.status === 'pending',
+      'cancelled-record': props.record.status === 'cancelled',
+      'processing-record': props.record.status === 'processing',
+      [`theme-${props.theme}`]: true
+    }
+  ]
+})
 
-// 格式化金额
+// 方法
 const formatMoney = (amount: number): string => {
-  if (amount >= 10000) {
-    return `${(amount / 10000).toFixed(1)}万`
-  } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}K`
-  }
-  return amount.toLocaleString()
+  return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-// 事件处理
+const formatNetAmount = (amount: number): string => {
+  const formatted = formatMoney(Math.abs(amount))
+  if (amount > 0) {
+    return `+¥${formatted}`
+  } else if (amount < 0) {
+    return `-¥${formatted}`
+  }
+  return `¥${formatted}`
+}
+
+const formatDateTime = (dateString: string): string => {
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const getStatusText = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'pending': '待开奖',
+    'win': '已中奖',
+    'lose': '未中奖',
+    'cancelled': '已取消',
+    'processing': '处理中'
+  }
+  return statusMap[status] || '未知'
+}
+
+const getStatusColor = (status: string): string => {
+  const colorMap: Record<string, string> = {
+    'pending': '#ff9800',
+    'win': '#4caf50',
+    'lose': '#f44336',
+    'cancelled': '#9e9e9e',
+    'processing': '#2196f3'
+  }
+  return colorMap[status] || '#9e9e9e'
+}
+
 const handleClick = () => {
-  if (!props.clickable) return
-  
-  if (canExpand.value) {
+  if (props.clickable && canExpand.value) {
     expanded.value = !expanded.value
   }
-  
   emit('click', props.record)
 }
 
 const handleViewDetail = () => {
-  console.log('查看投注详情:', props.record.id)
-  emit('detail', props.record)
+  emit('view-detail', props.record)
 }
 
 const handleRebet = () => {
-  if (!canRebet.value) {
-    message.warning('当前记录不支持复投')
-    return
-  }
-  
-  console.log('复投操作:', props.record.id)
   emit('rebet', props.record)
-  message.success('复投操作已触发')
-}
-
-const handleCancel = () => {
-  if (props.record.status !== 'pending') {
-    message.warning('只能取消待开奖的投注')
-    return
-  }
-  
-  console.log('取消投注:', props.record.id)
-  emit('cancel', props.record)
-}
-
-// 开发模式下暴露调试信息
-if (import.meta.env.DEV) {
-  (window as any).debugBettingHistoryItem = {
-    record: props.record,
-    expanded,
-    canExpand,
-    canRebet,
-    formatMoney,
-    handleClick,
-    handleViewDetail,
-    handleRebet,
-    handleCancel
-  }
 }
 </script>
 
@@ -328,15 +293,6 @@ if (import.meta.env.DEV) {
   border-left: 4px solid #2196f3;
 }
 
-/* 主题样式 */
-.betting-record-item.theme-compact {
-  padding: 12px;
-}
-
-.betting-record-item.theme-detailed {
-  padding: 20px;
-}
-
 .record-header {
   display: flex;
   justify-content: space-between;
@@ -376,8 +332,6 @@ if (import.meta.env.DEV) {
   color: #ffffff;
   text-align: center;
   min-width: 60px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .expand-icon {
@@ -441,12 +395,10 @@ if (import.meta.env.DEV) {
 
 .amount-value.net-amount.profit {
   color: #4caf50;
-  text-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
 }
 
 .amount-value.net-amount.loss {
   color: #f44336;
-  text-shadow: 0 0 8px rgba(244, 67, 54, 0.3);
 }
 
 .dice-section {
@@ -485,44 +437,7 @@ if (import.meta.env.DEV) {
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transition: transform 0.2s ease;
-}
-
-.dice-item:hover {
-  transform: scale(1.05);
-}
-
-.dice-item.dice-1 { 
-  background: linear-gradient(135deg, #ff4444, #e53935);
-  color: #ffffff;
-}
-
-.dice-item.dice-2 { 
-  background: linear-gradient(135deg, #ff8800, #fb8c00);
-  color: #ffffff;
-}
-
-.dice-item.dice-3 { 
-  background: linear-gradient(135deg, #ffcc00, #ffb300);
-  color: #000000;
-}
-
-.dice-item.dice-4 { 
-  background: linear-gradient(135deg, #44ff44, #43a047);
-  color: #000000;
-}
-
-.dice-item.dice-5 { 
-  background: linear-gradient(135deg, #00ccff, #0288d1);
-  color: #000000;
-}
-
-.dice-item.dice-6 { 
-  background: linear-gradient(135deg, #8844ff, #7b1fa2);
-  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .dice-total {
@@ -558,14 +473,6 @@ if (import.meta.env.DEV) {
   font-weight: 600;
   color: #ffffff;
   margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.details-title::before {
-  content: '📋';
-  font-size: 12px;
 }
 
 .bet-details-list {
@@ -583,11 +490,6 @@ if (import.meta.env.DEV) {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 6px;
   border-left: 3px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.2s ease;
-}
-
-.bet-detail-item:hover {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .bet-detail-item.win {
@@ -662,151 +564,5 @@ if (import.meta.env.DEV) {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.action-btn {
-  border-radius: 6px;
-  font-size: 12px;
-  height: 32px;
-  transition: all 0.2s ease;
-}
-
-.detail-btn {
-  color: rgba(255, 255, 255, 0.8);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.detail-btn:hover {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.rebet-btn {
-  color: #2196f3;
-  border-color: #2196f3;
-}
-
-.rebet-btn:hover {
-  background: rgba(33, 150, 243, 0.1);
-}
-
-.cancel-btn {
-  color: #ff9800;
-  border-color: #ff9800;
-}
-
-.cancel-btn:hover {
-  background: rgba(255, 152, 0, 0.1);
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .betting-record-item {
-    padding: 12px;
-  }
-  
-  .record-main {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .dice-section {
-    align-self: flex-start;
-    min-width: auto;
-  }
-  
-  .amount-section {
-    width: 100%;
-  }
-  
-  .dice-container {
-    justify-content: flex-start;
-  }
-  
-  .record-actions {
-    justify-content: stretch;
-  }
-  
-  .record-actions .n-space {
-    width: 100%;
-    justify-content: space-between;
-  }
-}
-
-@media (max-width: 480px) {
-  .record-header {
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
-  }
-  
-  .header-right {
-    align-self: flex-end;
-  }
-  
-  .game-number {
-    font-size: 13px;
-  }
-  
-  .bet-time {
-    font-size: 11px;
-  }
-  
-  .amount-value {
-    font-size: 13px;
-  }
-  
-  .dice-item {
-    width: 20px;
-    height: 20px;
-    font-size: 11px;
-  }
-  
-  .bet-detail-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-  
-  .detail-right {
-    align-self: flex-end;
-    align-items: flex-end;
-  }
-}
-
-/* 高对比度模式 */
-@media (prefers-contrast: high) {
-  .betting-record-item {
-    border-width: 2px;
-  }
-  
-  .status-badge {
-    font-weight: 700;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-  }
-  
-  .amount-value {
-    font-weight: 700;
-  }
-}
-
-/* 减少动画模式 */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-  
-  .dice-item:hover {
-    transform: none;
-  }
-  
-  .betting-record-item.clickable:hover {
-    transform: none;
-  }
 }
 </style>
