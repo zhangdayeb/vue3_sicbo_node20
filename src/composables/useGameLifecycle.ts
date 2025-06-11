@@ -132,8 +132,12 @@ export const createGameLifecycle = (options: GameLifecycleOptions = {}): GameLif
     state.userInfo = apiResult.userInfo
     state.initSteps.httpApi = true
     
-    if (apiResult.tableInfo?.video_far) {
-      gameStore.updateVideoUrl(apiResult.tableInfo.video_far)
+    // 新代码
+    if (apiResult.tableInfo) {
+      const { video_far, video_near } = apiResult.tableInfo
+      if (video_far && video_near) {
+        gameStore.updateVideoUrls(video_far, video_near)  // ✅ 使用新方法
+      }
     }
     
     return apiResult

@@ -9,7 +9,11 @@ export const useGameStore = defineStore('game', {
     isConnected: boolean
   } => ({
     gameState: {
-      videoUrl: '',
+      videoUrls: {
+        far: '',
+        near: ''
+      },
+      currentVideoMode: 'far', // 'far' | 'near'
       gameNumber: '',
       status: 'waiting',
       countdown: 0,
@@ -68,10 +72,6 @@ export const useGameStore = defineStore('game', {
       this.gameState.round++
     },
 
-    updateVideoUrl(videoUrl: string) {
-      this.gameState.videoUrl = videoUrl
-    },
-
     generateNewGameNumber() {
       const tableId = 'T001'
       const now = new Date()
@@ -89,6 +89,14 @@ export const useGameStore = defineStore('game', {
       this.generateNewGameNumber()
       this.updateGameStatus('betting')
       this.updateCountdown(30)
+    },
+
+    updateVideoUrls(farUrl: string, nearUrl: string) {
+      this.gameState.videoUrls = { far: farUrl, near: nearUrl }
+    },
+
+    updateVideoMode(mode: 'far' | 'near') {
+      this.gameState.currentVideoMode = mode
     },
 
     notifyCocos(event: string, data: any) {

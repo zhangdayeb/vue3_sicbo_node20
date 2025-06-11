@@ -9,15 +9,27 @@ import type {
   GameStatusData
 } from './api'
 
-// 游戏状态
+// 更新 GameState 接口
 export interface GameState {
-  videoUrl: string
+  // 移除问号，改为必填字段
+  videoUrls: {
+    far: string
+    near: string
+  }
+  currentVideoMode: 'far' | 'near'
+  
   gameNumber: string
   status: GameStatus
   countdown: number
   round: number
 }
 
+// 新增视频切换相关类型
+export interface VideoSwitchOptions {
+  autoSwitch: boolean
+  switchDuration: number
+  triggerOnDealing: boolean
+}
 export type GameStatus = 
   | 'waiting' // 等待开始
   | 'betting' // 投注阶段
