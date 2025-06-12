@@ -16,15 +16,6 @@ const getEnvVar = (key: string, defaultValue: string = ''): string => {
   }
 }
 
-// 检查是否为开发环境
-const isDev = (): boolean => {
-  try {
-    return import.meta.env.DEV === true || import.meta.env.MODE === 'development'
-  } catch (error) {
-    return false
-  }
-}
-
 // 默认配置
 const defaultConfig: ApiConfig = {
   baseURL: getEnvVar('VITE_API_BASE_URL', 'https://sicboapi.wuming888.com'),
@@ -99,6 +90,15 @@ export class HttpClient {
         if (response.data) {
           // 检查是否有 code 字段
           if (typeof response.data.code !== 'undefined') {
+            // 🔥 新增：特殊处理 token 错误
+            if (response.data.code === 500 && response.data.message === 'token错误') {
+              this.handleTokenError()
+              const error = new Error('token错误，请返回游戏主页重新登录')
+              ;(error as any).code = 'TOKEN_ERROR'
+              ;(error as any).response = response
+              throw error
+            }
+            
             // 成功响应：code 为 200 或 1
             if (response.data.code === 200 || response.data.code === 1) {
               return response
@@ -120,6 +120,33 @@ export class HttpClient {
       }
     )
   }
+
+  // 🔥 新增：处理 token 错误的方法
+  private handleTokenError(): void {
+    // 显示用户友好的提示
+    this.showTokenErrorMessage()
+  }
+
+  // 🔥 新增：显示 token 错误提示
+  private showTokenErrorMessage(): void {
+    try {
+      // 尝试使用 Naive UI 的 message 组件
+      const message = (window as any).$message
+      if (message) {
+        message.error('token错误，请返回游戏主页重新登录', {
+          duration: 5000
+        })
+      } else {
+        // 降级到原生 alert
+        alert('token错误，请返回游戏主页重新登录')
+      }
+    } catch (error) {
+      // 如果都失败了，使用原生 alert
+      alert('token错误，请返回游戏主页重新登录')
+    }
+  }
+
+
 
   private async handleResponseError(error: AxiosError): Promise<never> {
     const config = error.config as AxiosRequestConfig & { _retryCount?: number }
