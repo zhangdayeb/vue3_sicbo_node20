@@ -100,6 +100,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { NConfigProvider } from 'naive-ui'
+// 🔥 新增：导入 naive-ui 消息和提示工具函数
+import { useMessage } from 'naive-ui'
+import { useBettingStore } from '@/stores/bettingStore'
+import { showBettingBlockedMessage } from '@/utils/messageHelper'
 
 // 游戏主题配置
 const gameTheme = {
@@ -142,6 +146,10 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'place-bet': [betType: string]
 }>()
+
+// 🔥 新增：使用 Store 和消息API
+const bettingStore = useBettingStore()
+const message = useMessage()
 
 // 点数投注配置（基于真实骰宝概率）
 const numberConfigs = {
@@ -202,8 +210,11 @@ const formatBetAmount = (amount: number): string => {
   return amount.toString()
 }
 
+// 🔥 修改：投注点击处理 - 添加状态检查和提示
 const handleBetClick = (number: any) => {
+  // 🔥 新增：检查投注能力，显示提示
   if (!props.canPlaceBet) {
+    showBettingBlockedMessage(bettingStore.bettingPhase, message)
     return
   }
 

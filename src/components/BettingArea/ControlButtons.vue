@@ -111,6 +111,8 @@ import { useGameData } from '@/composables/useGameData'
 import { getGlobalApiService } from '@/services/gameApi'
 import RoadmapModal from './RoadmapModal.vue'
 import type { BetRequest, BetResponse } from '@/services/gameApi'
+// 🔥 新增：导入提示工具函数
+import { showBettingBlockedMessage } from '@/utils/messageHelper'
 
 // 游戏主题配置 - 简化版本
 const gameTheme = {
@@ -283,8 +285,14 @@ const submitRealBets = async () => {
   }
 }
 
-// 事件处理
+// 🔥 修改：事件处理 - 添加状态检查和提示
 const handleCancel = () => {
+  // 🔥 新增：检查投注状态，显示提示
+  if (!bettingStore.canPlaceBet) {
+    showBettingBlockedMessage(bettingStore.bettingPhase, message)
+    return
+  }
+  
   if (!canCancel.value) return
   if (props.totalBetAmount > 0) {
     emit('cancel-current-bets')
@@ -292,11 +300,23 @@ const handleCancel = () => {
 }
 
 const handleRebet = () => {
+  // 🔥 新增：检查投注状态，显示提示
+  if (!bettingStore.canPlaceBet) {
+    showBettingBlockedMessage(bettingStore.bettingPhase, message)
+    return
+  }
+  
   if (!canRebet.value) return
   emit('rebet')
 }
 
 const handleConfirm = () => {
+  // 🔥 新增：检查投注状态，显示提示
+  if (!bettingStore.canPlaceBet) {
+    showBettingBlockedMessage(bettingStore.bettingPhase, message)
+    return
+  }
+  
   if (!canConfirm.value) return
   if (isSubmitting.value) return
   

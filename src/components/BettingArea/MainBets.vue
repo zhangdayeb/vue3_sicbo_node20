@@ -48,6 +48,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+// 🔥 新增：导入 naive-ui 和提示工具函数
+import { useMessage } from 'naive-ui'
+import { useBettingStore } from '@/stores/bettingStore'
+import { showBettingBlockedMessage } from '@/utils/messageHelper'
 
 // Props
 interface Props {
@@ -68,6 +72,10 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'place-bet': [betType: string]
 }>()
+
+// 🔥 新增：使用 Store 和消息API
+const bettingStore = useBettingStore()
+const message = useMessage()
 
 // 大小单双投注配置
 const mainBets = [
@@ -118,9 +126,11 @@ const formatBetAmount = (amount: number): string => {
   return amount.toString()
 }
 
+// 🔥 修改：投注点击处理 - 添加状态检查和提示
 const handleBetClick = (bet: any) => {
-  // 检查投注能力
+  // 🔥 新增：检查投注能力，显示提示
   if (!props.canPlaceBet) {
+    showBettingBlockedMessage(bettingStore.bettingPhase, message)
     return
   }
 
