@@ -11,8 +11,7 @@
             class="number-bet-wrapper"
             :class="{ 
               'selected': getTotalBetAmount(`total-${number.value}`) > 0,
-              'has-bet': getTotalBetAmount(`total-${number.value}`) > 0,
-              'disabled': !canPlaceBet
+              'has-bet': getTotalBetAmount(`total-${number.value}`) > 0
             }"
             :data-bet-type="`total-${number.value}`"
             @click="handleBetClick(number)"
@@ -57,8 +56,7 @@
             class="number-bet-wrapper"
             :class="{ 
               'selected': getTotalBetAmount(`total-${number.value}`) > 0,
-              'has-bet': getTotalBetAmount(`total-${number.value}`) > 0,
-              'disabled': !canPlaceBet
+              'has-bet': getTotalBetAmount(`total-${number.value}`) > 0
             }"
             :data-bet-type="`total-${number.value}`"
             @click="handleBetClick(number)"
@@ -100,10 +98,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { NConfigProvider } from 'naive-ui'
-// 🔥 新增：导入 naive-ui 消息和提示工具函数
-import { useMessage } from 'naive-ui'
-import { useBettingStore } from '@/stores/bettingStore'
-import { showBettingBlockedMessage } from '@/utils/messageHelper'
 
 // 游戏主题配置
 const gameTheme = {
@@ -127,29 +121,20 @@ const gameTheme = {
   }
 }
 
-// Props - 与 MainBets.vue 保持一致
+// Props - 保持原有Props结构
 interface Props {
   selectedChip: number
   currentBets: Record<string, number>
   confirmedBets: Record<string, number>
   displayBets: Record<string, { current: number; confirmed: number; total: number }>
-  canPlaceBet?: boolean
-  enableHapticFeedback?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  canPlaceBet: true,
-  enableHapticFeedback: true
-})
+const props = defineProps<Props>()
 
 // Emits
 const emit = defineEmits<{
   'place-bet': [betType: string]
 }>()
-
-// 🔥 新增：使用 Store 和消息API
-const bettingStore = useBettingStore()
-const message = useMessage()
 
 // 点数投注配置（基于真实骰宝概率）
 const numberConfigs = {
@@ -192,7 +177,7 @@ const bigNumbers = computed(() => {
   }))
 })
 
-// 计算属性 - 获取总投注金额（与 MainBets.vue 一致）
+// 计算属性 - 获取总投注金额
 const getTotalBetAmount = computed(() => {
   return (betType: string) => {
     const display = props.displayBets[betType]
@@ -210,23 +195,8 @@ const formatBetAmount = (amount: number): string => {
   return amount.toString()
 }
 
-// 🔥 修改：投注点击处理 - 添加状态检查和提示
+// 简化的投注点击处理
 const handleBetClick = (number: any) => {
-  // 🔥 新增：检查投注能力，显示提示
-  if (!props.canPlaceBet) {
-    showBettingBlockedMessage(bettingStore.bettingPhase, message)
-    return
-  }
-
-  if (!props.selectedChip || props.selectedChip <= 0) {
-    return
-  }
-
-  // 触发震动反馈
-  if (props.enableHapticFeedback && 'vibrate' in navigator) {
-    navigator.vibrate(50)
-  }
-
   // 发射投注事件
   emit('place-bet', `total-${number.value}`)
 }
@@ -308,12 +278,6 @@ const endPressAnimation = () => {
 .number-bet-wrapper.has-bet:not(.selected) {
   border-color: #ffd700;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
-}
-
-.number-bet-wrapper.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
 }
 
 /* 右上角投注金额显示 */
@@ -510,13 +474,6 @@ const endPressAnimation = () => {
   .number-row {
     margin-bottom: 6px;
   }
-  
-  .high-odds-badge {
-    width: 14px;
-    height: 14px;
-    top: -1px;
-    left: -1px;
-  }
 }
 
 @media (max-width: 320px) {
@@ -602,7 +559,6 @@ const endPressAnimation = () => {
   height: 60px;
 }
 
-/* 深度样式覆盖 */
 /* 高对比度模式适配 */
 @media (prefers-contrast: high) {
   .number-bet-wrapper {

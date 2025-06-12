@@ -8,8 +8,7 @@
         class="main-bet-wrapper"
         :class="{ 
           'selected': getTotalBetAmount(bet.type) > 0,
-          'has-bet': getTotalBetAmount(bet.type) > 0,
-          'disabled': !canPlaceBet
+          'has-bet': getTotalBetAmount(bet.type) > 0
         }"
         :data-bet-type="bet.type"
         @click="handleBetClick(bet)"
@@ -48,10 +47,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-// 🔥 新增：导入 naive-ui 和提示工具函数
-import { useMessage } from 'naive-ui'
-import { useBettingStore } from '@/stores/bettingStore'
-import { showBettingBlockedMessage } from '@/utils/messageHelper'
 
 // Props
 interface Props {
@@ -59,23 +54,14 @@ interface Props {
   currentBets: Record<string, number>
   confirmedBets: Record<string, number>
   displayBets: Record<string, { current: number; confirmed: number; total: number }>
-  canPlaceBet?: boolean
-  enableHapticFeedback?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  canPlaceBet: true,
-  enableHapticFeedback: true
-})
+const props = defineProps<Props>()
 
 // Emits
 const emit = defineEmits<{
   'place-bet': [betType: string]
 }>()
-
-// 🔥 新增：使用 Store 和消息API
-const bettingStore = useBettingStore()
-const message = useMessage()
 
 // 大小单双投注配置
 const mainBets = [
@@ -126,23 +112,8 @@ const formatBetAmount = (amount: number): string => {
   return amount.toString()
 }
 
-// 🔥 修改：投注点击处理 - 添加状态检查和提示
+// 简化的投注点击处理
 const handleBetClick = (bet: any) => {
-  // 🔥 新增：检查投注能力，显示提示
-  if (!props.canPlaceBet) {
-    showBettingBlockedMessage(bettingStore.bettingPhase, message)
-    return
-  }
-
-  if (!props.selectedChip || props.selectedChip <= 0) {
-    return
-  }
-
-  // 触发震动反馈
-  if (props.enableHapticFeedback && 'vibrate' in navigator) {
-    navigator.vibrate(50)
-  }
-
   // 发射投注事件
   emit('place-bet', bet.type)
 }
@@ -210,12 +181,6 @@ const endPressAnimation = () => {
 .main-bet-wrapper.has-bet:not(.selected) {
   border-color: #ffd700;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
-}
-
-.main-bet-wrapper.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  filter: grayscale(30%);
 }
 
 /* 投注金额显示 */

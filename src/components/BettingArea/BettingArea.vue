@@ -14,7 +14,6 @@
               :currentBets="currentBets"
               :confirmedBets="confirmedBets"
               :displayBets="displayBets"
-              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -24,7 +23,6 @@
               :currentBets="currentBets"
               :confirmedBets="confirmedBets"
               :displayBets="displayBets"
-              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -34,7 +32,6 @@
               :currentBets="currentBets"
               :confirmedBets="confirmedBets"
               :displayBets="displayBets"
-              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -44,8 +41,6 @@
               :currentBets="currentBets"
               :confirmedBets="confirmedBets"
               :displayBets="displayBets"
-              :balance="balance"
-              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -55,7 +50,6 @@
               :currentBets="currentBets"
               :confirmedBets="confirmedBets"
               :displayBets="displayBets"
-              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
 
@@ -65,8 +59,6 @@
               :currentBets="currentBets"
               :confirmedBets="confirmedBets"
               :displayBets="displayBets"
-              :balance="balance"
-              :canPlaceBet="canPlaceBet"
               @place-bet="handlePlaceBet"
             />
           </div>
@@ -194,7 +186,6 @@ const balance = computed(() => {
   return bettingStore.balance
 })
 const totalBetAmount = computed(() => bettingStore.totalBetAmount)
-const canPlaceBet = computed(() => bettingStore.canPlaceBet)
 
 // 🔥 修改：简化的音效回退函数（使用震动）
 const createSimpleHaptic = (duration: number = 50) => {
@@ -268,12 +259,11 @@ const clearAllField = (): void => {
 
 // 方法 - 重复投注
 const rebet = (): void => {
-  const success = bettingStore.rebet()
-  
-  if (success) {
+  try {
+    bettingStore.rebet()
     // 🔥 修改：安全播放音效
     safePlaySound(() => playChipPlaceSound())
-  } else {
+  } catch (error) {
     // 🔥 修改：安全播放错误音效
     safePlaySound(() => playErrorSound())
   }
