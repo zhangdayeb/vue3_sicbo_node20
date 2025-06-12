@@ -58,6 +58,24 @@ import { useWebSocketEvents } from '@/composables/useWebSocketEvents'
 import { useAudio } from '@/composables/useAudio'  // 🔥 修改：使用简化后的音频系统
 import { useBettingStore } from '@/stores/bettingStore'  // 🔥 新增：引入投注状态管理
 import type { CountdownData, GameResultData, GameStatusData } from '@/types/api'
+// 在 GameStatus.vue 的 <script setup> 开头添加
+import { useGameData } from '@/composables/useGameData'
+
+// 解构余额刷新函数
+const { refreshBalance } = useGameData()
+
+// 🔥 新增：安全的余额刷新函数（带防抖和错误处理）
+const safeRefreshBalance = async (scene: string) => {
+  try {
+    console.log(`💰 ${scene} - 开始刷新余额`)
+    await refreshBalance()
+    console.log(`✅ ${scene} - 余额刷新成功`)
+  } catch (error) {
+    console.warn(`⚠️ ${scene} - 余额刷新失败:`, error)
+    // 静默处理，不影响游戏流程
+  }
+}
+
 
 // 游戏主题配置 - 最小化配置，保持原有样式
 const gameTheme = {
@@ -187,10 +205,11 @@ const safePlayBetStopSound = async () => {
 // WebSocket 事件处理函数
 
 // 处理倒计时事件
+// 修改 handleCountdown 函数
 const handleCountdown = (data: CountdownData) => {
   console.log('🎯 GameStatus 收到倒计时事件:', data)
   
-  // 🔥 新增：检测新局并自动清场
+  // 🔥 位置1：检测新局并自动清场 + 刷新余额
   if (data.game_number && 
       data.game_number !== gameState.lastGameNumber && 
       gameState.lastGameNumber !== '') {
@@ -204,6 +223,10 @@ const handleCountdown = (data: CountdownData) => {
     
     // 执行自动清场
     bettingStore.clearAllBets()
+    
+    // 🔥 新局开始时刷新余额
+    safeRefreshBalance('新局开始')
+    
     console.log('🧹 新局自动清场完成')
   }
   
@@ -219,13 +242,17 @@ const handleCountdown = (data: CountdownData) => {
   gameState.countdown = data.countdown
   gameState.lastUpdateTime = Date.now()
   
-  // 🔥 修改：音效触发逻辑（使用安全播放）
+  // 🔥 位置2：投注开始时刷新余额
   if (data.status === 'betting' && data.countdown > 0) {
     // 投注开始：从非投注状态进入投注状态，或者倒计时从0变为有值
     if (previousStatus !== 'betting' || (previousCountdown === 0 && data.countdown > 0)) {
       gameState.status = 'betting'
       safePlayBetStartSound()
-      console.log('🎵 投注阶段开始，播放开始音效')
+      
+      // 🔥 投注开始时刷新余额
+      safeRefreshBalance('投注开始')
+      
+      console.log('🎵 投注阶段开始，播放开始音效，刷新余额')
     } else {
       // 投注进行中，只更新状态不播放音效
       gameState.status = 'betting'
@@ -249,7 +276,6 @@ const handleCountdown = (data: CountdownData) => {
   // 更新上一次倒计时值
   gameState.lastCountdownValue = data.countdown
 }
-
 // 处理游戏结果事件
 const handleGameResult = (data: GameResultData) => {
   console.log('🎲 GameStatus 收到游戏结果:', data)

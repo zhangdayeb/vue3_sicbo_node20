@@ -85,6 +85,15 @@
   </div>
 </template>
 
+
+
+
+
+
+
+
+
+
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import RoadmapRow from './RoadmapRow.vue'
@@ -153,16 +162,16 @@ const loadData = async () => {
     console.log('📊 接收到路纸数据:', data)
     
     // 解析数据并转换为GameResult格式
-      const parsedResults = parseRoadmapData(data || {})
-      gameResults.value = parsedResults
-      
-      const historyData: HistoryData = {
-        results: parsedResults,
-        total: parsedResults.length
-      }
-      
-      emit('data-loaded', historyData)
-      console.log('✅ 路纸数据加载成功，共', parsedResults.length, '条记录')
+    const parsedResults = parseRoadmapData(data || {})
+    gameResults.value = parsedResults
+    
+    const historyData: HistoryData = {
+      results: parsedResults,
+      total: parsedResults.length
+    }
+    
+    emit('data-loaded', historyData)
+    console.log('✅ 路纸数据加载成功，共', parsedResults.length, '条记录')
     
   } catch (error: any) {
     console.error('❌ 路纸数据加载失败:', error)
@@ -175,7 +184,7 @@ const loadData = async () => {
   }
 }
 
-// 解析路纸数据 - 确保数据一致性
+// 解析路纸数据 - 修复版本
 const parseRoadmapData = (rawData: any): GameResult[] => {
   console.log('🔍 解析原始数据:', rawData)
   
@@ -186,7 +195,7 @@ const parseRoadmapData = (rawData: any): GameResult[] => {
   
   const results: GameResult[] = []
   
-  // 🔥 修复：按数字排序，确保顺序正确
+  // 按数字排序，确保顺序正确
   const gameKeys = Object.keys(rawData)
     .filter(key => key.startsWith('k'))
     .sort((a, b) => {
@@ -201,32 +210,45 @@ const parseRoadmapData = (rawData: any): GameResult[] => {
     try {
       const gameDataStr = rawData[key]
       
+      // 修复1: 更严格的空值检查
+      if (gameDataStr === null || gameDataStr === undefined || gameDataStr === '') {
+        continue
+      }
+      
       if (typeof gameDataStr !== 'string') {
-        console.warn('⚠️ 跳过非字符串数据:', { key, data: gameDataStr })
         continue
       }
       
-      const gameData = JSON.parse(gameDataStr)
+      // 修复2: 安全的JSON解析
+      let gameData
+      try {
+        gameData = JSON.parse(gameDataStr)
+      } catch {
+        continue
+      }
       
-      // 🔥 修复：更严格的数据验证
+      // 修复3: 更严格的对象验证
       if (!gameData || typeof gameData !== 'object') {
-        console.warn('⚠️ 跳过无效JSON数据:', { key, gameData })
         continue
       }
       
-      // 🔥 修复：确保所有必需的键都存在
-      if (!gameData["1"] || !gameData["2"] || !gameData["3"]) {
-        console.warn('⚠️ 跳过不完整数据:', { key, gameData })
+      // 修复4: 明确检查每个必需的键
+      if (!gameData.hasOwnProperty("1") || 
+          !gameData.hasOwnProperty("2") || 
+          !gameData.hasOwnProperty("3")) {
         continue
       }
       
+      // 修复5: 更安全的数值转换
       const dice1 = parseInt(gameData["1"])
       const dice2 = parseInt(gameData["2"]) 
       const dice3 = parseInt(gameData["3"])
       
-      // 验证骰子数值
-      if (![dice1, dice2, dice3].every(d => !isNaN(d) && d >= 1 && d <= 6)) {
-        console.warn('⚠️ 跳过无效骰子数值:', { key, dice1, dice2, dice3 })
+      // 修复6: 严格的数值验证
+      if (isNaN(dice1) || isNaN(dice2) || isNaN(dice3) ||
+          dice1 < 1 || dice1 > 6 ||
+          dice2 < 1 || dice2 > 6 ||
+          dice3 < 1 || dice3 > 6) {
         continue
       }
       
@@ -234,21 +256,15 @@ const parseRoadmapData = (rawData: any): GameResult[] => {
       const gameResult = calculateGameResult(dice1, dice2, dice3)
       results.push(gameResult)
       
-      // console.log('✅ 成功解析期次:', key, `${dice1}-${dice2}-${dice3}`, `总和:${gameResult.sum}`)
-      
     } catch (error) {
-      console.error('❌ 解析期次失败:', { key, data: rawData[key] }, error)
-      // 🔥 关键：遇到错误时跳过，而不是中断整个解析过程
+      // 遇到错误时跳过，继续处理下一条
       continue
     }
   }
   
   console.log('✅ 总共解析', results.length, '条路纸记录')
-  console.log('📊 解析结果样例:', results.slice(0, 3))
-  
   return results
 }
-
 
 // 生成模拟数据（用于测试）
 const generateMockData = (): GameResult[] => {
@@ -259,16 +275,7 @@ const generateMockData = (): GameResult[] => {
     const dice2 = Math.floor(Math.random() * 6) + 1
     const dice3 = Math.floor(Math.random() * 6) + 1
     
-    const sum = dice1 + dice2 + dice3
-    const gameResult: GameResult = {
-      dice1,
-      dice2,
-      dice3,
-      sum,
-      size: sum >= 4 && sum <= 10 ? 'small' : 'big',
-      parity: sum % 2 === 0 ? 'even' : 'odd'
-    }
-    
+    const gameResult = calculateGameResult(dice1, dice2, dice3)
     results.push(gameResult)
   }
   
@@ -352,6 +359,15 @@ onUnmounted(() => {
   stopAutoRefresh()
 })
 </script>
+
+
+
+
+
+
+
+
+
 
 <style scoped>
 .roadmap-chart {

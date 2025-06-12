@@ -63,8 +63,9 @@ const calculateVisibleColumns = () => {
 
 // 响应式计算可见结果
 const visibleResults = computed(() => {
-  const maxCols = calculateVisibleColumns()
-  return props.data.slice(-maxCols) // 取最后N条记录
+  // const maxCols = calculateVisibleColumns()
+  // return props.data.slice(-maxCols) // 取最后N条记录
+  return props.data // 取最后N条记录
 })
 
 // 获取骰子图片路径
