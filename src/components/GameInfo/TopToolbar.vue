@@ -128,11 +128,27 @@ import type { GameParams } from '@/types/api'
 
 // 解析游戏参数
 const gameParams = ref<GameParams>(parseGameParams())
-const referrerUrl = document.referrer.split('?')[0] || 'about:blank'
+const referrerUrl = computed(() => {
+  try {
+    // 优先使用 userInfo 中的 web_main
+    if (userInfo.value?.web_main) {
+      console.log('🔗 使用 userInfo.web_main:', userInfo.value.web_main)
+      return userInfo.value.web_main
+    }
+    
+    // 降级到原有逻辑
+    const fallback = document.referrer.split('?')[0] || 'about:blank'
+    console.log('🔗 降级使用 document.referrer:', fallback)
+    return fallback
+  } catch (error) {
+    console.error('❌ 获取 referrer URL 失败:', error)
+    return 'about:blank'
+  }
+})
 
 console.log('🎮 TopToolbar 初始化')
 console.log('📋 游戏参数:', gameParams.value)
-console.log('🔗 来源URL:', referrerUrl)
+
 
 // 真实数据源
 const gameDataResult = useGameData()
@@ -337,18 +353,13 @@ function debounce<T extends (...args: any[]) => any>(
 // 事件处理方法
 const goBack = () => {
   try {
-    console.log('🔙 用户点击返回按钮')
-    
-    if (referrerUrl && referrerUrl !== 'about:blank') {
-      console.log('🔗 返回到来源页面:', referrerUrl)
-      window.location.href = referrerUrl
-    } else {
-      console.log('📱 关闭当前窗口')
-      window.close()
-    }
+    const realUserId = gameParams.value.user_id
+    const realToken = gameParams.value.token
+    const url = `${referrerUrl.value}#/pages/index/index?user_id=${realUserId}&token=${realToken}`
+    console.log('🔗 用户点击返回按钮:', url)
+    window.location.href = url
   } catch (error) {
-    console.error('❌ 返回操作失败:', error)
-    window.close()
+    console.error('❌ 用户点击返回按钮:', error)
   }
 }
 
@@ -488,7 +499,7 @@ const goToVip = () => {
   try {
     const realUserId = gameParams.value.user_id
     const realToken = gameParams.value.token
-    const url = `${referrerUrl}#/pages/user/user?user_id=${realUserId}&token=${realToken}`
+    const url = `${referrerUrl.value}#/pages/user/user?user_id=${realUserId}&token=${realToken}`
     console.log('🔗 会员中心URL:', url)
     window.location.href = url
   } catch (error) {
