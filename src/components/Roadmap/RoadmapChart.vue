@@ -234,7 +234,7 @@ const parseRoadmapData = (rawData: any): GameResult[] => {
       const gameResult = calculateGameResult(dice1, dice2, dice3)
       results.push(gameResult)
       
-      console.log('✅ 成功解析期次:', key, `${dice1}-${dice2}-${dice3}`, `总和:${gameResult.sum}`)
+      // console.log('✅ 成功解析期次:', key, `${dice1}-${dice2}-${dice3}`, `总和:${gameResult.sum}`)
       
     } catch (error) {
       console.error('❌ 解析期次失败:', { key, data: rawData[key] }, error)

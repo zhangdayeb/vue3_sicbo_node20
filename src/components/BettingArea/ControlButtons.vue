@@ -237,19 +237,31 @@ const submitRealBets = async () => {
   
   try {
     console.log('📤 开始提交投注:', props.currentBets)
+    console.log('📤 已确认投注:', bettingStore.confirmedBets)
     
     const apiService = getGlobalApiService()
     if (!apiService) {
       throw new Error('API服务未初始化')
     }
     
-    // 转换投注数据格式
-    const betRequests: BetRequest[] = Object.entries(props.currentBets).map(([betType, amount]) => ({
+    // 🔥 新增：合并投注数据逻辑
+    const betRequestData: Record<string, number> = {}
+    // 合并已确认投注
+    Object.entries(bettingStore.confirmedBets).forEach(([betType, amount]) => {
+      betRequestData[betType] = amount
+    })
+    // 合并当前投注
+    Object.entries(props.currentBets).forEach(([betType, amount]) => {
+      betRequestData[betType] = (betRequestData[betType] || 0) + amount
+    })
+    // 转换为API格式
+    const betRequests: BetRequest[] = Object.entries(betRequestData).map(([betType, amount]) => ({
       money: amount,
       rate_id: bettingStore.getBetTypeId(betType) || 1
     }))
     
     console.log('🎯 投注请求数据:', betRequests)
+    console.log('🎯 合并后的投注数据:', betRequestData)
     
     // 提交投注
     const response: BetResponse = await apiService.placeBets(betRequests)
