@@ -15,6 +15,7 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
   const currentPage = ref(1)
   const pageSize = ref(20)
   const hasMore = ref(true)
+  const lastFetchTime = ref<number>(0) // 🔥 新增：记录最后获取时间
   
   // 加载状态
   const loadingState = reactive({
@@ -38,6 +39,12 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
   const canLoadMore = computed(() => 
     hasMore.value && !isLoading.value && !loadingState.error
   )
+  
+  // 🔥 新增：判断数据是否过期
+  const isDataStale = computed(() => {
+    const staleThreshold = 30000 // 30秒
+    return !lastFetchTime.value || (Date.now() - lastFetchTime.value > staleThreshold)
+  })
   
   // 统计信息计算
   const currentPageStats = computed(() => {
@@ -87,7 +94,7 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     return params
   }
   
-  // 🔥 修复：获取投注记录（响应拦截器处理后的数据结构）
+  // 获取投注记录（响应拦截器处理后的数据结构）
   const fetchRecords = async (page: number = 1, append: boolean = false): Promise<void> => {
     try {
       console.log(`🔄 Store: 获取投注记录 - 页码: ${page}, 追加: ${append}`)
@@ -116,13 +123,13 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
         hasPagination: !!response.pagination
       })
       
-      // 🔥 修复：响应拦截器已处理，直接解构数据（不再有 code 和 data）
+      // 响应拦截器已处理，直接解构数据（不再有 code 和 data）
       const { records: newRecords = [], pagination = null } = response
       
       console.log('✅ Store: 解析后的记录数量:', newRecords.length)
       console.log('📊 Store: 分页信息:', pagination)
       
-      // 🔥 修复：数据清洗和映射
+      // 数据清洗和映射
       const cleanedRecords: BettingRecord[] = newRecords.map((record: any, index: number) => {
         return {
           id: record.id || record.ID || `${Date.now()}-${index}`,
@@ -169,10 +176,14 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
       totalRecords.value = pagination?.total_records || records.value.length
       hasMore.value = pagination?.has_more || false
       
+      // 🔥 新增：更新最后获取时间
+      lastFetchTime.value = Date.now()
+      
       console.log(`✅ Store: 数据加载完成`, {
         totalRecords: records.value.length,
         currentPage: currentPage.value,
-        hasMore: hasMore.value
+        hasMore: hasMore.value,
+        lastFetchTime: lastFetchTime.value
       })
       
     } catch (error: any) {
@@ -185,6 +196,39 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
       loadingState.refreshing = false
       loadingState.loadingMore = false
     }
+  }
+  
+  // 🔥 新增：强制刷新数据（用于点击按钮时同步获取最新数据）
+  const forceRefresh = async (): Promise<void> => {
+    try {
+      console.log('🚀 Store: 强制刷新投注记录数据')
+      loadingState.loading = true
+      loadingState.error = null
+      
+      // 重置状态
+      records.value = []
+      currentPage.value = 1
+      hasMore.value = true
+      lastFetchTime.value = 0
+      
+      // 获取最新数据
+      await fetchRecords(1, false)
+      
+      console.log('✅ Store: 强制刷新完成')
+      
+    } catch (error: any) {
+      console.error('❌ Store: 强制刷新失败:', error)
+      loadingState.error = error.message || '刷新数据失败'
+      throw error
+    } finally {
+      loadingState.loading = false
+    }
+  }
+  
+  // 🔥 新增：标记数据过期（用于WebSocket事件触发）
+  const markDataStale = (): void => {
+    lastFetchTime.value = 0
+    console.log('📝 Store: 数据已标记为过期')
   }
   
   // 应用日期筛选
@@ -222,7 +266,7 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     loadingState.error = null
   }
   
-  // 🔥 修复：初始化函数 - 重置状态 + 获取数据
+  // 初始化函数 - 重置状态 + 获取数据
   const init = async (): Promise<void> => {
     console.log('🚀 Store: 初始化投注记录')
     
@@ -232,6 +276,7 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     totalPages.value = 0
     currentPage.value = 1
     hasMore.value = true
+    lastFetchTime.value = 0
     dateFilter.start = null
     dateFilter.end = null
     clearError()
@@ -249,7 +294,6 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     }
   }
   
-  
   return {
     // 状态
     records,
@@ -258,6 +302,7 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     currentPage,
     pageSize,
     hasMore,
+    lastFetchTime, // 🔥 新增
     loadingState,
     dateFilter,
     
@@ -265,10 +310,13 @@ export const useBettingHistoryStore = defineStore('bettingHistory', () => {
     isEmpty,
     isLoading,
     canLoadMore,
+    isDataStale, // 🔥 新增
     currentPageStats,
     
     // 方法
     fetchRecords,
+    forceRefresh, // 🔥 新增：替代之前的 refreshData
+    markDataStale, // 🔥 新增
     applyDateFilter,
     resetDateFilter,
     refreshRecords,

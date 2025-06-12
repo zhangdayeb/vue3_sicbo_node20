@@ -311,14 +311,15 @@ const handleRefreshBalance = async () => {
   }
 }
 
-const openBettingHistory = () => {
-  try {
-    console.log('📋 打开投注记录')
-    showBettingHistory.value = true
-    showSettings.value = false
-  } catch (error) {
-    console.error('❌ 打开投注记录失败:', error)
-  }
+const openBettingHistory = async () => {
+  // 1. 关闭设置菜单
+  showSettings.value = false
+  
+  // 2. 检查数据是否需要刷新
+  await bettingHistoryStore.forceRefresh() // 强制刷新
+  
+  // 3. 显示弹窗
+  showBettingHistory.value = true
 }
 
 const handleBettingHistoryClose = () => {
