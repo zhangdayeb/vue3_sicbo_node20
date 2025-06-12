@@ -109,7 +109,7 @@ import {
 import { useBettingStore } from '@/stores/bettingStore'
 import { useGameData } from '@/composables/useGameData'
 import { getGlobalApiService } from '@/services/gameApi'
-import RoadmapModal from './RoadmapModal.vue'
+import RoadmapModal from '../Roadmap/RoadmapModal.vue'
 import type { BetRequest, BetResponse } from '@/services/gameApi'
 // 🔥 新增：导入提示工具函数
 import { showBettingBlockedMessage } from '@/utils/messageHelper'
