@@ -56,11 +56,15 @@
   </teleport>
 </template>
 
+
+
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import RoadmapChart from './RoadmapChart.vue'
 import { useGameData } from '@/composables/useGameData'
+import { useWebSocketEvents } from '@/composables/useWebSocketEvents'  // 🔥 新增导入
 import type { HistoryData } from '@/types/roadmapTypes'
+import type { GameResultData } from '@/types/api'  // 🔥 新增导入
 
 interface Props {
   show: boolean
@@ -83,8 +87,15 @@ const dataStatus = ref<{
   message: string
 } | null>(null)
 
+// 🔥 新增：WebSocket 相关状态
+const isWebSocketListening = ref(false)
+const gameResultListener = ref<((data: GameResultData) => void) | null>(null)
+
 // 获取游戏数据
 const { tableInfo } = useGameData()
+
+// 🔥 新增：获取 WebSocket 事件
+const { onGameResult, removeListener } = useWebSocketEvents()
 
 // 弹窗显示状态
 const modalVisible = computed({
@@ -129,6 +140,36 @@ const refreshRoadmap = async () => {
   }
 }
 
+// 🔥 新增：启用 WebSocket 监听
+const enableWebSocketListener = () => {
+  if (isWebSocketListening.value) return
+  
+  console.log('🔌 启用路纸 WebSocket 实时更新监听')
+  
+  gameResultListener.value = (data: GameResultData) => {
+    console.log('🎲 收到开牌结果，自动刷新路纸数据:', data)
+    
+    // 收到开牌结果后刷新路纸数据
+    if (roadmapChart.value && modalVisible.value) {
+      refreshRoadmap()
+    }
+  }
+  
+  onGameResult(gameResultListener.value)
+  isWebSocketListening.value = true
+}
+
+// 🔥 新增：禁用 WebSocket 监听
+const disableWebSocketListener = () => {
+  if (!isWebSocketListening.value || !gameResultListener.value) return
+  
+  console.log('🔌 禁用路纸 WebSocket 实时更新监听')
+  
+  removeListener('game_result', gameResultListener.value)
+  gameResultListener.value = null
+  isWebSocketListening.value = false
+}
+
 // 数据加载成功处理
 const handleDataLoaded = (data: HistoryData) => {
   console.log('✅ 路纸数据加载成功:', data)
@@ -164,18 +205,10 @@ const handleOverlayClick = () => {
   handleClose()
 }
 
-// 键盘事件处理
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && modalVisible.value) {
-    handleClose()
-  } else if (event.key === 'F5' && modalVisible.value) {
-    event.preventDefault()
-    refreshRoadmap()
-  }
-}
 
-// 监听显示状态变化
-watch(() => props.show, (newVal) => {
+
+// 🔥 修改：监听显示状态变化 - 添加 WebSocket 控制
+watch(() => props.show, async (newVal) => {
   console.log('📊 路纸弹窗显示状态变化:', newVal)
   
   if (newVal) {
@@ -183,19 +216,36 @@ watch(() => props.show, (newVal) => {
     updateCurrentTime()
     dataStatus.value = null
     
-    // 添加键盘监听
-    document.addEventListener('keydown', handleKeydown)
-    
     // 禁止背景滚动
     document.body.style.overflow = 'hidden'
     
     console.log('📊 路纸弹窗已显示，当前tableId:', tableId.value)
+    
+    // 🔥 显示时自动刷新数据
+    await nextTick()
+    if (roadmapChart.value) {
+      console.log('🔄 弹窗显示时自动刷新路纸数据')
+      isRefreshing.value = true
+      try {
+        await roadmapChart.value.refresh()
+        console.log('✅ 自动刷新成功')
+      } catch (error) {
+        console.error('❌ 自动刷新失败:', error)
+      } finally {
+        isRefreshing.value = false
+      }
+    }
+    
+    // 🔥 新增：启用 WebSocket 监听
+    enableWebSocketListener()
+    
   } else {
     // 隐藏时清理
-    document.removeEventListener('keydown', handleKeydown)
-    
     // 恢复背景滚动
     document.body.style.overflow = ''
+    
+    // 🔥 新增：禁用 WebSocket 监听
+    disableWebSocketListener()
     
     console.log('📊 路纸弹窗已隐藏')
   }
@@ -209,10 +259,12 @@ watch(() => tableId.value, (newTableId, oldTableId) => {
   }
 })
 
-// 组件卸载时清理
+// 🔥 修改：组件卸载时清理 - 添加 WebSocket 清理
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown)
   document.body.style.overflow = ''
+  
+  // 🔥 新增：确保清理 WebSocket 监听
+  disableWebSocketListener()
 })
 
 // 挂载时初始化
@@ -221,12 +273,16 @@ onMounted(() => {
   console.log('📊 RoadmapModal 组件已挂载')
 })
 
-// 暴露方法给父组件
+// 🔥 修改：暴露方法给父组件 - 添加 WebSocket 控制方法
 defineExpose({
   refresh: refreshRoadmap,
-  close: handleClose
+  close: handleClose,
+  enableWebSocketListener,    // 新增
+  disableWebSocketListener    // 新增
 })
 </script>
+
+
 
 <style scoped>
 .roadmap-modal-overlay {
