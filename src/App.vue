@@ -100,12 +100,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { computed, ref, watch, onMounted, nextTick,onUnmounted } from 'vue'
 import { NMessageProvider } from 'naive-ui'
 import GameTopSection from '@/components/Layout/GameTopSection.vue'
 import BettingArea from '@/components/BettingArea/BettingArea.vue'
 import { useGameLifecycle } from '@/composables/useGameLifecycle'
-import { initializeGlobalAudioSystem, unlockGlobalAudioContext, useAudio } from '@/composables/useAudio'
+import { initializeGlobalAudioSystem, unlockGlobalAudioContext, useAudio,cleanupGlobalAudioSystem  } from '@/composables/useAudio'
 import { ENV_CONFIG } from '@/utils/envUtils'
 
 // 欢迎界面状态
@@ -122,9 +122,7 @@ const audioSystem = useAudio()
 const {
   lifecycleState,
   isReady,
-  initialize,
-  reconnect,
-  clearError
+  initialize
 } = useGameLifecycle({
   autoInitialize: false,
   enableAudio: true,
@@ -312,6 +310,13 @@ onMounted(async () => {
   
   console.log('📋 App.vue 初始化完成，等待用户启动游戏')
 })
+
+
+onUnmounted(() => {
+  // 清理音频系统
+  cleanupGlobalAudioSystem()
+})
+
 </script>
 
 <style>

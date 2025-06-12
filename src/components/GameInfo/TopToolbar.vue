@@ -30,6 +30,18 @@
           </button>
         </div>
       </div>
+
+      <!-- 🔥 新增：音频重试按钮 -->
+      <div class="audio-retry" v-if="!canPlayAudio">
+        <button 
+          class="retry-btn" 
+          @click="handleAudioRetry" 
+          :disabled="isRetryingAudio"
+          title="音频未就绪，点击重试"
+        >
+          {{ isRetryingAudio ? '⏳' : '🔊' }}
+        </button>
+      </div>
       
       <!-- 设置按钮 -->
       <div class="settings-dropdown" ref="settingsDropdown">
@@ -48,15 +60,27 @@
             <div class="menu-item">
               <span class="item-label">背景音乐</span>
               <label class="switch">
-                <input type="checkbox" v-model="safeBgmEnabled" @change="handleBackgroundMusicToggle">
-                <span class="slider"></span>
+                <!-- 🔥 修改：新增防抖和禁用状态 -->
+                <input 
+                  type="checkbox" 
+                  v-model="safeBgmEnabled" 
+                  @change="handleBackgroundMusicToggle"
+                  :disabled="isTogglingMusic"
+                >
+                <span class="slider" :class="{ 'disabled': isTogglingMusic }"></span>
               </label>
             </div>
             <div class="menu-item">
               <span class="item-label">音效</span>
               <label class="switch">
-                <input type="checkbox" v-model="safeSfxEnabled" @change="handleSoundEffectsToggle">
-                <span class="slider"></span>
+                <!-- 🔥 修改：新增防抖和禁用状态 -->
+                <input 
+                  type="checkbox" 
+                  v-model="safeSfxEnabled" 
+                  @change="handleSoundEffectsToggle"
+                  :disabled="isTogglingSfx"
+                >
+                <span class="slider" :class="{ 'disabled': isTogglingSfx }"></span>
               </label>
             </div>
           
@@ -113,6 +137,8 @@ console.log('🔗 来源URL:', referrerUrl)
 // 真实数据源
 const gameDataResult = useGameData()
 const webSocketEventsResult = useWebSocketEvents()
+
+// 🔥 修改：音频系统 - 使用新的暂停/恢复模式
 const audioResult = useAudio()
 
 console.log('📊 组合式函数加载结果:')
@@ -133,16 +159,29 @@ const {
   onBalanceUpdate = () => {}
 } = webSocketEventsResult || {}
 
+// 🔥 修改：音频系统解构 - 使用新的方法和状态
 const {
   config: audioConfig,
+  audioContext,
+  canPlayAudio,
   toggleMusic,
   toggleSfx, 
-  loadConfig: loadAudioConfig
+  loadConfig: loadAudioConfig,
+  isBackgroundMusicPlaying,
+  getAudioInfo,
+  unlockAudioContext,
+  getSfxStatus // 🔥 新增：获取音效状态的方法
 } = audioResult || {
   config: reactive({ enableMusic: false, enableSfx: false }),
+  audioContext: reactive({ isBgmUserPaused: false }),
+  canPlayAudio: ref(false),
   toggleMusic: () => {},
   toggleSfx: () => {},
-  loadConfig: () => Promise.resolve()
+  loadConfig: () => Promise.resolve(),
+  isBackgroundMusicPlaying: ref(false),
+  getAudioInfo: () => ({}),
+  unlockAudioContext: () => Promise.resolve(),
+  getSfxStatus: () => ({}) // 🔥 新增：默认值
 }
 
 // 投注记录store
@@ -153,6 +192,11 @@ const showSettings = ref(false)
 const settingsDropdown = ref<HTMLElement>()
 const isRefreshing = ref(false)
 const showBettingHistory = ref(false)
+
+// 🔥 修改：音频相关状态 - 新增音效状态
+const isTogglingMusic = ref(false)
+const isTogglingSfx = ref(false) // 🔥 新增：音效切换状态
+const isRetryingAudio = ref(false)
 
 // 安全的计算属性 - 桌台名称
 const safeTableName = computed(() => {
@@ -218,11 +262,12 @@ const safeBalance = computed(() => {
   }
 })
 
-// 音频开关的安全访问
+// 🔥 修改：音频开关的安全访问 - 新增与实际播放状态同步
 const safeBgmEnabled = computed({
   get: () => {
     try {
-      return audioConfig.enableMusic || false
+      // 🔥 优先使用配置状态，但要考虑用户暂停状态
+      return audioConfig.enableMusic && !audioContext.isBgmUserPaused
     } catch (error) {
       console.error('❌ 获取背景音乐状态失败:', error)
       return false
@@ -230,13 +275,15 @@ const safeBgmEnabled = computed({
   },
   set: (value: boolean) => {
     try {
-      audioConfig.enableMusic = value
+      // 这里不直接设置，由 handleBackgroundMusicToggle 处理
+      console.log('🎵 背景音乐开关状态变更请求:', value)
     } catch (error) {
       console.error('❌ 设置背景音乐状态失败:', error)
     }
   }
 })
 
+// 🔥 修改：音效开关的安全访问 - 完善逻辑
 const safeSfxEnabled = computed({
   get: () => {
     try {
@@ -248,7 +295,8 @@ const safeSfxEnabled = computed({
   },
   set: (value: boolean) => {
     try {
-      audioConfig.enableSfx = value
+      // 🔥 修改：不直接设置，由 handleSoundEffectsToggle 处理
+      console.log('🔊 音效开关状态变更请求:', value)
     } catch (error) {
       console.error('❌ 设置音效状态失败:', error)
     }
@@ -266,6 +314,24 @@ const generateMockGameNumber = () => {
   const second = String(now.getSeconds()).padStart(2, '0')
   
   return `${year}${month}${day}${hour}${minute}${second}`
+}
+
+// 🔥 修改：防抖函数实现（使用 window.setTimeout）
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: number | null = null
+  
+  return (...args: Parameters<T>) => {
+    if (timeout) {
+      window.clearTimeout(timeout)
+    }
+    
+    timeout = window.setTimeout(() => {
+      func(...args)
+    }, wait)
+  }
 }
 
 // 事件处理方法
@@ -331,25 +397,90 @@ const handleBettingHistoryClose = () => {
   }
 }
 
-const handleBackgroundMusicToggle = () => {
-  try {
-    console.log('🎵 切换背景音乐:', safeBgmEnabled.value)
-    if (toggleMusic && typeof toggleMusic === 'function') {
-      toggleMusic()
-    }
-  } catch (error) {
-    console.error('❌ 切换背景音乐失败:', error)
+// 🔥 修改：背景音乐开关处理 - 使用防抖和暂停/恢复模式
+const handleBackgroundMusicToggle = debounce(async () => {
+  if (isTogglingMusic.value) {
+    console.log('🎵 背景音乐开关操作进行中，跳过')
+    return
   }
-}
-
-const handleSoundEffectsToggle = () => {
+  
   try {
-    console.log('🔊 切换音效:', safeSfxEnabled.value)
-    if (toggleSfx && typeof toggleSfx === 'function') {
-      toggleSfx()
+    isTogglingMusic.value = true
+    console.log('🎵 用户切换背景音乐开关:', audioConfig.enableMusic ? '开启→关闭' : '关闭→开启')
+    
+    // 🔥 直接调用 toggleMusic，它已经是暂停/恢复模式
+    if (toggleMusic && typeof toggleMusic === 'function') {
+      await toggleMusic()
     }
+    
+    console.log('✅ 背景音乐开关切换完成:', audioConfig.enableMusic ? '已开启' : '已关闭')
   } catch (error) {
-    console.error('❌ 切换音效失败:', error)
+    console.error('❌ 背景音乐开关切换失败:', error)
+    
+    // 错误时重置状态
+    safeBgmEnabled.value = audioConfig.enableMusic
+  } finally {
+    isTogglingMusic.value = false
+  }
+}, 300) // 300ms 防抖
+
+// 🔥 修改：音效开关处理 - 新增防抖和完善逻辑
+const handleSoundEffectsToggle = debounce(async () => {
+  if (isTogglingSfx.value) {
+    console.log('🔊 音效开关操作进行中，跳过')
+    return
+  }
+  
+  try {
+    isTogglingSfx.value = true
+    console.log('🔊 用户切换音效开关:', audioConfig.enableSfx ? '开启→关闭' : '关闭→开启')
+    
+    // 🔥 修改：调用 toggleSfx 并等待完成
+    if (toggleSfx && typeof toggleSfx === 'function') {
+      await toggleSfx()
+    }
+    
+    console.log('✅ 音效开关切换完成:', audioConfig.enableSfx ? '已开启' : '已关闭')
+    
+    // 🔥 新增：验证状态是否正确更新
+    const sfxStatus = getSfxStatus()
+    console.log('🔍 音效状态验证:', sfxStatus)
+    
+  } catch (error) {
+    console.error('❌ 音效开关切换失败:', error)
+    
+    // 🔥 新增：错误时重置状态
+    safeSfxEnabled.value = audioConfig.enableSfx
+  } finally {
+    isTogglingSfx.value = false
+  }
+}, 200) // 🔥 修改：音效切换使用较短的防抖时间
+
+// 🔥 新增：音频重试处理
+const handleAudioRetry = async () => {
+  if (isRetryingAudio.value) {
+    console.log('🔄 音频重试正在进行中，跳过')
+    return
+  }
+
+  try {
+    isRetryingAudio.value = true
+    console.log('🔄 用户手动重试音频初始化')
+    
+    const audioInfo = getAudioInfo()
+    console.log('🔍 当前音频状态:', audioInfo)
+    
+    // 尝试重新解锁音频
+    if (!canPlayAudio.value && unlockAudioContext) {
+      await unlockAudioContext()
+    }
+    
+  } catch (error) {
+    console.error('❌ 音频重试失败:', error)
+  } finally {
+    window.setTimeout(() => {
+      isRetryingAudio.value = false
+    }, 1000) // 给用户一点反馈时间
   }
 }
 
@@ -409,6 +540,44 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
+// 🔥 修改：监听音频状态变化 - 包含音效状态
+const monitorAudioState = () => {
+  // 定期检查音频状态，确保 UI 同步
+  const checkInterval = window.setInterval(() => {
+    // 检查背景音乐状态
+    if (audioContext.backgroundMusicInstance) {
+      const isPlaying = !audioContext.backgroundMusicInstance.paused
+      const shouldBePlaying = audioConfig.enableMusic && !audioContext.isBgmUserPaused
+      
+      if (isPlaying !== shouldBePlaying) {
+        console.log('⚠️ 背景音乐状态不一致:', {
+          isPlaying,
+          shouldBePlaying,
+          enableMusic: audioConfig.enableMusic,
+          userPaused: audioContext.isBgmUserPaused
+        })
+      }
+    }
+    
+    // 🔥 新增：检查音效状态
+    try {
+      const sfxStatus = getSfxStatus()
+      const currentSfxState = audioConfig.enableSfx
+      
+      if (sfxStatus.enabled !== currentSfxState) {
+        console.log('⚠️ 音效状态不一致:', {
+          sfxStatusEnabled: sfxStatus.enabled,
+          configEnabled: currentSfxState
+        })
+      }
+    } catch (error) {
+      console.warn('⚠️ 音效状态检查失败:', error)
+    }
+  }, 5000) // 每5秒检查一次
+  
+  return checkInterval
+}
+
 // 组件生命周期
 onMounted(async () => {
   try {
@@ -445,6 +614,10 @@ onMounted(async () => {
       console.warn('⚠️ 投注记录store初始化失败:', error)
     }
     
+    // 🔥 修改：开始监听音频状态（包含音效）
+    const stateMonitor = monitorAudioState()
+    ;(window as any).__audioStateMonitor = stateMonitor
+    
     // 添加事件监听器
     document.addEventListener('click', handleClickOutside)
     document.addEventListener('keydown', handleKeydown)
@@ -457,6 +630,12 @@ onMounted(async () => {
     console.log('  - 用户信息:', userInfo?.value)
     console.log('  - 格式化余额:', formattedBalance?.value)
     console.log('  - 音频配置:', audioConfig)
+    console.log('  - 音频状态:', {
+      canPlayAudio: canPlayAudio?.value,
+      isBackgroundMusicPlaying: isBackgroundMusicPlaying?.value,
+      isBgmUserPaused: audioContext?.isBgmUserPaused,
+      sfxStatus: getSfxStatus() // 🔥 新增：音效状态
+    })
     console.log('  - 显示状态:')
     console.log('    * 桌台名称:', safeTableName.value)
     console.log('    * 投注限额:', safeBetLimits.value)
@@ -470,6 +649,12 @@ onMounted(async () => {
 
 onUnmounted(() => {
   try {
+    // 🔥 修改：清理音频状态监听器
+    if ((window as any).__audioStateMonitor) {
+      window.clearInterval((window as any).__audioStateMonitor)
+      delete (window as any).__audioStateMonitor
+    }
+    
     document.removeEventListener('click', handleClickOutside)
     document.removeEventListener('keydown', handleKeydown)
     console.log('🔧 TopToolbar 组件已卸载')
@@ -637,6 +822,39 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+/* 🔥 新增：音频重试按钮样式 */
+.audio-retry {
+  display: flex;
+  align-items: center;
+}
+
+.retry-btn {
+  background: rgba(255, 107, 107, 0.2);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  color: #ff6b6b;
+  border-radius: 6px;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.3);
+  transform: scale(1.05);
+}
+
+.retry-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .settings-dropdown {
   position: relative;
 }
@@ -775,6 +993,16 @@ input:checked + .slider:before {
   transform: translateX(16px);
 }
 
+/* 🔥 新增：禁用状态的开关 */
+.slider.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.slider.disabled:before {
+  background-color: #ccc;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .top-toolbar {
@@ -801,6 +1029,12 @@ input:checked + .slider:before {
   .settings-btn {
     width: 24px;
     height: 24px;
+  }
+  
+  .retry-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
   }
   
   .info-section {
