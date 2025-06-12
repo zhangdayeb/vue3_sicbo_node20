@@ -98,6 +98,7 @@ export const useWebSocket = (
 
     wsService.value.on<WinData>('win_data', (data) => {
       // 中奖数据处理
+      console.log("================================中奖数据处理===================================================")
     })
 
     wsService.value.on<GameStatusData>('game_status', (data) => {

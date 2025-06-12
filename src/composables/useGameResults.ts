@@ -372,6 +372,9 @@ export const useGameResults = () => {
   const handleWinDataPush = async (data: WinData) => {
     const gameNumber = data.game_number
 
+    // 只要有推送 就刷新用户余额
+    await refreshBalance()
+
     console.log('🎉 收到中奖数据推送:', {
       gameNumber,
       winAmount: data.win_amount,
@@ -415,8 +418,6 @@ export const useGameResults = () => {
         // 不影响中奖特效，只是余额可能不是最新的
       }
 
-      // 更新本地余额（保持原有逻辑作为备份）
-      updateBalance(data.win_amount)
     }
 
     // 检查是否达到最大推送次数
@@ -425,19 +426,7 @@ export const useGameResults = () => {
     }
   }
 
-  // 更新余额
-  const updateBalance = (winAmount: number) => {
-    const currentBalance = bettingStore.balance
-    const newBalance = currentBalance + winAmount
-    bettingStore.updateBalance(newBalance)
-    
-    console.log('🎯 更新本地余额:', {
-      winAmount,
-      currentBalance,
-      newBalance
-    })
-  }
-
+ 
   // 完成处理
   const completeProcessing = () => {
     if (state.isComplete) return
