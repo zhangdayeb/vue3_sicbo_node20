@@ -155,12 +155,9 @@ export const useBettingStore = defineStore('betting', () => {
     return balance.value - totalBetAmount.value
   })
   
-  // 是否可以下注
+  // 🔥 修改1：简化投注能力判断 - 去掉所有状态限制
   const canPlaceBet = computed(() => {
-    return gamePhase.value === 'betting' && 
-           bettingPhase.value === 'betting' && 
-           isConnected.value &&
-           availableBalance.value > 0
+    return true  // 🔥 总是允许投注，无条件响应点击
   })
   
   // 投注数量统计
@@ -203,17 +200,13 @@ export const useBettingStore = defineStore('betting', () => {
     }
   }
   
-  // 下注
+  // 🔥 修改2：简化下注方法 - 去掉状态检查
   const placeBet = (betType: BetType, amount?: number): boolean => {
-    if (!canPlaceBet.value) {
-      debugLog('下注失败 - 当前不能下注')
-      return false
-    }
-    
     const betAmount = amount || selectedChip.value
     
-    if (betAmount <= 0 || betAmount > availableBalance.value) {
-      debugLog('下注失败 - 金额无效', { betAmount, availableBalance: availableBalance.value })
+    // 🔥 只保留基本的金额验证
+    if (betAmount <= 0) {
+      debugLog('下注失败 - 金额无效', { betAmount })
       return false
     }
     
