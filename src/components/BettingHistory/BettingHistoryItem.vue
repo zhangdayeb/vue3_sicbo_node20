@@ -10,9 +10,6 @@
         <div class="status-badge" :style="{ backgroundColor: getStatusColor(record.status) }">
           {{ getStatusText(record.status) }}
         </div>
-        <div v-if="canExpand" class="expand-icon" :class="{ expanded }">
-          ▼
-        </div>
       </div>
     </div>
 
@@ -47,57 +44,23 @@
         </div>
       </div>
     </div>
-
-    <!-- 🔥 展开的投注详情 -->
-    <div v-if="expanded && record.bet_details && record.bet_details.length > 0" class="record-details">
-      <div class="details-title">投注明细</div>
-      <div class="bet-details-list">
-        <div 
-          v-for="(detail, index) in record.bet_details" 
-          :key="index" 
-          class="bet-detail-item"
-          :class="{ 'win': detail.is_win }"
-        >
-          <div class="detail-left">
-            <div class="bet-type-name">{{ detail.bet_type_name || getBetTypeName(detail.bet_type) }}</div>
-            <div class="bet-odds">{{ detail.odds || '1:1' }}</div>
-          </div>
-          <div class="detail-right">
-            <div class="detail-amount">¥{{ formatMoney(detail.bet_amount) }}</div>
-            <div v-if="detail.win_amount > 0" class="detail-win">
-              +¥{{ formatMoney(detail.win_amount) }}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 结算信息 -->
-      <div v-if="record.settle_time" class="settle-info">
-        <div class="settle-time">
-          <span class="settle-label">结算时间:</span>
-          <span class="settle-value">{{ formatDateTime(record.settle_time) }}</span>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import type { BettingRecord } from '@/types/bettingHistory'
 
 // Props
 interface Props {
   record: BettingRecord
-  expandable?: boolean
   showActions?: boolean
   clickable?: boolean
   theme?: 'default' | 'compact' | 'detailed'
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  expandable: true,
-  showActions: false, // 🔥 默认不显示操作按钮
+  showActions: false,
   clickable: true,
   theme: 'default'
 })
@@ -107,14 +70,7 @@ const emit = defineEmits<{
   'click': [record: BettingRecord]
 }>()
 
-// 响应式数据
-const expanded = ref(false)
-
 // 计算属性
-const canExpand = computed(() => {
-  return props.expandable && props.record.bet_details && props.record.bet_details.length > 0
-})
-
 const recordClasses = computed(() => {
   return [
     'betting-record-item',
@@ -167,49 +123,8 @@ const getStatusColor = (status: string): string => {
   return colorMap[status] || '#9e9e9e'
 }
 
-// 🔥 投注类型名称映射
-const getBetTypeName = (betType: string): string => {
-  const typeMap: Record<string, string> = {
-    'big': '大',
-    'small': '小',
-    'odd': '单',
-    'even': '双',
-    'total-4': '总和4',
-    'total-5': '总和5',
-    'total-6': '总和6',
-    'total-7': '总和7',
-    'total-8': '总和8',
-    'total-9': '总和9',
-    'total-10': '总和10',
-    'total-11': '总和11',
-    'total-12': '总和12',
-    'total-13': '总和13',
-    'total-14': '总和14',
-    'total-15': '总和15',
-    'total-16': '总和16',
-    'total-17': '总和17',
-    'triple-1': '三同号1',
-    'triple-2': '三同号2',
-    'triple-3': '三同号3',
-    'triple-4': '三同号4',
-    'triple-5': '三同号5',
-    'triple-6': '三同号6',
-    'any-triple': '全围',
-    'pair-1': '对子1',
-    'pair-2': '对子2',
-    'pair-3': '对子3',
-    'pair-4': '对子4',
-    'pair-5': '对子5',
-    'pair-6': '对子6'
-  }
-  return typeMap[betType] || betType
-}
-
 const handleClick = () => {
   if (props.clickable) {
-    if (canExpand.value) {
-      expanded.value = !expanded.value
-    }
     emit('click', props.record)
   }
 }
@@ -238,7 +153,7 @@ const handleClick = () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* 🔥 优化状态指示 - 左边框颜色 */
+/* 状态指示 - 左边框颜色 */
 .betting-record-item.win-record {
   border-left: 4px solid #4caf50;
 }
@@ -299,24 +214,6 @@ const handleClick = () => {
   color: #ffffff;
   text-align: center;
   min-width: 60px;
-}
-
-.expand-icon {
-  transition: transform 0.3s ease;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.expand-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.expand-icon.expanded {
-  transform: rotate(180deg);
 }
 
 .record-main {
@@ -408,115 +305,5 @@ const handleClick = () => {
   padding: 2px 4px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
-}
-
-.record-details {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  animation: expandIn 0.3s ease-out;
-}
-
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    max-height: 300px;
-  }
-}
-
-.details-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 12px;
-}
-
-.bet-details-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.bet-detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  border-left: 3px solid rgba(255, 255, 255, 0.2);
-}
-
-.bet-detail-item.win {
-  border-left-color: #4caf50;
-  background: rgba(76, 175, 80, 0.1);
-}
-
-.detail-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.bet-type-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: #ffffff;
-}
-
-.bet-odds {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  font-family: 'Courier New', monospace;
-}
-
-.detail-right {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.detail-amount {
-  font-size: 13px;
-  color: #2196f3;
-  font-weight: 500;
-  font-family: 'Courier New', monospace;
-}
-
-.detail-win {
-  font-size: 11px;
-  color: #4caf50;
-  font-weight: 600;
-  font-family: 'Courier New', monospace;
-}
-
-.settle-info {
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.settle-time {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.settle-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.settle-value {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.9);
-  font-family: 'Courier New', monospace;
 }
 </style>
