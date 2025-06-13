@@ -26,6 +26,7 @@ export const useGameResults = () => {
   const { 
     playWinSound, 
     playDiceRollSound, 
+    playDiceResultAudio,
     canPlayAudio 
   } = useAudio()
 
@@ -347,6 +348,15 @@ export const useGameResults = () => {
       
       console.log('🎲 首次收到开牌结果，准备播放动画:', data.dice_results)
       
+      // 🔥 新增：播放开牌语音
+      try {
+        const [dice1, dice2, dice3] = data.dice_results
+        await playDiceResultAudio(dice1.toString(), dice2.toString(), dice3.toString())
+        console.log('🎵 开牌语音播放成功:', data.dice_results)
+      } catch (audioError) {
+        console.warn('⚠️ 开牌语音播放失败:', audioError)
+      }
+
       // 立即触发开牌特效
       const effectSuccess = await triggerDiceEffect(data.dice_results)
       

@@ -66,6 +66,19 @@ function createAudioSystem() {
     'bet-start': { id: 'bet-start', url: '/audio/bet-start.mp3', category: 'sfx', volume: 0.9 },
     'bet-stop': { id: 'bet-stop', url: '/audio/bet-stop.mp3', category: 'sfx', volume: 0.9 },
     'win': { id: 'win', url: '/audio/win.mp3', category: 'sfx', volume: 1.0 },
+
+    // 🔥 新增：开牌语音
+    'dice-kai': { id: 'dice-kai', url: '/audio/open/kai.mp3', category: 'sfx', volume: 0.8 },
+    'dice-1': { id: 'dice-1', url: '/audio/open/1.mp3', category: 'sfx', volume: 0.8 },
+    'dice-2': { id: 'dice-2', url: '/audio/open/2.mp3', category: 'sfx', volume: 0.8 },
+    'dice-3': { id: 'dice-3', url: '/audio/open/3.mp3', category: 'sfx', volume: 0.8 },
+    'dice-4': { id: 'dice-4', url: '/audio/open/4.mp3', category: 'sfx', volume: 0.8 },
+    'dice-5': { id: 'dice-5', url: '/audio/open/5.mp3', category: 'sfx', volume: 0.8 },
+    'dice-6': { id: 'dice-6', url: '/audio/open/6.mp3', category: 'sfx', volume: 0.8 },
+    'dice-big': { id: 'dice-big', url: '/audio/open/big.mp3', category: 'sfx', volume: 0.8 },
+    'dice-small': { id: 'dice-small', url: '/audio/open/small.mp3', category: 'sfx', volume: 0.8 },
+    'dice-dan': { id: 'dice-dan', url: '/audio/open/dan.mp3', category: 'sfx', volume: 0.8 },
+    'dice-shuang': { id: 'dice-shuang', url: '/audio/open/shuang.mp3', category: 'sfx', volume: 0.8 },
     
     // 背景音乐
     'bg001': { id: 'bg001', url: '/audio/bg001.mp3', category: 'music', volume: 0.7, loop: true }
@@ -604,6 +617,160 @@ function createAudioSystem() {
     config: { ...config }
   })
 
+  // 🔥 语音播放状态管理
+  const diceAudioState = reactive({
+    isPlaying: false,
+    currentSequence: [] as string[],
+    currentIndex: 0,
+    abortController: null as AbortController | null
+  })
+
+  // 🔥 新增：根据骰子点数生成语音播放序列
+  const generateAudioSequence = (dice1: string, dice2: string, dice3: string): string[] => {
+    try {
+      // 转换为数字并验证
+      const d1 = parseInt(dice1)
+      const d2 = parseInt(dice2) 
+      const d3 = parseInt(dice3)
+      
+      // 验证骰子点数范围
+      if ([d1, d2, d3].some(d => d < 1 || d > 6 || isNaN(d))) {
+        console.warn('⚠️ 无效的骰子点数:', { dice1, dice2, dice3 })
+        return []
+      }
+      
+      // 计算总和
+      const total = d1 + d2 + d3
+      
+      // 判断大小 (4-10为小, 11-17为大)
+      const bigSmall = total >= 4 && total <= 10 ? 'dice-small' : 'dice-big'
+      
+      // 判断单双
+      const oddEven = total % 2 === 1 ? 'dice-dan' : 'dice-shuang'
+      
+      // 组合播放序列：开牌音 + 三个骰子 + 大小 + 单双
+      const sequence = [
+        'dice-kai',
+        `dice-${dice1}`,
+        `dice-${dice2}`, 
+        `dice-${dice3}`,
+        bigSmall,
+        oddEven
+      ]
+      
+      console.log('🎵 生成语音序列:', sequence, { total, bigSmall, oddEven })
+      return sequence
+    } catch (error) {
+      console.error('❌ 生成语音序列失败:', error)
+      return []
+    }
+  }
+
+  // 🔥 新增：按序列播放音频文件
+  const playAudioSequence = async (sequence: string[], interval: number = 400): Promise<boolean> => {
+    if (!canPlayAudio.value || !config.enableSfx) {
+      console.log('🔇 音频系统未就绪或音效已禁用，跳过播放')
+      return false
+    }
+    
+    if (!sequence || sequence.length === 0) {
+      console.log('🔇 播放序列为空，跳过播放')
+      return false
+    }
+    
+    // 如果正在播放，先中断当前播放
+    if (diceAudioState.isPlaying) {
+      console.log('🔄 中断当前语音播放')
+      if (diceAudioState.abortController) {
+        diceAudioState.abortController.abort()
+      }
+    }
+    
+    try {
+      // 设置播放状态
+      diceAudioState.isPlaying = true
+      diceAudioState.currentSequence = [...sequence]
+      diceAudioState.currentIndex = 0
+      diceAudioState.abortController = new AbortController()
+      
+      console.log('🎵 开始播放语音序列:', sequence)
+      
+      // 降低背景音乐音量
+      const originalBgVolume = audioContext.backgroundMusicInstance?.volume || 0
+      if (audioContext.backgroundMusicInstance && !audioContext.backgroundMusicInstance.paused) {
+        audioContext.backgroundMusicInstance.volume = originalBgVolume * 0.2
+      }
+      
+      // 逐个播放音频
+      for (let i = 0; i < sequence.length; i++) {
+        // 检查是否被中断
+        if (diceAudioState.abortController?.signal.aborted) {
+          console.log('🔄 语音播放被中断')
+          break
+        }
+        
+        const audioId = sequence[i]
+        diceAudioState.currentIndex = i
+        
+        console.log(`🎵 播放第${i + 1}个音频:`, audioId)
+        
+        // 播放单个音频
+        const success = await playSound(audioId)
+        if (!success) {
+          console.warn(`⚠️ 播放音频失败: ${audioId}`)
+          // 继续播放下一个，不中断整个序列
+        }
+        
+        // 等待间隔时间（最后一个音频不需要等待）
+        if (i < sequence.length - 1) {
+          await new Promise(resolve => {
+            const timer = setTimeout(resolve, interval)
+            
+            // 监听中断信号
+            diceAudioState.abortController?.signal.addEventListener('abort', () => {
+              clearTimeout(timer)
+              resolve(void 0)
+            })
+          })
+        }
+      }
+      
+      // 恢复背景音乐音量
+      if (audioContext.backgroundMusicInstance && !audioContext.backgroundMusicInstance.paused) {
+        audioContext.backgroundMusicInstance.volume = originalBgVolume
+      }
+      
+      console.log('✅ 语音序列播放完成')
+      return true
+    } catch (error) {
+      console.error('❌ 播放语音序列失败:', error)
+      return false
+    } finally {
+      // 重置播放状态
+      diceAudioState.isPlaying = false
+      diceAudioState.currentSequence = []
+      diceAudioState.currentIndex = 0
+      diceAudioState.abortController = null
+    }
+  }
+
+  // 🔥 新增：开牌语音播放主函数（对外接口）
+  const playDiceResultAudio = async (dice1: string, dice2: string, dice3: string): Promise<boolean> => {
+    console.log('🎵 开牌语音播放:', { dice1, dice2, dice3 })
+    
+    // 生成播放序列
+    const sequence = generateAudioSequence(dice1, dice2, dice3)
+    if (sequence.length === 0) {
+      console.warn('⚠️ 无法生成有效的语音序列')
+      return false
+    }
+    
+    // 播放序列
+    return await playAudioSequence(sequence)
+  }
+
+
+  
   return {
     // 状态
     config,
@@ -656,7 +823,12 @@ function createAudioSystem() {
     saveConfig,
     loadConfig,
     getAudioInfo,
-    getSfxStatus // 🔥 新增：音效状态获取方法
+    getSfxStatus, // 🔥 新增：音效状态获取方法
+
+    // 🔥 新增：开牌语音播放
+    playDiceResultAudio,
+    generateAudioSequence,
+    playAudioSequence
   }
 }
 
