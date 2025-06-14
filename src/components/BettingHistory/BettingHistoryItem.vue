@@ -40,7 +40,7 @@
           >
             {{ dice }}
           </div>
-          <div class="dice-total">= {{ record.dice_total }}</div>
+          <!-- <div class="dice-total">= {{ record.dice_total }}</div> -->
         </div>
       </div>
     </div>
